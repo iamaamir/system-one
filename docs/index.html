@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>system-one — Decisions, not strings. Typed AI decisions in your code and agent.</title>
+<meta name="description" content="system-one is the open-source tooling layer for System One decisions: typed answers with calibrated confidence, provider-neutral across TypeSafe Jev, Reflex, and any /v1/systemone backend. TypeScript runtime + Pi agent extension.">
+<link rel="canonical" href="https://iamaamir.github.io/system-one/">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="system-one">
+<meta property="og:title" content="system-one — Decisions, not strings.">
+<meta property="og:description" content="Open-source TypeScript runtime + Pi extension for System One decisions. Typed answers, calibrated confidence, any backend. Tested on TypeSafe Jev and Reflex.">
+<meta property="og:url" content="https://iamaamir.github.io/system-one/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="system-one — Decisions, not strings.">
+<meta name="twitter:description" content="Typed AI decisions with calibrated confidence, in your code and in your agent. Provider-neutral. MIT.">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"system-one-core","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/iamaamir/system-one","programmingLanguage":"TypeScript","description":"Provider-neutral TypeScript runtime for System One decisions: typed choice/noul/score answers with calibrated confidence from any /v1/systemone backend."}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Is system-one part of TypeSafe?","acceptedAnswer":{"@type":"Answer","text":"No. system-one is independent open source by @iamaamir. It works with TypeSafe Jev and Reflex today, and any System One backend tomorrow."}},{"@type":"Question","name":"Does system-one route between models or pick tiers?","acceptedAnswer":{"@type":"Answer","text":"No. You choose the backend and model; the client asks, validates fail-closed, and returns typed answers with probabilities."}},{"@type":"Question","name":"Which backends are supported?","acceptedAnswer":{"@type":"Answer","text":"Anything serving POST /v1/systemone. Tested live: TypeSafe Jev (jev-1.13.0) and Reflex (local Qwen3.5-2B)."}}]}
+</script>
+<style>
+:root{--bg:#0a0a0b;--fg:#f4f4f5;--mut:#a1a1aa;--line:#27272a;--acc:#d4ff4f;--card:#131316}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:880px;margin:0 auto;padding:0 24px}
+header{border-bottom:1px solid var(--line);padding:18px 0}
+header .wrap{display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:700;letter-spacing:-.02em;text-decoration:none;color:var(--fg)}
+.logo span{color:var(--acc)}
+nav a{color:var(--mut);text-decoration:none;margin-left:20px;font-size:14px}
+nav a:hover{color:var(--fg)}
+.hero{padding:96px 0 64px}
+.kicker{color:var(--acc);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+h1{font-size:clamp(38px,6vw,64px);line-height:1.05;letter-spacing:-.03em;margin:16px 0 20px}
+h1 em{font-style:normal;color:var(--mut)}
+.lede{color:var(--mut);font-size:19px;max-width:640px}
+.cmd{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-top:28px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;overflow-x:auto}
+.cmd .c{color:var(--mut)}
+.cmd .k{color:var(--acc)}
+section{padding:56px 0;border-top:1px solid var(--line)}
+h2{font-size:28px;letter-spacing:-.02em;margin-bottom:8px}
+.sub{color:var(--mut);margin-bottom:28px;max-width:640px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px}
+.card h3{font-size:17px;margin-bottom:8px}
+.card p{color:var(--mut);font-size:14px}
+.card code{font-size:13px}
+.proof{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--mut);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 20px;overflow-x:auto;white-space:pre}
+.proof b{color:var(--acc);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:500;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.ok{color:var(--acc)}
+.faq details{border-bottom:1px solid var(--line);padding:16px 0}
+.faq summary{cursor:pointer;font-weight:600;font-size:17px}
+.faq details p{color:var(--mut);margin-top:8px;max-width:640px}
+footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--mut);font-size:14px}
+footer a{color:var(--mut)}
+footer a:hover{color:var(--fg)}
+.btns{margin-top:28px;display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-block;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px}
+.btn-p{background:var(--acc);color:#0a0a0b}
+.btn-s{border:1px solid var(--line);color:var(--fg)}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+<a class="logo" href="./">system<span>-one</span></a>
+<nav><a href="#packages">Packages</a><a href="#proof">Proof</a><a href="#faq">FAQ</a><a href="https://github.com/iamaamir/system-one">GitHub</a></nav>
+</div></header>
+<div class="wrap">
+<div class="hero">
+<p class="kicker">Open source · MIT · Provider-neutral</p>
+<h1>Decisions, <em>not strings.</em></h1>
+<p class="lede">System One models return typed answers with calibrated confidence — software can act on them. <strong>system-one</strong> is the tooling layer that brings those decisions into your TypeScript code and your Pi agent, against any backend. No routing. No tiers. No policy.</p>
+<div class="cmd"><span class="c"># runtime</span><br><span class="k">npm i system-one-core</span><br><br><span class="c"># agent</span><br><span class="k">pi install npm:pi-system-one</span></div>
+<div class="btns"><a class="btn btn-p" href="https://github.com/iamaamir/system-one">Get started</a><a class="btn btn-s" href="./llms.txt">Read the agent brief</a></div>
+</div>
+<section id="packages">
+<h2>Two packages. One idea.</h2>
+<p class="sub">Dependency direction: pi-system-one → system-one-core. Nothing here depends on routing, model tiers, or policy engines.</p>
+<div class="grid">
+<div class="card"><h3>system-one-core</h3><p>TypeScript runtime. <code>choice</code> / <code>noul</code> / <code>score</code> builders with inferred answer types. One <code>HttpSystemOneProvider</code> for any <code>/v1/systemone</code> endpoint. Fail-closed validation. Deterministic mock for tests.</p><p style="margin-top:12px"><a href="https://www.npmjs.com/package/system-one-core">npm: system-one-core</a></p></div>
+<div class="card"><h3>pi-system-one</h3><p>Pi extension. Registers the <code>system_one</code> tool: batched questions, env config, human-readable results with full probability distributions. Decisions inside the agent loop.</p><p style="margin-top:12px"><a href="https://www.npmjs.com/package/pi-system-one">npm: pi-system-one</a></p></div>
+<div class="card"><h3>Your backend</h3><p>Jev today, Reflex today, anything serving <code>POST /v1/systemone</code> tomorrow. Same client, same provider class — only configuration changes.</p></div>
+</div>
+</section>
+<section id="proof">
+<h2>Proven, not promised.</h2>
+<p class="sub">Same client, same question shape, two backends. Real outputs from live runs — the full distributions are in the repo as golden fixtures.</p>
+<div class="proof">route "export button crashes in Safari" → <b>frontend</b>
+  Jev    (jev-1.13.0)      confidence <b>1.000</b>   frontend 1.000
+  Reflex (Qwen3.5-2B local) confidence <b>0.698</b>   frontend 0.698 · backend 0.197 · infra 0.105</div>
+<table style="margin-top:24px">
+<tr><th>Backend</th><th>Contract test</th><th>Golden fixtures</th><th>Pi end-to-end</th></tr>
+<tr><td>TypeSafe Jev <span class="c">jev-1.13.0</span></td><td class="ok">✓ live</td><td class="ok">✓ 4 files</td><td class="ok">✓</td></tr>
+<tr><td>Reflex <span class="c">Qwen3.5-2B, local</span></td><td class="ok">✓ live</td><td class="ok">✓ 2 files</td><td class="ok">✓</td></tr>
+</table>
+</section>
+<section>
+<h2>Three properties, held strictly.</h2>
+<div class="grid" style="margin-top:24px">
+<div class="card"><h3>Typed outputs</h3><p>Choice, 0–1, 0–5. Answers are values your code can branch on; probabilities sum to 1. No parsing prose.</p></div>
+<div class="card"><h3>Calibrated confidence</h3><p>Every answer carries confidence. Act above your threshold, escalate below it. Uncertainty becomes a control signal.</p></div>
+<div class="card"><h3>Provider-neutral</h3><p>You choose the backend and model. The client asks and validates. Swap Jev for Reflex with a URL change.</p></div>
+</div>
+</section>
+<section id="faq" class="faq">
+<h2>FAQ</h2>
+<p class="sub">Short answers. The repo holds the long ones.</p>
+<details open><summary>Is this part of TypeSafe?</summary><p>No. Independent open source by <a href="https://github.com/iamaamir">@iamaamir</a>, MIT licensed. It speaks the System One protocol, so it works with Jev — and anything else that does.</p></details>
+<details><summary>Does it route between models or pick tiers?</summary><p>No. That is exactly what this project refuses to do. You pick the backend and model; the client asks, validates fail-closed, and returns.</p></details>
+<details><summary>Why not just use an LLM with JSON mode?</summary><p>System One models are trained for calibrated decisions (RLCD), not human-pleasing chat (RLHF). The problem with chat-shaped intelligence is well put <a href="https://typesafe.ai/blog/ai-too-good-to-be-true-too-bad-to-be-useful-typesafe-ai">here</a>. This project is the client side of that answer.</p></details>
+<details><summary>Which backends work?</summary><p>Anything serving <code>POST /v1/systemone</code>. Tested live on TypeSafe Jev and local Reflex.</p></details>
+<details><summary>What does it cost?</summary><p>The client is free (MIT). You pay only your backend.</p></details>
+</section>
+</div>
+<footer><div class="wrap">
+<p><a href="https://github.com/iamaamir/system-one">GitHub</a> · <a href="https://www.npmjs.com/package/system-one-core">system-one-core</a> · <a href="https://www.npmjs.com/package/pi-system-one">pi-system-one</a> · <a href="./llms.txt">llms.txt</a> · <a href="./robots.txt">robots</a></p>
+<p style="margin-top:8px">MIT © 2026 @iamaamir. Decisions, not strings.</p>
+</div></footer>
+</body>
+</html>

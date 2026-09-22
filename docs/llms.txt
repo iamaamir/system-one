@@ -1,0 +1,36 @@
+System One, anywhere.
+
+system-one is the open-source tooling layer for System One decisions: typed answers with calibrated confidence, in your code and in your agent. One client for every System One backend. No routing, no tiers, no policy.
+
+Packages: system-one-core (TypeScript runtime, npm), pi-system-one (Pi coding-agent extension, registers the system_one tool).
+Backends tested live: TypeSafe Jev (jev-1.13.0) and Reflex (local Qwen3.5-2B). Same client, same provider class — only configuration changes.
+
+Start:
+  npm i system-one-core
+  pi install npm:pi-system-one
+
+Decide (TypeScript):
+  import { createSystemOne, choice } from "system-one-core";
+  const s1 = createSystemOne({ baseUrl: process.env.SYSTEM_ONE_BASE_URL!, apiKey: process.env.SYSTEM_ONE_API_KEY });
+  const r = await s1.ask({ model: "jev-latest", question: choice("route", "Where should this go?", ["frontend", "backend", "infrastructure"] as const) });
+  // r.answer === "frontend", r.confidence === 1, r.probabilities.frontend === 1
+
+Ask in Pi:
+  /system_one or natural language — batched choice/noul/score questions, human-readable results with full distributions.
+
+Principles:
+- Decisions, not strings: choice, noul (0..1), score (0..5). Answers are typed; probabilities sum to 1.
+- Calibrated confidence: every answer carries confidence. Act above your threshold, escalate below it.
+- Provider-neutral: HttpSystemOneProvider speaks /v1/systemone to any backend. Fail-closed validation. Deterministic MockSystemOneProvider for tests.
+
+FAQ:
+- Is this TypeSafe? No. Independent open source by @iamaamir. Works with Jev and Reflex today, any System One backend tomorrow.
+- Does it route or pick models? No. You choose the backend and model; the client asks and validates.
+- Which backends? Anything serving POST /v1/systemone. Tested: TypeSafe Jev, Reflex.
+- License/cost? MIT. You pay only your backend.
+
+Links:
+- GitHub https://github.com/iamaamir/system-one
+- npm system-one-core https://www.npmjs.com/package/system-one-core
+- npm pi-system-one https://www.npmjs.com/package/pi-system-one
+- Reflections on the problem this solves: https://typesafe.ai/blog/ai-too-good-to-be-true-too-bad-to-be-useful-typesafe-ai
