@@ -8,7 +8,6 @@ import {
   applyConfigAnswers,
   blankSession,
   type ConfigAnswers,
-  DEFAULT_TIMEOUT_MS,
   describeConfig,
   type SessionConfig,
 } from "./config.ts";
@@ -62,15 +61,12 @@ export function registerSystemOneCommands(
       ctx.ui.notify("Cancelled.", "info");
       return;
     }
-    const timeoutMs = await ctx.ui.input(
-      "SYSTEM_ONE_TIMEOUT_MS:",
-      String(cur?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
-    );
-    if (timeoutMs === undefined) {
-      ctx.ui.notify("Cancelled.", "info");
-      return;
-    }
-    const answers: ConfigAnswers = { baseUrl, model, apiKey, timeoutMs };
+    const answers: ConfigAnswers = {
+      baseUrl,
+      model,
+      apiKey,
+      timeoutMs: "",
+    };
     if (!store.session) {
       store.session = blankSession();
     }
@@ -96,11 +92,11 @@ export function registerSystemOneCommands(
   }
 
   pi.registerCommand("so", {
-    description: "System One config: config / status",
+    description: "System One config (/so status for current)",
     handler: async (args, ctx) => {
       const [cmd] = args.trim().split(/\s+/);
-      if (cmd === "config") await cmdConfig(ctx);
-      else await cmdStatus(ctx);
+      if (cmd === "status") await cmdStatus(ctx);
+      else await cmdConfig(ctx);
     },
   });
 
