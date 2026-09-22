@@ -12,5 +12,8 @@ dist/
 .DS_Store
 *.tgz
 
+# local provider launchers (machine-specific paths, model dirs, ports)
+/providers/
+
 # Pi local state
 .pi/
