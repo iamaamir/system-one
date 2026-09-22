@@ -30,6 +30,7 @@ jobs:
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - run: npm ci
+      - run: npm run build --workspace system-one-core
       - run: npm run typecheck
       - run: npm run lint
       - id: pkg
