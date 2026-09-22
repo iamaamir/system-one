@@ -4,11 +4,23 @@
   "description": "System One decisions for Pi. Plug in TypeSafe Jev, Reflex, or your own provider.",
   "type": "module",
   "license": "MIT",
-  "exports": { ".": "./src/extension.ts" },
+  "exports": {
+    ".": "./src/extension.ts"
+  },
   "scripts": {
     "test": "node --test --experimental-strip-types \"tests/*.test.ts\"",
     "typecheck": "tsc --noEmit"
   },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "model-router",
+    "model-routing",
+    "developer-tools",
+    "llm",
+    "ai",
+    "coding-agent"
+  ],
   "dependencies": {
     "system-one-core": "^0.1.1"
   },
@@ -17,6 +29,8 @@
     "typebox": "*"
   },
   "pi": {
-    "extensions": ["./src/extension.ts"]
+    "extensions": [
+      "./src/extension.ts"
+    ]
   }
 }
