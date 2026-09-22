@@ -5,7 +5,12 @@
       "complexity": {
         "type": "score",
         "instructions": "How complex is this task?",
-        "criteria": ["Trivial", "Moderate", "Complex", "Highly complex"]
+        "criteria": [
+          "Trivial",
+          "Moderate",
+          "Complex",
+          "Highly complex"
+        ]
       },
       "needsReasoning": {
         "type": "noul",
