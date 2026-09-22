@@ -1,6 +1,6 @@
 {
   "name": "system-one-core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Provider-neutral System One runtime for TypeScript. Plug in TypeSafe Jev, Reflex, or your own provider.",
   "type": "module",
   "license": "MIT",
