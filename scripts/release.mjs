@@ -26,8 +26,10 @@ const PKGS = [
 ];
 
 function usage() {
-  console.log(`usage: release.mjs (--major|--minor|--patch) [pkg...] [--publish] [--dry-run]
-  pkg: system-one-core, pi-system-one (omit for interactive selection)
+  console.log(`usage: release.mjs [--major|--minor|--patch] [pkg...] [--publish] [--dry-run]
+  run bare for fully interactive: pick packages, bump type, then dry-run or publish.
+  flags preselect steps (useful non-interactively); omitted steps prompt.
+  pkg: system-one-core, pi-system-one
   --publish: push main + created tags (triggers Release workflow)
   --dry-run: print plan, change nothing`);
 }
@@ -82,6 +84,19 @@ function writePkg(pkgPath, json) {
   writeFileSync(pkgPath, `${JSON.stringify(json, null, 2)}\n`);
 }
 
+function ask(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
 function selectInteractive() {
   return new Promise((resolve) => {
     console.log("\nSelect package(s) to release (comma-separated numbers):\n");
@@ -105,12 +120,15 @@ function selectInteractive() {
   });
 }
 
-async function main() {
-  const args = parseArgs(process.argv.slice(2));
-  if (!args.bump) {
-    usage();
+function requireTTY(step) {
+  if (!process.stdin.isTTY) {
+    console.error(`no ${step} given and stdin is not interactive`);
     process.exit(1);
   }
+}
+
+async function main() {
+  const args = parseArgs(process.argv.slice(2));
 
   let selected = PKGS.filter((p) => args.pkgs.includes(p.name));
   const unknown = args.pkgs.filter((n) => !PKGS.some((p) => p.name === n));
@@ -119,10 +137,7 @@ async function main() {
     process.exit(1);
   }
   if (selected.length === 0) {
-    if (!process.stdin.isTTY) {
-      console.error("no packages given and stdin is not interactive");
-      process.exit(1);
-    }
+    requireTTY("packages");
     selected = await selectInteractive();
   }
   if (selected.length === 0) {
@@ -130,13 +145,49 @@ async function main() {
     process.exit(1);
   }
 
+  let bump = args.bump;
+  if (!bump) {
+    requireTTY("bump type");
+    const { json } = readPkg(selected[0].dir);
+    console.log(`\nBump type for ${selected.map((p) => p.name).join(", ")}:\n`);
+    for (const [i, t] of ["patch", "minor", "major"].entries()) {
+      const preview =
+        selected.length === 1
+          ? ` (${json.version} -> ${bumpVersion(json.version, t)})`
+          : "";
+      console.log(`  ${i + 1}. ${t}${preview}`);
+    }
+    console.log();
+    const answer = await ask("> ");
+    bump = ["patch", "minor", "major"][Number.parseInt(answer, 10) - 1];
+    if (!bump) {
+      console.error("invalid bump type");
+      process.exit(1);
+    }
+  }
+
+  let mode = args.publish ? "publish" : args.dryRun ? "dry-run" : null;
+  if (!mode) {
+    requireTTY("mode");
+    console.log(
+      "\nMode:\n\n  1. dry-run (plan only, change nothing)\n  2. publish (bump, tag, push - triggers Release workflow)\n",
+    );
+    const answer = await ask("> ");
+    mode = answer === "2" ? "publish" : answer === "1" ? "dry-run" : null;
+    if (!mode) {
+      console.error("invalid mode");
+      process.exit(1);
+    }
+  }
+  const dryRun = mode === "dry-run";
+
   // Plan first: compute every new version before touching anything.
   const plan = selected.map((p) => {
     const { json } = readPkg(p.dir);
     return {
       ...p,
       oldVersion: json.version,
-      newVersion: bumpVersion(json.version, args.bump),
+      newVersion: bumpVersion(json.version, bump),
     };
   });
   for (const b of plan) {
@@ -149,15 +200,15 @@ async function main() {
       process.exit(1);
     }
   }
-  console.log(`\nRelease: bump ${args.bump}`);
+  console.log(`\nRelease: bump ${bump}`);
   for (const b of plan)
     console.log(`  ${b.name}: ${b.oldVersion} -> ${b.newVersion}`);
-  if (args.dryRun) {
-    console.log("(dry-run — nothing changed)");
+  if (dryRun) {
+    console.log("(dry-run - nothing changed)");
     return;
   }
   if (sh("git status --porcelain") !== "") {
-    console.error("working tree is dirty — commit or stash first");
+    console.error("working tree is dirty - commit or stash first");
     process.exit(1);
   }
 
@@ -197,7 +248,7 @@ async function main() {
     console.log(`committed + tagged ${b.name}@${b.newVersion}`);
   }
 
-  if (args.publish) {
+  if (mode === "publish") {
     const tags = plan.map((b) => `${b.name}@${b.newVersion}`).join(" ");
     sh(`git push origin main ${tags}`, { stdio: "inherit" });
     console.log("pushed main + tags (Release workflow triggered)");
