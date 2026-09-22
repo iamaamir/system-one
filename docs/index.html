@@ -3,586 +3,1851 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>system-one - Provider-neutral System One runtime</title>
-<meta name="description" content="Provider-neutral System One runtime for TypeScript and Pi. Use Jev, Reflex, compatible System One endpoints, or your own provider.">
+
+<title>system-one — Provider-neutral System One SDK for TypeScript, Jev, Reflex & Pi</title>
+<meta name="description" content="A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider. Includes direct Pi integration.">
 <meta name="theme-color" content="#F3F1EA">
+<meta name="robots" content="index,follow,max-image-preview:large">
+
+<link rel="canonical" href="https://iamaamir.github.io/system-one/">
+
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="system-one">
-<meta property="og:title" content="system-one - One interface. Any System One provider.">
-<meta property="og:description" content="Provider-neutral System One runtime for TypeScript and Pi. Use Jev, Reflex, compatible System One endpoints, or your own provider.">
+<meta property="og:title" content="system-one — One interface. Any System One provider.">
+<meta property="og:description" content="A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider.">
 <meta property="og:url" content="https://iamaamir.github.io/system-one/">
+
 <meta name="twitter:card" content="summary">
+
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23111111'/%3E%3Ctext x='32' y='42' font-family='monospace' font-size='28' font-weight='bold' fill='%23F3F1EA' text-anchor='middle'%3ES1%3C/text%3E%3C/svg%3E">
+
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"system-one","applicationCategory":"DeveloperApplication","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"license":"https://opensource.org/licenses/MIT","codeRepository":"https://github.com/iamaamir/system-one","programmingLanguage":"TypeScript","description":"Provider-neutral System One runtime for TypeScript and Pi. Use Jev, Reflex, compatible System One endpoints, or your own provider."}
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://iamaamir.github.io/system-one/#website",
+      "url": "https://iamaamir.github.io/system-one/",
+      "name": "system-one",
+      "description": "Provider-neutral System One runtime for TypeScript and Pi."
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": "https://iamaamir.github.io/system-one/#software",
+      "name": "system-one",
+      "description": "Provider-neutral TypeScript runtime for System One decisions.",
+      "url": "https://iamaamir.github.io/system-one/",
+      "codeRepository": "https://github.com/iamaamir/system-one",
+      "programmingLanguage": "TypeScript",
+      "license": "https://opensource.org/licenses/MIT"
+    }
+  ]
+}
 </script>
+
 <style>
 :root{
---bg:#F3F1EA;--bg-soft:#EAE7DE;--bg-code:#111111;
---text:#111111;--text-secondary:#575750;--text-muted:#6A6A63;--text-inverse:#F4F2EB;
---border:#191919;--border-soft:#C9C6BC;
---cyan:#36D9E8;--cyan-soft:#A8F1F5;
---magenta:#E34FAF;--magenta-soft:#F3ACD6;
---violet:#7558FF;--violet-soft:#B7A9FF;
---acid:#C5F04B;--acid-soft:#E3F7A5;
---danger:#FF5B57;--success:#63D97C;
---selection:#111111;--selection-text:#F3F1EA;
---sans:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
---mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
---ease:cubic-bezier(0.22,1,0.36,1);
+  --bg:#F3F1EA;
+  --bg-soft:#EAE7DE;
+  --text:#111111;
+  --text-secondary:#575750;
+  --text-muted:#6A6A63;
+  --text-inverse:#F4F2EB;
+  --border:#191919;
+  --border-soft:#C9C6BC;
+
+  --cyan:#36D9E8;
+  --cyan-soft:#A8F1F5;
+  --magenta:#E34FAF;
+  --violet:#7558FF;
+  --acid:#C5F04B;
+  --acid-soft:#E3F7A5;
+  --success:#63D97C;
+
+  --sans:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --ease:cubic-bezier(.22,1,.36,1);
 }
+
 *{box-sizing:border-box}
+
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:18px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-::selection{background:var(--selection);color:var(--selection-text)}
-a{color:inherit;text-decoration-thickness:1px;text-underline-offset:4px}
-button{font:inherit;cursor:pointer}
-code,pre{font-family:var(--mono)}
-:focus-visible{outline:2px solid var(--violet);outline-offset:3px}
-.wrap{max-width:1440px;width:min(1440px,calc(100% - 48px));margin:0 auto}
-@media(max-width:768px){.wrap{width:calc(100% - 36px)}body{font-size:17px}}
-/* ---------- header ---------- */
-.site-head{position:sticky;top:0;z-index:50;height:68px;display:flex;align-items:center;background:rgba(243,241,234,0.88);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);transition:box-shadow .25s var(--ease)}
-.site-head.scrolled{box-shadow:0 1px 0 var(--border),0 8px 24px rgba(17,17,17,.06)}
-.site-head .wrap{display:flex;align-items:center;justify-content:space-between}
-.wordmark{font-weight:800;letter-spacing:-.02em;text-decoration:none;font-size:19px;display:flex;align-items:center;gap:10px}
-.wordmark .tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;border:1px solid var(--border);padding:2px 7px;border-radius:2px;font-weight:400}
-.site-nav{display:flex;gap:26px;font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
-.site-nav a{text-decoration:none}
-.site-nav a:hover{text-decoration:underline}
-/* ---------- shared visual grammar ---------- */
-.mono{font-family:var(--mono)}
-.micro{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
-.panel{border:1px solid var(--border);border-radius:4px;background:rgba(243,241,234,.78)}
-.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:8px;vertical-align:1px}
-.wire{color:var(--text-muted);line-height:1.3}
-.sec-label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);display:flex;align-items:center;gap:16px;padding:22px 0 0}
-.sec-label::after{content:"";flex:1;border-top:1px solid var(--border-soft)}
-section.block{padding:84px 0}
-h2.big{font-size:clamp(3rem,6vw,6rem);line-height:.95;letter-spacing:-.03em;font-weight:800;margin:0 0 20px;max-width:14em}
-h2.mid{font-size:clamp(2rem,4vw,3rem);letter-spacing:-.02em;margin:0 0 18px;font-weight:700}
-.lede{font-size:19px;max-width:38em}
-.lede code{font-size:.85em;background:var(--bg-soft);padding:1px 6px;border-radius:2px}
-.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);margin:0 0 20px}
-/* ---------- hero ---------- */
-.hero{position:relative;min-height:92vh;display:flex;align-items:flex-start;overflow:hidden;padding:88px 0 80px}
-.field{position:absolute;inset:0;overflow:hidden;pointer-events:none}
-.blob{position:absolute;border-radius:50%;filter:blur(90px);animation:drift 16s ease-in-out infinite alternate}
-.blob.b1{width:60vw;height:60vw;left:-12vw;top:-18vw;background:radial-gradient(closest-side,rgba(54,217,232,0.62),transparent 70%)}
-.blob.b2{width:52vw;height:52vw;right:-4vw;top:6vh;background:radial-gradient(closest-side,rgba(227,79,175,0.58),transparent 70%);animation-delay:-6s;animation-duration:19s}
-.blob.b3{width:48vw;height:48vw;left:24vw;bottom:-20vw;background:radial-gradient(closest-side,rgba(117,88,255,0.52),transparent 70%);animation-delay:-11s;animation-duration:14s}
-.blob.b4{width:30vw;height:30vw;right:14vw;bottom:2vh;background:radial-gradient(closest-side,rgba(197,240,75,0.38),transparent 70%);animation-delay:-3s;animation-duration:20s}
-.blob.b5{width:34vw;height:34vw;left:auto;right:6vw;top:22vh;background:radial-gradient(closest-side,rgba(54,217,232,0.48),transparent 70%);animation-delay:-8s;animation-duration:17s}
-/* recurring spectral motif: same field, whisper-quiet, behind key diagrams */
-.motif{position:relative;isolation:isolate}
-.motif::before,.motif::after{content:"";position:absolute;z-index:-1;border-radius:50%;filter:blur(70px);pointer-events:none}
-.motif::before{width:22vw;height:22vw;min-width:280px;min-height:280px;left:-6vw;top:-4vw;background:radial-gradient(closest-side,rgba(54,217,232,0.30),transparent 70%)}
-.motif::after{width:20vw;height:20vw;min-width:260px;min-height:260px;right:-5vw;bottom:-6vw;background:radial-gradient(closest-side,rgba(117,88,255,0.28),transparent 70%)}
-.motif.magenta::before{background:radial-gradient(closest-side,rgba(227,79,175,0.26),transparent 70%)}
-.motif.magenta::after{background:radial-gradient(closest-side,rgba(197,240,75,0.20),transparent 70%)}
-@keyframes drift{from{transform:translate(0,0) scale(1)}to{transform:translate(4vw,-3vh) scale(1.12)}}
-.hero-grid{position:relative;display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center}
-.hero-grid>div{min-width:0}
-h1{font-size:clamp(4rem,7.5vw,8rem);line-height:.9;font-weight:800;letter-spacing:-.03em;margin:0 0 26px}
-.hero-sub{font-size:19px;max-width:32em}
-.hero-sub code{font-size:.85em;background:rgba(234,231,222,.8);padding:1px 6px;border-radius:2px}
-.cta-row{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;height:46px;padding:0 20px;border:1px solid #111;background:transparent;color:var(--text);text-transform:uppercase;font-family:var(--mono);font-size:14px;letter-spacing:.08em;text-decoration:none;border-radius:4px;transition:background .2s var(--ease),color .2s var(--ease),transform .2s var(--ease)}
-.btn:hover{transform:translateY(-1px)}
-.btn-p{background:#111;color:var(--text-inverse)}
-.btn-p:hover{background:#2a2a2a}
-.btn-s:hover{background:var(--acid-soft)}
-/* hero machine */
-.machine{position:relative;border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.82);backdrop-filter:blur(2px);font-family:var(--mono);font-size:15px;line-height:1.6;box-shadow:8px 8px 0 rgba(17,17,17,.9);max-width:100%}
-.machine .mrow{display:flex;justify-content:space-between;gap:16px;padding:3px 0}
-.machine .sysrow{display:flex;justify-content:space-between;gap:16px;padding:5px 0;font-size:18px;font-weight:800;letter-spacing:.02em}
-.machine .sysrow span:last-child{text-align:right}
-.machine .provrow{display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:13px;color:var(--text-secondary)}
-.machine .provrow span:last-child{text-align:right;color:var(--text)}
-.machine .provrow strong{color:var(--text)}
-.machine .mrow span:first-child{flex-shrink:0}
-.machine .mrow span:last-child{text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.machine .rrow span:last-child{text-align:right;flex-shrink:0}
-.machine .mhead{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--border);padding:10px 16px;font-size:13px;letter-spacing:.08em;white-space:nowrap;overflow:hidden}
-.machine .mbody{padding:20px 20px 22px}
-.machine .bus{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0 4px}
-.mnode{border:1px solid var(--border);border-radius:2px;padding:12px 8px;text-align:center;transition:all .2s var(--ease);background:transparent;min-width:0}
-.mnode:hover:not(.on){background:var(--acid-soft);transform:translateY(-2px)}
-.mnode.on:hover{background:#000}
-.mnode b{display:block;font-size:15px}
-.mnode small{font-size:13px;letter-spacing:.08em;color:var(--text-secondary)}
-.mnode.on{background:#111;color:var(--text-inverse)}
-.mnode.on small{color:var(--acid-soft)}
-.mnode .st{font-size:11px}
-.mresult{margin-top:14px;border-top:1px solid var(--border-soft);padding-top:14px}
-.mresult .rrow{display:grid;grid-template-columns:1fr 52px;gap:10px;align-items:center;padding:4px 0}
-.mtrack{background:#D7D4CA;border-radius:2px;height:12px;overflow:hidden}
-.mfill{height:100%;width:0;background:var(--text);border-radius:2px;transition:width .8s var(--ease)}
-.machine .mfoot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding:10px 16px;font-size:13px;letter-spacing:.08em;white-space:nowrap;overflow:hidden}
-.flash{animation:flash 1s var(--ease)}
-@keyframes flash{0%{background:var(--acid-soft)}100%{background:transparent}}
-.status-chip{position:absolute;top:-16px;right:24px;background:var(--bg);border:1px solid var(--border);border-radius:2px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:4px 10px}
-/* ---------- architecture ---------- */
-.arch-split{display:grid;grid-template-columns:1fr 1.1fr;gap:36px;align-items:center;margin-top:36px}
-.arch-diag{position:relative;border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.82);padding:48px 36px;text-align:center;font-family:var(--mono);box-shadow:8px 8px 0 rgba(17,17,17,.9);overflow:hidden}
-.arch-diag .core{position:relative;font-size:42px;font-weight:800;letter-spacing:.05em}
-.arch-diag .iface{position:relative;font-size:17px;color:var(--text-secondary);margin-top:6px}
-.arch-diag .endpoints{position:relative;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:18px}
-.endpoint{border:1px solid var(--border);border-radius:2px;padding:22px 10px;transition:all .25s var(--ease);text-decoration:none;background:rgba(243,241,234,.6)}
-.endpoint:hover{background:#111;color:var(--text-inverse);transform:translateY(-2px)}
-.endpoint:hover small{color:var(--acid-soft)}
-.endpoint b{display:block;font-size:19px}
-.endpoint small{font-size:13px;letter-spacing:.08em;color:var(--text-secondary);text-transform:uppercase}
-/* ---------- primitives ---------- */
-.instrument{border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.78);padding:32px;margin-top:24px;box-shadow:6px 6px 0 rgba(17,17,17,.9);transition:transform .25s var(--ease)}
-.instrument:hover{transform:translateY(-2px)}
-.instrument .head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-.instrument .name{font-family:var(--mono);font-weight:800;font-size:26px;letter-spacing:.02em}
-.instrument .spec{font-family:var(--mono);font-size:13px;letter-spacing:.08em;color:var(--text-secondary);text-transform:uppercase}
-.instrument .ex{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--text-muted);text-transform:uppercase;margin:18px 0 6px}
-.prow{display:grid;grid-template-columns:150px 1fr 56px;gap:12px;align-items:center;font-family:var(--mono);font-size:15px;padding:8px 0}
-.ptrack{background:#D7D4CA;border-radius:2px;height:16px;overflow:hidden}
-.pfill{height:100%;width:0;background:var(--text);border-radius:2px;transition:width 1.1s var(--ease)}
-.pfill.c{background:var(--cyan)}.pfill.v{background:var(--violet)}.pfill.m{background:var(--magenta)}
-.pval{text-align:right}
-.score-out{font-family:var(--mono);font-size:16px;margin-top:14px}
-.score-out b{font-size:24px}
-/* noul split */
-.noul-split{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:2px;overflow:hidden;margin-top:10px;font-family:var(--mono)}
-.noul-split .t{background:#111;color:var(--text-inverse);padding:26px 16px;text-align:center}
-.noul-split .f{background:var(--cyan-soft);padding:26px 16px;text-align:center}
-.noul-split .v{font-size:38px;font-weight:800;display:block}
-.noul-split .l{font-size:13px;letter-spacing:.08em}
-/* score scale */
-/* score ruler */
-.scale{position:relative;margin:44px 12px 14px;height:84px;border-bottom:2px solid var(--border)}
-.scale .tick{position:absolute;bottom:0;width:2px;height:14px;background:var(--border)}
-.scale .tick-lbl{position:absolute;bottom:20px;transform:translateX(-50%);font-family:var(--mono);font-size:13px;letter-spacing:.06em;white-space:nowrap}
-.scale .marker{position:absolute;bottom:-10px;width:20px;height:20px;background:var(--magenta);border:2px solid #111;border-radius:50%;transform:translateX(-50%);transition:left 1.1s var(--ease)}
-.scale .marker-lbl{position:absolute;top:-10px;transform:translateX(-50%);font-family:var(--mono);font-size:13px;font-weight:700;background:#111;color:var(--text-inverse);padding:3px 10px;border-radius:2px;white-space:nowrap}
-.scale-readout{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-family:var(--mono);font-size:14px;color:var(--text-secondary);margin-top:12px}
-/* ---------- dark swap ---------- */
-.dark{background:#111;color:#F3F1EA}
-.dark .sec-label{color:#86867D}
-.dark .sec-label::after{border-color:#3A3A3A}
-.dark .lede{color:#F3F1EA}
-.codepanel{background:#0B0B0B;border:1px solid #3A3A3A;border-radius:4px;padding:20px 24px;font-family:var(--mono);font-size:14px;line-height:1.7;overflow-x:auto}
-.codepanel .ln{color:#4a4a44;display:inline-block;width:2em;user-select:none}
-.k{color:#B7A9FF}.s{color:#A8F1F5}.f{color:#E3F7A5}.c{color:#77776F}.p{color:#EDEBE4}
-.swap-grid{display:grid;grid-template-columns:1fr 320px;gap:24px;margin-top:40px;align-items:start}
-.prov-toggle{display:flex;gap:0;margin-bottom:16px;border:2px solid #F3F1EA;border-radius:4px;overflow:hidden}
-.prov-toggle button{flex:1;background:transparent;color:#F3F1EA;border:0;border-right:2px solid #F3F1EA;font-family:var(--mono);font-size:16px;font-weight:800;letter-spacing:.08em;padding:18px 16px;transition:all .2s var(--ease)}
-.prov-toggle button:last-child{border-right:0}
-.prov-toggle button[aria-pressed="true"]{background:var(--acid);color:#111}
-.prov-toggle button:hover{background:#2a2a2a}
-.prov-toggle button[aria-pressed="true"]:hover{background:var(--acid)}
-.prov-card{border:1px solid #3A3A3A;border-radius:4px;padding:18px;font-family:var(--mono);font-size:14px}
-.prov-card .row{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px dotted #2c2c2c}
-.prov-card .row:last-child{border-bottom:0}
-.unchanged{margin-top:16px;border:1px dashed #3A3A3A;border-radius:4px;padding:14px 18px;font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-align:center;color:var(--acid-soft)}
-.cfg-flash{animation:cfgflash .9s var(--ease)}
-@keyframes cfgflash{0%{background:rgba(197,240,75,.25)}100%{background:transparent}}
-/* ---------- provider bus ---------- */
-.bus-diag{position:relative;margin-top:40px;border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.82);padding:52px 36px;font-family:var(--mono);font-size:15px;text-align:center;box-shadow:8px 8px 0 rgba(17,17,17,.9);overflow:hidden}
-.bus-diag .trunk{position:relative;display:inline-block;border:1px solid var(--border);background:#111;color:var(--text-inverse);font-size:19px;font-weight:700;letter-spacing:.06em;padding:16px 36px;border-radius:2px}
-.bus-diag .fan{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:0}
-.bus-diag .wire-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;color:var(--text-muted);line-height:1.1;margin:2px 0 10px}
-.mantra{margin-top:28px;font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;display:flex;gap:24px;flex-wrap:wrap}
-/* ---------- asymmetric / code light ---------- */
-.asym{display:grid;grid-template-columns:1fr 1fr;gap:48px;margin-top:48px;align-items:start}
-.codepanel.light{background:#E6E3DA;border:1px solid var(--border);color:var(--text)}
-.codepanel.light .ln{color:var(--text-muted)}
-.codepanel.light .k{color:#5b3df0}.codepanel.light .s{color:#0b7285}.codepanel.light .f{color:#3d5a00}.codepanel.light .c{color:var(--text-muted)}.codepanel.light .p{color:var(--text)}
-/* ---------- terminal ---------- */
-.termwrap{position:relative;margin-top:20px;max-width:640px}
-.term{background:#0B0B0B;border:1px solid #3A3A3A;border-radius:4px;color:#EDEBE4;font-family:var(--mono);font-size:14px;line-height:1.7;padding:20px 24px;overflow-x:auto}
-.copybtn{position:absolute;top:12px;right:12px;background:transparent;border:1px solid #3A3A3A;color:#EDEBE4;border-radius:2px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:6px 10px}
-.copybtn:hover{border-color:#EDEBE4}
-.termwrap.light .term{background:#E6E3DA;color:var(--text);border:1px solid var(--border)}
-.termwrap.light .copybtn{color:var(--text);border-color:var(--border)}
-.termwrap.light .copybtn:hover{background:#111;color:var(--text-inverse)}
-/* ---------- pi tree ---------- */
-.pi-diag{margin-top:40px;border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.82);padding:44px 40px;font-family:var(--mono);font-size:16px;box-shadow:8px 8px 0 rgba(17,17,17,.9)}
-.pi-diag .agent{font-size:24px;font-weight:800}
-.pi-diag .cap{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:18px 0}
-.pi-diag .cap div{border:1px solid var(--border-soft);border-radius:2px;padding:16px;font-size:15px;transition:border-color .2s var(--ease),transform .2s var(--ease)}
-.pi-diag .cap div:hover{border-color:var(--border);transform:translateY(-2px)}
-.pi-diag .sysone{border:2px solid var(--border);background:#111;color:var(--text-inverse);border-radius:2px;padding:28px;margin-top:10px;box-shadow:0 0 0 4px var(--acid-soft)}
-.pi-diag .sysone>div:first-child{font-size:22px}
-.pi-diag .sysone .qs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:16px}
-.pi-diag .sysone .qs div{border:1px solid #555;border-radius:2px;padding:14px;font-size:14px;transition:border-color .2s var(--ease),transform .2s var(--ease)}
-.pi-diag .sysone .qs div:hover{border-color:var(--acid-soft);transform:translateY(-2px)}
-.pi-diag .sysone .qs b{color:var(--acid-soft)}
-/* ---------- dependency map ---------- */
-.depmap{margin-top:40px;border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.82);padding:60px 36px;font-family:var(--mono);font-size:20px;text-align:center;box-shadow:8px 8px 0 rgba(17,17,17,.9)}
-.depmap .box{display:inline-block;border:1px solid var(--border);border-radius:2px;padding:18px 34px;background:var(--bg);transition:transform .2s var(--ease),background .2s var(--ease)}
-.depmap .box.core{background:#111;color:var(--text-inverse);font-weight:800;font-size:26px;padding:22px 44px}
-.depmap a.box:hover{background:#111;color:var(--text-inverse);transform:translateY(-2px)}
-.depmap .pair{display:flex;gap:28px;justify-content:center;margin:8px 0;flex-wrap:wrap}
-.depmap .wire{font-size:24px;font-weight:700;line-height:1.2;color:var(--text)}
-.depmap .caption{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);margin-top:20px}
-.depmap a{text-decoration:underline}
-/* ---------- state fanout ---------- */
-.statediag{margin-top:36px;font-family:var(--mono);font-size:17px;text-align:center;overflow:hidden;padding:24px 12px}
-.sbox{border:1px solid var(--border);border-radius:4px;background:rgba(243,241,234,.82);padding:24px;max-width:640px;margin:0 auto;transition:transform .25s var(--ease),border-color .25s var(--ease)}
-.sbox:hover{transform:translateY(-2px)}
-.sbox strong{font-size:19px}
-.sbranches{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:18px 0;position:relative}
-.sbranches .sbox{margin:0}
-.branch{position:relative}
-.branch::before{content:"";position:absolute;top:-18px;left:50%;width:9px;height:9px;border-radius:50%;background:var(--magenta);opacity:0;transform:translateX(-50%)}
-.fanout .branch::before{animation:drop 1s var(--ease) forwards}
-.fanout .branch:nth-child(2)::before{animation-delay:.15s}
-.fanout .branch:nth-child(3)::before{animation-delay:.3s}
-@keyframes drop{0%{opacity:1;top:-18px}100%{opacity:0;top:6px}}
-.swire{color:var(--text-muted);line-height:1.2}
-/* ---------- quickstart ---------- */
-.qs{border:1px solid var(--border);border-radius:6px;margin-top:40px;box-shadow:8px 8px 0 rgba(17,17,17,.9);background:rgba(243,241,234,.5)}
-.qs-tabs{display:flex;border-bottom:1px solid var(--border)}
-.qs-tabs button{background:transparent;border:0;border-right:1px solid var(--border);font-family:var(--mono);font-size:14px;letter-spacing:.08em;padding:16px 36px;color:var(--text-secondary)}
-.qs-tabs button[aria-selected="true"]{background:#111;color:var(--text-inverse)}
-.qs-body{padding:32px}
-/* ---------- closing / footer ---------- */
-.closing{padding:96px 0}
-.closing h2{font-size:clamp(4rem,10vw,10rem);line-height:.9;letter-spacing:-.03em;font-weight:800;margin:0 0 24px;text-transform:uppercase}
-footer{border-top:1px solid var(--border);padding:36px 0 48px;font-family:var(--mono);font-size:13px}
-footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
-footer .fbrand{font-weight:700;font-size:16px}
-footer .fbrand small{display:block;font-weight:400;color:var(--text-secondary);font-size:11px;letter-spacing:.08em;margin-top:4px}
-footer nav{display:flex;gap:20px}
-/* ---------- responsive ---------- */
-@media(max-width:1024px){.swap-grid{grid-template-columns:1fr}.asym{grid-template-columns:1fr}.arch-split{grid-template-columns:1fr}}
-@media(max-width:850px){
-.hero-grid{grid-template-columns:1fr}
-.hero{min-height:0;padding:52px 0}
-h1{font-size:clamp(3.2rem,14vw,4.2rem)}
-section.block{padding:72px 0}
-.machine{font-size:13px}
-.arch-diag .endpoints{grid-template-columns:1fr}
-.bus-diag .fan,.bus-diag .wire-row{grid-template-columns:1fr}
-.bus-diag .wire-row{display:none}
-.pi-diag .cap,.pi-diag .sysone .qs{grid-template-columns:1fr}
-.sbranches{grid-template-columns:1fr}
-.site-nav a:not(:last-child){display:none}
-.prow{grid-template-columns:110px 1fr 48px;font-size:13px}
-.qs-body{padding:20px}
-.closing{padding:80px 0}
-.machine .bus{grid-template-columns:1fr}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:18px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
 }
+
+::selection{
+  background:var(--text);
+  color:var(--bg);
+}
+
+a{
+  color:inherit;
+  text-decoration-thickness:1px;
+  text-underline-offset:4px;
+}
+
+button{
+  font:inherit;
+  cursor:pointer;
+}
+
+code,pre{
+  font-family:var(--mono);
+}
+
+:focus-visible{
+  outline:2px solid var(--violet);
+  outline-offset:3px;
+}
+
+.wrap{
+  width:min(1440px,calc(100% - 48px));
+  margin-inline:auto;
+}
+
+/* ---------- shared ---------- */
+
+.mono{font-family:var(--mono)}
+
+.micro{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+}
+
+.eyebrow{
+  margin:0 0 20px;
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-secondary);
+}
+
+.lede{
+  max-width:42em;
+  margin:0;
+  font-size:19px;
+}
+
+.lede code{
+  padding:1px 6px;
+  border-radius:2px;
+  background:var(--bg-soft);
+  font-size:.85em;
+}
+
+.sec-label{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding-top:20px;
+  margin:0;
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-secondary);
+}
+
+.sec-label::after{
+  content:"";
+  flex:1;
+  border-top:1px solid var(--border-soft);
+}
+
+section.block{
+  padding:92px 0;
+}
+
+h1,
+h2,
+h3,
+p{
+  text-wrap:pretty;
+}
+
+h1{
+  margin:0 0 26px;
+  font-size:clamp(4rem,7.5vw,8rem);
+  line-height:.9;
+  letter-spacing:-.04em;
+  font-weight:800;
+}
+
+h2.big{
+  max-width:14em;
+  margin:0 0 28px;
+  font-size:clamp(3rem,6vw,6rem);
+  line-height:.95;
+  letter-spacing:-.035em;
+  font-weight:800;
+}
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  min-height:46px;
+  padding:0 20px;
+  border:1px solid var(--text);
+  border-radius:4px;
+  background:transparent;
+  color:var(--text);
+  text-decoration:none;
+  text-transform:uppercase;
+  font-family:var(--mono);
+  font-size:13px;
+  letter-spacing:.08em;
+  transition:transform .2s var(--ease),background .2s var(--ease),color .2s var(--ease);
+}
+
+.btn:hover{
+  transform:translateY(-1px);
+}
+
+.btn-primary{
+  background:var(--text);
+  color:var(--text-inverse);
+}
+
+.btn-primary:hover{
+  background:#2A2A2A;
+}
+
+.btn-secondary:hover{
+  background:var(--acid-soft);
+}
+
+/* ---------- header ---------- */
+
+.site-head{
+  position:sticky;
+  top:0;
+  z-index:50;
+  height:68px;
+  display:flex;
+  align-items:center;
+  border-bottom:1px solid var(--border);
+  background:rgba(243,241,234,.9);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+
+.site-head.scrolled{
+  box-shadow:0 8px 24px rgba(17,17,17,.06);
+}
+
+.site-head .wrap{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+}
+
+.wordmark{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:inherit;
+  font-size:19px;
+  font-weight:800;
+  letter-spacing:-.02em;
+  text-decoration:none;
+}
+
+.wordmark .tag{
+  padding:2px 7px;
+  border:1px solid var(--border);
+  border-radius:2px;
+  font-family:var(--mono);
+  font-size:10px;
+  font-weight:400;
+  letter-spacing:.08em;
+}
+
+.site-nav{
+  display:flex;
+  gap:26px;
+  font-family:var(--mono);
+  font-size:12px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.site-nav a{
+  text-decoration:none;
+}
+
+.site-nav a:hover{
+  text-decoration:underline;
+}
+
+/* ---------- hero ---------- */
+
+.hero{
+  position:relative;
+  min-height:90vh;
+  display:flex;
+  align-items:flex-start;
+  overflow:hidden;
+  padding:88px 0 82px;
+  background:var(--bg);
+}
+
+.field{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+
+.blob{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(88px);
+  opacity:.68;
+}
+
+.blob.b1{
+  width:62vw;
+  height:62vw;
+  left:-14vw;
+  top:-22vw;
+  background:radial-gradient(closest-side,rgba(54,217,232,.68),rgba(54,217,232,.16) 47%,transparent 72%);
+}
+
+.blob.b2{
+  width:54vw;
+  height:54vw;
+  right:-8vw;
+  top:0;
+  background:radial-gradient(closest-side,rgba(227,79,175,.50),rgba(227,79,175,.13) 48%,transparent 72%);
+}
+
+.blob.b3{
+  width:50vw;
+  height:50vw;
+  left:22vw;
+  bottom:-24vw;
+  background:radial-gradient(closest-side,rgba(117,88,255,.50),rgba(117,88,255,.13) 48%,transparent 72%);
+}
+
+.blob.b4{
+  width:34vw;
+  height:34vw;
+  right:14vw;
+  bottom:-4vh;
+  background:radial-gradient(closest-side,rgba(197,240,75,.26),rgba(197,240,75,.08) 50%,transparent 72%);
+}
+
+.hero-grid{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:1.05fr 1fr;
+  gap:46px;
+  align-items:center;
+}
+
+.hero-copy{
+  min-width:0;
+}
+
+.hero-sub{
+  max-width:33em;
+  margin:0;
+  font-size:19px;
+}
+
+.hero-sub code{
+  padding:1px 6px;
+  border-radius:2px;
+  background:rgba(234,231,222,.8);
+  font-size:.85em;
+}
+
+.cta-row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:30px;
+}
+
+/* ---------- hero machine ---------- */
+
+.machine{
+  position:relative;
+  min-width:0;
+  overflow:visible;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:rgba(243,241,234,.88);
+  box-shadow:8px 8px 0 rgba(17,17,17,.9);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  font-family:var(--mono);
+}
+
+.status-chip{
+  position:absolute;
+  top:-16px;
+  right:24px;
+  padding:5px 10px;
+  border:1px solid var(--border);
+  border-radius:2px;
+  background:var(--bg);
+  font-size:10px;
+  letter-spacing:.08em;
+  white-space:nowrap;
+}
+
+.dot{
+  display:inline-block;
+  width:7px;
+  height:7px;
+  margin-right:7px;
+  border-radius:50%;
+  background:var(--success);
+  vertical-align:1px;
+}
+
+.machine-head{
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  padding:13px 16px;
+  border-bottom:1px solid var(--border);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.machine-stage{
+  padding:18px 20px;
+  border-bottom:1px solid var(--border-soft);
+}
+
+.machine-stage:last-child{
+  border-bottom:0;
+}
+
+.stage-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:9px;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+}
+
+.stage-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.stage-no{
+  display:inline-grid;
+  width:24px;
+  height:24px;
+  place-items:center;
+  border:1px solid var(--border);
+  border-radius:50%;
+  color:var(--text);
+}
+
+.state-value{
+  overflow-wrap:anywhere;
+  font-size:15px;
+}
+
+.core-line{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+  margin-bottom:14px;
+}
+
+.core-name{
+  font-family:var(--sans);
+  font-size:28px;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+
+.core-provider{
+  text-align:right;
+}
+
+.core-provider small{
+  display:block;
+  margin-bottom:2px;
+  color:var(--text-muted);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.core-provider strong{
+  font-size:15px;
+}
+
+.provider-bus{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+
+.provider-node{
+  min-width:0;
+  padding:12px 8px;
+  border:1px solid var(--border);
+  border-radius:2px;
+  background:transparent;
+  text-align:center;
+  transition:background .2s var(--ease),color .2s var(--ease),transform .2s var(--ease);
+}
+
+.provider-node:hover{
+  transform:translateY(-1px);
+  background:var(--acid-soft);
+}
+
+.provider-node.active{
+  background:var(--text);
+  color:var(--text-inverse);
+}
+
+.provider-node.active:hover{
+  background:#000;
+}
+
+.provider-node b{
+  display:block;
+  font-size:13px;
+}
+
+.provider-node small{
+  display:block;
+  margin-top:1px;
+  color:var(--text-secondary);
+  font-size:10px;
+  letter-spacing:.06em;
+}
+
+.provider-node.active small{
+  color:var(--acid-soft);
+}
+
+.provider-state{
+  margin-top:4px;
+  font-size:10px;
+}
+
+.result-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:11px;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+}
+
+.result-row{
+  display:grid;
+  grid-template-columns:1fr 44px;
+  gap:8px;
+  align-items:center;
+  padding:3px 0;
+  font-size:12px;
+}
+
+.result-track{
+  height:8px;
+  margin-bottom:3px;
+  overflow:hidden;
+  border-radius:2px;
+  background:#D7D4CA;
+}
+
+.result-fill{
+  height:100%;
+  background:var(--text);
+}
+
+.result-fill.cyan{background:var(--cyan)}
+.result-fill.violet{background:var(--violet)}
+.result-fill.magenta{background:var(--magenta)}
+
+.result-summary{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:11px;
+  padding-top:10px;
+  border-top:1px dashed var(--border-soft);
+  font-size:12px;
+}
+
+.machine-foot{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 16px;
+  border-top:1px solid var(--border);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+/* ---------- what ---------- */
+
+.what-copy{
+  max-width:46em;
+}
+
+.what-intro{
+  margin-bottom:34px;
+}
+
+.primitive-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+}
+
+.primitive-card{
+  min-height:218px;
+  display:flex;
+  flex-direction:column;
+  padding:20px;
+  border:1px solid var(--border);
+  border-radius:4px;
+  background:rgba(243,241,234,.84);
+  box-shadow:4px 4px 0 rgba(17,17,17,.9);
+}
+
+.primitive-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:10px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--border-soft);
+}
+
+.primitive-head strong{
+  font-family:var(--mono);
+  font-size:18px;
+  letter-spacing:.04em;
+}
+
+.primitive-head span{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+}
+
+.mini-bars{
+  display:grid;
+  gap:10px;
+  margin-top:18px;
+}
+
+.mini-bar{
+  display:grid;
+  grid-template-columns:68px 1fr 34px;
+  gap:8px;
+  align-items:center;
+  font-family:var(--mono);
+  font-size:11px;
+}
+
+.mini-track{
+  height:8px;
+  overflow:hidden;
+  border-radius:2px;
+  background:#D7D4CA;
+}
+
+.mini-fill{
+  height:100%;
+  background:var(--text);
+}
+
+.mini-fill.cyan{background:var(--cyan)}
+.mini-fill.violet{background:var(--violet)}
+
+.mini-noul{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  margin-top:20px;
+  border:1px solid var(--border);
+}
+
+.mini-noul div{
+  padding:20px 12px;
+  text-align:center;
+}
+
+.mini-noul .true{
+  background:var(--text);
+  color:var(--text-inverse);
+}
+
+.mini-noul .false{
+  background:var(--cyan-soft);
+}
+
+.mini-noul b{
+  display:block;
+  margin-bottom:6px;
+  font-family:var(--mono);
+  font-size:28px;
+  line-height:1;
+}
+
+.mini-noul span{
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.mini-scale{
+  position:relative;
+  height:80px;
+  margin-top:28px;
+  border-bottom:2px solid var(--border);
+}
+
+.mini-scale .tick{
+  position:absolute;
+  bottom:0;
+  width:1px;
+  height:12px;
+  background:var(--border);
+}
+
+.mini-scale .tick-label{
+  position:absolute;
+  bottom:17px;
+  transform:translateX(-50%);
+  font-family:var(--mono);
+  font-size:9px;
+  color:var(--text-secondary);
+  white-space:nowrap;
+}
+
+.score-dot{
+  position:absolute;
+  left:68%;
+  bottom:-7px;
+  width:14px;
+  height:14px;
+  border:2px solid var(--text);
+  border-radius:50%;
+  background:var(--magenta);
+  transform:translateX(-50%);
+}
+
+.primitive-result{
+  margin-top:auto;
+  padding-top:13px;
+  border-top:1px dashed var(--border-soft);
+  font-family:var(--mono);
+  font-size:11px;
+}
+
+.shared-note{
+  margin-top:22px;
+  font-family:var(--mono);
+  font-size:12px;
+  color:var(--text-secondary);
+}
+
+/* ---------- interop ---------- */
+
+.dark{
+  background:var(--text);
+  color:var(--text-inverse);
+}
+
+.dark .sec-label{
+  color:#8A8A83;
+}
+
+.dark .sec-label::after{
+  border-color:#393939;
+}
+
+.dark .lede{
+  color:var(--text-inverse);
+}
+
+.swap-shell{
+  margin-top:38px;
+  overflow:hidden;
+  border:1px solid #353535;
+  border-radius:6px;
+  background:#0B0B0B;
+}
+
+.swap-toolbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:14px 16px;
+  border-bottom:1px solid #353535;
+}
+
+.swap-boundary{
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#999991;
+}
+
+.swap-boundary strong{
+  margin-left:8px;
+  color:var(--acid-soft);
+}
+
+.provider-toggle{
+  display:flex;
+  border:1px solid var(--text-inverse);
+  border-radius:3px;
+  overflow:hidden;
+}
+
+.provider-toggle button{
+  padding:9px 14px;
+  border:0;
+  border-right:1px solid var(--text-inverse);
+  background:transparent;
+  color:var(--text-inverse);
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+.provider-toggle button:last-child{
+  border-right:0;
+}
+
+.provider-toggle button[aria-pressed="true"]{
+  background:var(--acid);
+  color:var(--text);
+}
+
+.swap-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr);
+}
+
+.swap-pane{
+  min-width:0;
+}
+
+.swap-pane.application{
+  border-right:1px solid #353535;
+}
+
+.pane-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 16px;
+  border-bottom:1px solid #2D2D2D;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#8D8D86;
+}
+
+.pane-head strong{
+  color:var(--text-inverse);
+}
+
+.code-pre{
+  margin:0;
+  padding:22px 24px;
+  overflow:auto;
+  background:#0B0B0B;
+  color:#EDEBE4;
+  font-family:var(--mono);
+  font-size:14px;
+  line-height:1.72;
+  white-space:pre;
+  tab-size:2;
+}
+
+.code-pre .ln{
+  display:inline-block;
+  width:2.5em;
+  color:#4A4A44;
+  user-select:none;
+}
+
+.k{color:#B7A9FF}
+.s{color:#A8F1F5}
+.f{color:#E3F7A5}
+.c{color:#77776F}
+.p{color:#EDEBE4}
+
+.provider-config{
+  min-height:220px;
+  padding:22px 20px;
+  font-family:var(--mono);
+  font-size:13px;
+  line-height:1.7;
+}
+
+.provider-name{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:14px;
+  padding-bottom:13px;
+  border-bottom:1px solid #303030;
+}
+
+.provider-name strong{
+  font-size:18px;
+}
+
+.config-line{
+  display:grid;
+  grid-template-columns:72px 1fr;
+  gap:10px;
+  padding:4px 0;
+}
+
+.config-line[hidden]{
+  display:none;
+}
+
+.config-line span:first-child{
+  color:#8D8D86;
+}
+
+.same-contract{
+  margin:0 16px 16px;
+  padding:13px 14px;
+  border:1px dashed #3A3A3A;
+  color:#A6A69E;
+  font-family:var(--mono);
+  font-size:10px;
+  line-height:1.6;
+}
+
+.same-contract strong{
+  display:block;
+  margin-bottom:3px;
+  color:var(--acid-soft);
+  letter-spacing:.08em;
+}
+
+.only-changes{
+  padding:12px 16px;
+  border-top:1px solid #353535;
+  color:var(--acid-soft);
+  text-align:center;
+  font-family:var(--mono);
+  font-size:10px;
+  letter-spacing:.08em;
+}
+
+/* ---------- pi ---------- */
+
+.pi-ecosystem{
+  margin-top:38px;
+  overflow:hidden;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:rgba(243,241,234,.86);
+  box-shadow:8px 8px 0 rgba(17,17,17,.9);
+}
+
+.pi-core{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:18px;
+  padding:17px 20px;
+  background:var(--text);
+  color:var(--text-inverse);
+  font-family:var(--mono);
+}
+
+.pi-core strong{
+  font-size:17px;
+}
+
+.pi-core span{
+  color:#B9B9B1;
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.pi-branches{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+}
+
+.pi-branch{
+  min-height:220px;
+  padding:28px;
+}
+
+.pi-branch + .pi-branch{
+  border-left:1px solid var(--border);
+}
+
+.pi-kicker{
+  margin-bottom:10px;
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-muted);
+}
+
+.pi-branch h3{
+  margin:0 0 10px;
+  font-size:27px;
+  letter-spacing:-.02em;
+}
+
+.pi-branch p{
+  max-width:31em;
+  margin:0;
+  color:var(--text-secondary);
+  font-size:16px;
+}
+
+.pi-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:20px;
+}
+
+.pi-meta span{
+  padding:5px 8px;
+  border:1px solid var(--border-soft);
+  border-radius:2px;
+  font-family:var(--mono);
+  font-size:9px;
+}
+
+.pi-branch.primary{
+  background:linear-gradient(135deg,rgba(197,240,75,.13),transparent 54%);
+}
+
+.pi-branch.primary .pi-meta span:first-child{
+  border-color:var(--border);
+  background:var(--text);
+  color:var(--acid-soft);
+}
+
+/* ---------- install commands ---------- */
+
+.install-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-top:28px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:4px;
+  background:rgba(243,241,234,.72);
+  font-family:var(--mono);
+  font-size:12px;
+}
+.dark .install-row{
+  border-color:#3A3A3A;
+  background:#0B0B0B;
+  color:var(--text-inverse);
+}
+.install-row code{
+  overflow-wrap:anywhere;
+}
+.install-copy{
+  flex:0 0 auto;
+  padding:5px 9px;
+  border:1px solid currentColor;
+  border-radius:2px;
+  background:transparent;
+  color:inherit;
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.08em;
+}
+.install-copy:hover{
+  background:var(--bg-soft);
+  color:var(--text);
+}
+.dark .install-copy:hover{
+  background:var(--text-inverse);
+  color:var(--text);
+}
+.pi-install{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:18px;
+  padding-top:14px;
+  border-top:1px solid var(--border-soft);
+}
+.pi-install code{
+  font-family:var(--mono);
+  font-size:11px;
+}
+.pi-install .install-copy{
+  color:var(--text);
+  background:transparent;
+}
+.pi-install .install-copy:hover{
+  background:var(--bg-soft);
+  color:var(--text);
+}
+
+/* ---------- footer ---------- */
+
+footer{
+  margin-top:44px;
+  padding:18px 0;
+  border-top:1px solid var(--border);
+  font-family:var(--mono);
+  font-size:11px;
+}
+
+footer .wrap{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+}
+
+.footer-brand{
+  font-weight:700;
+}
+
+footer nav{
+  display:flex;
+  gap:16px;
+}
+
+footer a{
+  text-decoration:none;
+}
+
+footer a:hover{
+  opacity:.62;
+}
+
+/* ---------- responsive ---------- */
+
+@media(max-width:1024px){
+  .hero-grid{
+    grid-template-columns:1fr;
+  }
+
+  .hero{
+    min-height:0;
+  }
+
+  .swap-grid{
+    grid-template-columns:1fr;
+  }
+
+  .swap-pane.application{
+    border-right:0;
+    border-bottom:1px solid #353535;
+  }
+}
+
+@media(max-width:850px){
+  .wrap{
+    width:calc(100% - 36px);
+  }
+
+  body{
+    font-size:17px;
+  }
+
+  .site-nav a:not(:last-child){
+    display:none;
+  }
+
+  .hero{
+    padding:58px 0 68px;
+  }
+
+  h1{
+    font-size:clamp(3.3rem,14vw,4.7rem);
+  }
+
+  section.block{
+    padding:72px 0;
+  }
+
+  .machine-head,
+  .machine-foot,
+  .core-line{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .core-provider{
+    text-align:left;
+  }
+
+  .primitive-grid{
+    grid-template-columns:1fr;
+  }
+
+  .primitive-card{
+    min-height:0;
+  }
+
+  .swap-toolbar{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .provider-toggle{
+    width:100%;
+  }
+
+  .provider-toggle button{
+    flex:1;
+  }
+
+  .pi-branches{
+    grid-template-columns:1fr;
+  }
+
+  .pi-branch + .pi-branch{
+    border-left:0;
+    border-top:1px solid var(--border);
+  }
+}
+
+@media(max-width:600px){
+  .provider-bus{
+    grid-template-columns:1fr;
+  }
+
+  .result-summary,
+  footer .wrap{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
+
 @media(prefers-reduced-motion:reduce){
-.blob{animation:none}
-html{scroll-behavior:auto}
-.pfill,.mfill,.scale .marker{transition:none}
-*{transition-duration:.01ms !important}
+  html{scroll-behavior:auto}
+  *{transition-duration:.01ms !important}
 }
 </style>
 </head>
+
 <body>
-<header class="site-head" id="sitehead"><div class="wrap">
-<a class="wordmark" href="./">system-one <span class="tag">S1 / RUNTIME</span></a>
-<nav class="site-nav" aria-label="Primary"><a href="#architecture">Architecture</a><a href="#quickstart">Quickstart</a><a href="https://github.com/iamaamir/system-one">GitHub</a></nav>
-</div></header>
+
+<header class="site-head" id="sitehead">
+  <div class="wrap">
+    <a class="wordmark" href="./">
+      system-one
+      <span class="tag">S1 / RUNTIME</span>
+    </a>
+
+    <nav class="site-nav" aria-label="Primary">
+      <a href="#what">What</a>
+      <a href="#interop">Interop</a>
+      <a href="#pi">Pi</a>
+      <a href="https://github.com/iamaamir/system-one">GitHub</a>
+    </nav>
+  </div>
+</header>
+
 <main>
+
 <!-- HERO -->
-<div class="hero"><div class="field" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div><div class="blob b5"></div></div>
-<div class="wrap hero-grid">
-<div>
-<p class="eyebrow">System One / Provider-neutral runtime</p>
-<h1>One interface.<br>Any System One provider.</h1>
-<p class="hero-sub">A provider-neutral runtime for typed AI decisions. Use Jev, Reflex, compatible <code>/v1/systemone</code> endpoints, or your own <code>SystemOneProvider</code>.</p>
-<div class="cta-row"><a class="btn btn-p" href="#quickstart">Get started</a><a class="btn btn-s" href="https://github.com/iamaamir/system-one">GitHub</a></div>
-</div>
-<div class="machine" role="img" aria-label="Running System One decision machine: state in, provider selected, typed answers out">
-<div class="status-chip"><span class="dot"></span>S1.RUNTIME · 01/06</div>
-<div class="mhead"><span>SYSTEM.ONE</span><span>STATE.IN → ANSWERS.OUT</span></div>
-<div class="mbody">
-<div class="mrow"><span>STATE</span><span>"export button crashes in Safari"</span></div>
-<div class="wire">│<br>▼</div>
-<div class="sysrow"><span>SYSTEM ONE</span><span>● ACTIVE</span></div>
-<div class="provrow"><span>SystemOneProvider</span><span id="hero-provider"><strong>REFLEX</strong></span></div>
-<div class="wire">│<br>▼</div>
-<div class="bus" id="hero-providers">
-<div class="mnode" data-p="JEV"><b>JEV</b><small>hosted</small><div class="st">○</div></div>
-<div class="mnode on" data-p="REFLEX"><b>REFLEX</b><small>local</small><div class="st">●</div></div>
-<div class="mnode" data-p="CUSTOM"><b>CUSTOM</b><small>yours</small><div class="st">○</div></div>
-</div>
-<div class="wire">│<br>▼</div>
-<div class="mresult" id="hero-result">
-<div class="micro" style="margin-bottom:6px">EXAMPLE OUTPUT · ANSWERS.OUT · route · <span id="hero-via">via REFLEX</span></div>
-<div class="rrow"><span>coding</span><span style="text-align:right">0.82</span></div>
-<div class="mtrack" style="margin:2px 0 4px"><div class="mfill" data-w="82" style="width:82%"></div></div>
-<div class="rrow"><span>research</span><span style="text-align:right">0.11</span></div>
-<div class="mtrack" style="margin:2px 0 4px"><div class="mfill c" data-w="11" style="width:11%"></div></div>
-<div class="rrow"><span>writing</span><span style="text-align:right">0.05</span></div>
-<div class="mtrack" style="margin:2px 0 4px"><div class="mfill v" data-w="5" style="width:5%"></div></div>
-<div class="rrow"><span>other</span><span style="text-align:right">0.02</span></div>
-<div class="mtrack" style="margin:2px 0 4px"><div class="mfill m" data-w="2" style="width:2%"></div></div>
-<div class="rrow"><span><strong>selected: coding</strong></span><span style="text-align:right">conf <strong>0.76</strong></span></div>
-</div>
-</div>
-<div class="mfoot"><span>PROTOCOL · READY</span><span id="hero-transport">TRANSPORT /v1/systemone</span></div>
-</div>
-</div></div>
-<!-- ARCHITECTURE -->
-<hr style="border:0;border-top:1px solid var(--border);margin:0"><div class="wrap"><p class="sec-label">01 / Architecture — System One</p></div>
-<section class="block" id="architecture" aria-labelledby="arch-h"><div class="wrap">
-<h2 class="big" id="arch-h">System One is<br>the abstraction.</h2>
-<div class="arch-split">
-<div><p class="lede">Applications should depend on a capability, not a specific model. Jev and Reflex can sit behind the same bounded decision interface. Future backends can implement the same provider contract. system-one keeps application code independent from whichever provider performs the inference.</p></div>
-<div class="arch-diag motif" role="group" aria-label="System One interface over SystemOneProvider, implemented by Jev hosted, Reflex local, and Custom providers">
-<div class="core">SYSTEM ONE</div>
-<div class="wire">│<br>▼</div>
-<div class="iface">SystemOneProvider</div>
-<div class="wire">│<br>▼</div>
-<div class="endpoints">
-<a class="endpoint" href="https://typesafe.ai/"><b>JEV</b><small>TypeSafe · Hosted</small></a>
-<a class="endpoint" href="https://github.com/kshetrajna12/reflex"><b>REFLEX</b><small>Open · Local</small></a>
-<a class="endpoint" href="#quickstart"><b>CUSTOM</b><small>Implement · Yours</small></a>
-</div>
-</div>
-</div>
-</div></section>
-<!-- PRIMITIVES -->
-<hr style="border:0;border-top:1px solid var(--border);margin:0"><div class="wrap"><p class="sec-label">02 / Primitives — One decision surface</p></div>
-<section class="block" aria-labelledby="prim-h"><div class="wrap">
-<h2 class="mid" id="prim-h">Three primitives.<br>One decision surface.</h2>
-<div class="instrument" data-bars>
-<div class="head"><span class="name">CHOICE</span><span class="spec">Select one bounded option</span></div>
-<p class="ex">Example output · task.route</p>
-<div class="prow"><span>coding</span><div class="ptrack"><div class="pfill" data-w="82"></div></div><span class="pval">0.82</span></div>
-<div class="prow"><span>research</span><div class="ptrack"><div class="pfill c" data-w="11"></div></div><span class="pval">0.11</span></div>
-<div class="prow"><span>writing</span><div class="ptrack"><div class="pfill v" data-w="5"></div></div><span class="pval">0.05</span></div>
-<div class="prow"><span>other</span><div class="ptrack"><div class="pfill m" data-w="2"></div></div><span class="pval">0.02</span></div>
-<p class="score-out">selected: <b>coding</b></p>
-</div>
-<div class="instrument">
-<div class="head"><span class="name">NOUL</span><span class="spec">Estimate a proposition</span></div>
-<p class="ex">Example interpretation · requires_reasoning</p>
-<div class="noul-split" role="img" aria-label="Example interpretation: returned noul 0.78 means true; false 0.22 is derived as 1 minus noul"><div class="t"><span class="v">0.78</span><span class="l">noul · TRUE</span></div><div class="f"><span class="v">0.22</span><span class="l">1 − noul · FALSE · DERIVED</span></div></div>
-</div>
-<div class="instrument">
-<div class="head"><span class="name">SCORE</span><span class="spec">Map to an ordered scale</span></div>
-<p class="ex">Example output · complexity → position on scale</p>
-<div class="scale" role="img" aria-label="Example score 2.7 of 4, marker between medium and high"><span class="marker" data-x="62" style="left:62%"><span class="marker-lbl">2.7</span></span><span class="tick" style="left:5%"></span><span class="tick-lbl" style="left:5%">low · 0</span><span class="tick" style="left:35%"></span><span class="tick-lbl" style="left:35%">medium · 1–2</span><span class="tick" style="left:65%"></span><span class="tick-lbl" style="left:65%">high · 3</span><span class="tick" style="left:95%"></span><span class="tick-lbl" style="left:95%">extreme · 4</span></div>
-<div class="scale-readout"><span>mass: low 0.08 · medium 0.22 · high 0.51 · extreme 0.19</span><span class="score-out" style="margin:0">score: <b>2.7</b></span></div>
-</div>
-</div></section>
-<!-- SWAP -->
-<div class="dark"><div class="wrap"><p class="sec-label">03 / Interop — Live boundary</p></div>
-<section class="block" aria-labelledby="swap-h"><div class="wrap">
-<h2 class="big" id="swap-h">Swap the provider.<br>Keep the application.</h2>
-<p class="lede">Application logic stays the same. Provider configuration changes. Toggle the backend — the code on the left does not move.</p>
-<div class="swap-grid">
-<div class="codepanel" aria-label="System One usage example"><span class="ln">01</span> <span class="k">import</span> <span class="p">{</span><br><span class="ln">02</span><span class="p">  SystemOne, HttpSystemOneProvider, choice, noul</span><br><span class="ln">03</span> <span class="p">} </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span><br><span class="ln">04</span><br><span class="ln">05</span> <span class="k">const</span> <span class="f">systemOne</span> <span class="p">=</span> <span class="k">new</span> <span class="f">SystemOne</span><span class="p">({</span><br><span class="ln">06</span><span class="p">  provider: </span><span class="k">new</span> <span class="f">HttpSystemOneProvider</span><span class="p">({</span><br><span class="ln">07</span><span class="p" id="cfg-lines">    baseUrl: </span><span class="s" id="cfg-base">"http://localhost:8008"</span><span class="p">,</span><span id="cfg-extra"></span><br><span class="ln">08</span><span class="p">  }),</span><br><span class="ln">09</span> <span class="p">});</span><br><span class="ln">10</span><br><span class="ln">11</span> <span class="k">const</span> <span class="p">result = </span><span class="k">await</span> <span class="p">systemOne.</span><span class="f">evaluate</span><span class="p">({</span><br><span class="ln">12</span><span class="p">  state: </span><span class="s">"The export button crashes in Safari."</span><span class="p">,</span><br><span class="ln">13</span><span class="p">  questions: {</span><br><span class="ln">14</span><span class="p">    team: </span><span class="f">choice</span><span class="p">(</span><span class="s">"Which team should investigate?"</span><span class="p">, {</span><br><span class="ln">15</span><span class="p">      frontend: </span><span class="k">null</span><span class="p">,</span><br><span class="ln">16</span><span class="p">      backend: </span><span class="k">null</span><span class="p">,</span><br><span class="ln">17</span><span class="p">    }),</span><br><span class="ln">18</span><span class="p">    browser: </span><span class="f">noul</span><span class="p">(</span><span class="s">"Is this bug browser specific?"</span><span class="p">),</span><br><span class="ln">19</span><span class="p">  },</span><br><span class="ln">20</span> <span class="p">});</span> <span class="c">// → typed answers + probabilities</span></div>
-<div>
-<div class="prov-toggle" role="group" aria-label="Select provider configuration"><button aria-pressed="true" data-prov="reflex">[ REFLEX ]</button><button aria-pressed="false" data-prov="jev">[ JEV ]</button></div>
-<div class="prov-card" id="prov-card" aria-live="polite">
-<div class="row"><span>provider</span><span id="pc-name">REFLEX</span></div>
-<div class="row"><span>baseUrl</span><span id="pc-base">http://localhost:8008</span></div>
-<div class="row"><span>transport</span><span>/v1/systemone</span></div>
-</div>
-<div class="unchanged">APPLICATION CODE = UNCHANGED</div>
-</div>
-</div>
-</div></section></div>
-<!-- PROVIDERS -->
-<hr style="border:0;border-top:1px solid var(--border);margin:0"><div class="wrap"><p class="sec-label">04 / Providers — Bring yours</p></div>
-<section class="block" aria-labelledby="prov-h"><div class="wrap">
-<h2 class="big" id="prov-h">Bring the provider<br>you want.</h2>
-<div class="bus-diag motif magenta" role="group" aria-label="Three provider endpoints attached to the common SystemOneProvider bus">
-<div class="trunk">SystemOneProvider</div>
-<div class="wire-row"><span>│</span><span>│</span><span>│</span></div>
-<div class="fan">
-<a class="endpoint" href="https://typesafe.ai/"><b>01 · JEV</b><small>Hosted System One — TypeSafe's hosted implementation.</small></a>
-<a class="endpoint" href="https://github.com/kshetrajna12/reflex"><b>02 · REFLEX</b><small>Open / local System One — run a compatible implementation locally.</small></a>
-<a class="endpoint" href="#quickstart"><b>03 · CUSTOM</b><small>Implement SystemOneProvider — bring another backend, keep application code.</small></a>
-</div>
-</div>
-<p class="mantra"><span>One runtime</span><span>One application API</span><span>Different inference backends</span></p>
-<p class="lede" style="margin-top:24px">Compatible <code>/v1/systemone</code> endpoints can use the same HTTP provider.</p>
-<div class="asym">
-<div><h2 class="mid">The protocol is<br>open at the edge.</h2></div>
-<div class="codepanel light" style="font-size:15.5px" aria-label="Custom provider sketch"><span class="ln">1</span> <span class="k">class</span> <span class="f">MyProvider</span> <span class="k">implements</span> <span class="f"><strong>SystemOneProvider</strong></span> <span class="p">{</span><br><span class="ln">2</span><span class="p">  </span><span class="k">readonly</span><span class="p"> id = </span><span class="s">"my-provider"</span><span class="p">;</span><br><span class="ln">3</span><br><span class="ln">4</span><span class="p">  </span><span class="k">async</span> <span class="f">evaluate</span><span class="p">(request) {</span><br><span class="ln">5</span><span class="p">    </span><span class="c">// your inference implementation</span><br><span class="ln">6</span><span class="p">  }</span><br><span class="ln">7</span> <span class="p">}</span></div>
-</div>
-<p class="lede" style="margin-top:32px">The provider interface leaves room for HTTP, local inference, native runtimes, WASM, and future transports.</p>
-</div></section>
-<!-- PI -->
-<hr style="border:0;border-top:1px solid var(--border);margin:0"><div class="wrap"><p class="sec-label">05 / Agents — Pi primitive</p></div>
-<section class="block" aria-labelledby="pi-h"><div class="wrap">
-<h2 class="big" id="pi-h">Give Pi a<br>System One primitive.</h2>
-<p class="lede"><code>pi-system-one</code> exposes a single <code>system_one</code> tool. Multiple independent questions share the same state and are evaluated in one request.</p>
-<div class="pi-diag" role="img" aria-label="Pi agent with normal capabilities beside the new system_one primitive">
-<div class="micro">PI AGENT · CAPABILITIES</div>
-<div class="cap"><div>generate</div><div>tools</div><div>…</div></div>
-<div class="sysone"><div><strong>system_one</strong> <span class="micro" style="color:var(--acid-soft)">· NEW PRIMITIVE</span></div>
-<div class="qs"><div><b>choice</b><br>bounded options</div><div><b>noul</b><br>propositions</div><div><b>score</b><br>ordered scales</div></div></div>
-</div>
-<div class="termwrap light"><div class="term">pi install npm:pi-system-one<br>export SYSTEM_ONE_BASE_URL=http://localhost:8008</div><button class="copybtn" data-copy="pi install npm:pi-system-one&#10;export SYSTEM_ONE_BASE_URL=http://localhost:8008">COPY</button></div>
-</div></section>
-<!-- DEPENDENCY -->
-<hr style="border:0;border-top:1px solid var(--border);margin:0"><div class="wrap"><p class="sec-label">06 / Ecosystem — A primitive, not a framework</p></div>
-<section class="block" aria-labelledby="eco-h"><div class="wrap">
-<h2 class="big" id="eco-h">A primitive,<br>not a framework.</h2>
-<div class="depmap" role="group" aria-label="Dependency map: pi-system-one and pi-bifrost depend on system-one-core, serving Pi">
-<div class="box core">system-one-core</div>
-<div class="wire">▲ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ▲<br>│ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; │</div>
-<div class="pair"><span class="box">pi-system-one</span><a class="box" href="https://github.com/iamaamir/pi-bifrost" style="text-decoration:underline">pi-bifrost</a></div>
-<div class="wire">│<br>▼</div>
-<div class="box">Pi</div>
-<p class="caption mono">pi-system-one · pi-bifrost consume system-one-core — core knows nothing about either</p>
-</div>
-<p class="lede" style="margin-top:32px">Pi exposes System One directly to agents. Pi-Bifrost consumes the same provider-neutral runtime for routing. Both depend on the primitive. Neither owns the abstraction.</p>
-</div></section>
-<!-- SHARED STATE -->
-<hr style="border:0;border-top:1px solid var(--border);margin:0"><div class="wrap"><p class="sec-label">07 / Batching — Shared state</p></div>
-<section class="block" aria-labelledby="state-h"><div class="wrap">
-<h2 class="big" id="state-h">One state.<br>Multiple decisions.</h2>
-<p class="lede">Multiple independent questions can be evaluated against the same state in a single System One request. This keeps shared context in one request and makes the decision surface explicit.</p>
-<div class="statediag motif" id="fanout" role="img" aria-label="Shared state fanning out to choice, noul and score, merging into answers">
-<div class="sbox"><div class="micro">SHARED STATE · STATE.IN</div><strong>"The export button crashes in Safari."</strong></div>
-<div class="swire">│<br>▼</div>
-<div class="sbranches"><div class="sbox branch"><div class="micro">EXAMPLE</div><strong>CHOICE</strong><br><span style="color:var(--text-secondary)">team → frontend 0.82</span></div><div class="sbox branch"><div class="micro">EXAMPLE</div><strong>NOUL</strong><br><span style="color:var(--text-secondary)">browser? → true 0.78</span></div><div class="sbox branch"><div class="micro">EXAMPLE</div><strong>SCORE</strong><br><span style="color:var(--text-secondary)">complexity → 2.7</span></div></div>
-<div class="swire">│<br>▼</div>
-<div class="sbox"><div class="micro">ANSWERS.OUT · EXAMPLE VALUES</div><strong>typed · bounded · together</strong></div>
-</div>
-</div></section>
-<!-- QUICKSTART -->
-<hr style="border:0;border-top:1px solid var(--border);margin:0"><div class="wrap"><p class="sec-label">08 / Quickstart</p></div>
-<section class="block" id="quickstart" aria-labelledby="qs-h"><div class="wrap">
-<h2 class="big" id="qs-h">Start in a few lines.</h2>
-<div class="qs">
-<div class="qs-tabs" role="tablist" aria-label="Quickstart tabs"><button id="tab-core-button" role="tab" aria-controls="tab-core" aria-selected="true" tabindex="0" data-tab="core">CORE</button><button id="tab-pi-button" role="tab" aria-controls="tab-pi" aria-selected="false" tabindex="-1" data-tab="pi">PI</button></div>
-<div class="qs-body">
-<div id="tab-core" role="tabpanel" aria-labelledby="tab-core-button"><div class="termwrap light"><div class="term">npm install system-one-core</div><button class="copybtn" data-copy="npm install system-one-core">COPY</button></div>
-<div class="codepanel" style="margin-top:16px"><span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider, choice } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span><br><br><span class="k">const</span> <span class="p">s1 = </span><span class="k">new</span> <span class="f">SystemOne</span><span class="p">({</span><br><span class="p">  provider: </span><span class="k">new</span> <span class="f">HttpSystemOneProvider</span><span class="p">({ baseUrl: </span><span class="s">"http://localhost:8008"</span><span class="p"> }),</span><br><span class="p">});</span><br><br><span class="k">const</span> <span class="p">result = </span><span class="k">await</span> <span class="p">s1.</span><span class="f">evaluate</span><span class="p">({</span><br><span class="p">  state: </span><span class="s">"The export button crashes in Safari."</span><span class="p">,</span><br><span class="p">  questions: {</span><br><span class="p">    team: </span><span class="f">choice</span><span class="p">(</span><span class="s">"Which team should investigate?"</span><span class="p">, {</span><br><span class="p">      frontend: </span><span class="k">null</span><span class="p">,</span><br><span class="p">      backend: </span><span class="k">null</span><span class="p">,</span><br><span class="p">    }),</span><br><span class="p">  },</span><br><span class="p">});</span><br><br><span class="k">const</span> <span class="p">team = result.answers.team;</span><br><span class="f">console.log</span><span class="p">(team.choice, team.confidence, team.probabilities);</span></div></div>
-<div id="tab-pi" role="tabpanel" aria-labelledby="tab-pi-button" hidden><div class="termwrap light"><div class="term"># LOCAL / REFLEX<br>pi install npm:pi-system-one<br><br>export SYSTEM_ONE_BASE_URL=http://localhost:8008</div><button class="copybtn" data-copy="pi install npm:pi-system-one&#10;&#10;export SYSTEM_ONE_BASE_URL=http://localhost:8008">COPY</button></div>
-<div class="termwrap light"><div class="term"># TYPE SAFE JEV<br>export SYSTEM_ONE_BASE_URL=https://api.typesafe.ai<br>export SYSTEM_ONE_API_KEY=YOUR_KEY<br>export SYSTEM_ONE_MODEL=jev-latest</div><button class="copybtn" data-copy="export SYSTEM_ONE_BASE_URL=https://api.typesafe.ai&#10;export SYSTEM_ONE_API_KEY=YOUR_KEY&#10;export SYSTEM_ONE_MODEL=jev-latest">COPY</button></div></div>
-</div>
-</div>
-</div></section>
-<!-- CLOSING -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="field" aria-hidden="true">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+    <div class="blob b4"></div>
+  </div>
+
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="eyebrow">System One / Provider-neutral runtime</p>
+
+      <h1 id="hero-title">
+        One interface.<br>
+        Any System One provider.
+      </h1>
+
+      <p class="hero-sub">
+        A provider-neutral TypeScript runtime for bounded AI decisions.
+        Use TypeSafe Jev, Reflex, compatible <code>/v1/systemone</code>
+        endpoints, or your own <code>SystemOneProvider</code>.
+      </p>
+
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#interop">Get started</a>
+        <a class="btn btn-secondary" href="https://github.com/iamaamir/system-one">GitHub</a>
+      </div>
+    </div>
+
+    <div class="machine" role="img" aria-label="System One decision machine showing shared state, interchangeable providers, and example typed output">
+      <div class="status-chip"><span class="dot"></span>S1.RUNTIME · READY</div>
+
+      <div class="machine-head">
+        <span>SYSTEM.ONE</span>
+        <span>STATE.IN / DECISION / ANSWERS.OUT</span>
+      </div>
+
+      <div class="machine-stage">
+        <div class="stage-meta">
+          <span class="stage-title"><span class="stage-no">01</span>STATE.IN</span>
+          <span>shared state</span>
+        </div>
+        <div class="state-value">"export button crashes in Safari"</div>
+      </div>
+
+      <div class="machine-stage">
+        <div class="stage-meta">
+          <span class="stage-title"><span class="stage-no">02</span>DECISION</span>
+          <span>provider boundary</span>
+        </div>
+
+        <div class="core-line">
+          <div class="core-name">SYSTEM ONE</div>
+          <div class="core-provider">
+            <small>SystemOneProvider</small>
+            <strong id="hero-provider">REFLEX</strong>
+          </div>
+        </div>
+
+        <div class="provider-bus" id="hero-providers">
+          <div class="provider-node" data-provider="JEV">
+            <b>JEV</b>
+            <small>hosted</small>
+            <div class="provider-state">○</div>
+          </div>
+
+          <div class="provider-node active" data-provider="REFLEX">
+            <b>REFLEX</b>
+            <small>local</small>
+            <div class="provider-state">●</div>
+          </div>
+
+          <div class="provider-node" data-provider="CUSTOM">
+            <b>CUSTOM</b>
+            <small>yours</small>
+            <div class="provider-state">○</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="machine-stage" id="hero-result">
+        <div class="result-head">
+          <span>03 · EXAMPLE OUTPUT</span>
+          <span>route · <span id="hero-via">via REFLEX</span></span>
+        </div>
+
+        <div class="result-row"><span>coding</span><span>0.82</span></div>
+        <div class="result-track"><div class="result-fill" style="width:82%"></div></div>
+
+        <div class="result-row"><span>research</span><span>0.11</span></div>
+        <div class="result-track"><div class="result-fill cyan" style="width:11%"></div></div>
+
+        <div class="result-row"><span>writing</span><span>0.05</span></div>
+        <div class="result-track"><div class="result-fill violet" style="width:5%"></div></div>
+
+        <div class="result-row"><span>other</span><span>0.02</span></div>
+        <div class="result-track"><div class="result-fill magenta" style="width:2%"></div></div>
+
+        <div class="result-summary">
+          <strong>selected: coding</strong>
+          <span>confidence <strong>0.76</strong></span>
+        </div>
+      </div>
+
+      <div class="machine-foot">
+        <span>PROTOCOL · READY</span>
+        <span id="hero-transport">TRANSPORT /v1/systemone</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT -->
 <hr style="border:0;border-top:1px solid var(--border);margin:0">
-<section class="closing" aria-labelledby="close-h"><div class="wrap">
-<p class="eyebrow">S1 / Runtime</p>
-<h2 id="close-h">System One<br>is the<br>abstraction.</h2>
-<p class="lede">Choose your provider. Keep your application.</p>
-<div class="cta-row"><a class="btn btn-p" href="https://github.com/iamaamir/system-one">View on GitHub</a><a class="btn btn-s" href="#architecture">Read architecture</a></div>
-</div></section>
+<div class="wrap"><p class="sec-label">01 / What — System One</p></div>
+
+<section class="block" id="what" aria-labelledby="what-title">
+  <div class="wrap">
+    <h2 class="big" id="what-title">System One is<br>the abstraction.</h2>
+
+    <div class="what-copy what-intro">
+      <p class="lede">
+        Applications depend on one bounded decision interface instead of a specific model.
+        Choice, noul, and score can be evaluated together against the same shared state.
+      </p>
+    </div>
+
+    <div class="primitive-grid" aria-label="System One primitives">
+      <article class="primitive-card">
+        <div class="primitive-head">
+          <strong>CHOICE</strong>
+          <span>bounded option</span>
+        </div>
+
+        <div class="mini-bars" aria-label="Example choice distribution">
+          <div class="mini-bar">
+            <span>coding</span>
+            <div class="mini-track"><div class="mini-fill" style="width:82%"></div></div>
+            <span>0.82</span>
+          </div>
+          <div class="mini-bar">
+            <span>research</span>
+            <div class="mini-track"><div class="mini-fill cyan" style="width:11%"></div></div>
+            <span>0.11</span>
+          </div>
+          <div class="mini-bar">
+            <span>writing</span>
+            <div class="mini-track"><div class="mini-fill violet" style="width:5%"></div></div>
+            <span>0.05</span>
+          </div>
+        </div>
+
+        <div class="primitive-result">example → selected: <strong>coding</strong></div>
+      </article>
+
+      <article class="primitive-card">
+        <div class="primitive-head">
+          <strong>NOUL</strong>
+          <span>proposition</span>
+        </div>
+
+        <div class="mini-noul" role="img" aria-label="Example noul probability 0.78 true and derived false probability 0.22">
+          <div class="true">
+            <b>0.78</b>
+            <span>noul · true</span>
+          </div>
+          <div class="false">
+            <b>0.22</b>
+            <span>derived false</span>
+          </div>
+        </div>
+
+        <div class="primitive-result">example → P(statement = true)</div>
+      </article>
+
+      <article class="primitive-card">
+        <div class="primitive-head">
+          <strong>SCORE</strong>
+          <span>ordered scale</span>
+        </div>
+
+        <div class="mini-scale" role="img" aria-label="Example score 2.7 on an ordered scale">
+          <span class="tick" style="left:4%"></span>
+          <span class="tick-label" style="left:4%">low</span>
+
+          <span class="tick" style="left:36%"></span>
+          <span class="tick-label" style="left:36%">medium</span>
+
+          <span class="tick" style="left:68%"></span>
+          <span class="tick-label" style="left:68%">high</span>
+
+          <span class="tick" style="left:96%"></span>
+          <span class="tick-label" style="left:96%">extreme</span>
+
+          <span class="score-dot"></span>
+        </div>
+
+        <div class="primitive-result">example → score: <strong>2.7</strong></div>
+      </article>
+    </div>
+
+    <p class="shared-note">
+      provider boundary → Jev · Reflex · compatible endpoint · custom implementation
+    </p>
+  </div>
+</section>
+
+<!-- INTEROP -->
+<div class="dark" id="interop">
+  <div class="wrap"><p class="sec-label">02 / Interop — Swap the provider</p></div>
+
+  <section class="block" aria-labelledby="interop-title">
+    <div class="wrap">
+      <h2 class="big" id="interop-title">Swap the provider.<br>Keep the application.</h2>
+
+      <p class="lede">
+        Application code stays fixed. Only provider configuration changes.
+      </p>
+
+      <div class="install-row">
+        <code>npm install system-one-core</code>
+        <button class="install-copy" data-copy="npm install system-one-core">COPY</button>
+      </div>
+
+      <div class="swap-shell">
+        <div class="swap-toolbar">
+          <div class="swap-boundary">
+            BOUNDARY
+            <strong>APPLICATION CODE = UNCHANGED</strong>
+          </div>
+
+          <div class="provider-toggle" role="group" aria-label="Select provider configuration">
+            <button aria-pressed="true" data-provider-toggle="reflex">REFLEX</button>
+            <button aria-pressed="false" data-provider-toggle="jev">JEV</button>
+          </div>
+        </div>
+
+        <div class="swap-grid">
+          <div class="swap-pane application">
+            <div class="pane-head">
+              <strong>APPLICATION</strong>
+              <span>provider-neutral</span>
+            </div>
+
+<pre class="code-pre" id="provider-code-example" aria-label="Provider-specific System One configuration example"></pre>
+          </div>
+
+          <aside class="swap-pane" aria-live="polite">
+            <div class="pane-head">
+              <strong>PROVIDER</strong>
+              <span>replaceable</span>
+            </div>
+
+            <div class="provider-config">
+              <div class="provider-name">
+                <strong id="config-provider-name">REFLEX</strong>
+                <span>HTTP</span>
+              </div>
+
+              <div class="config-line">
+                <span>baseUrl</span>
+                <span id="config-base-url">http://localhost:8008</span>
+              </div>
+
+              <div class="config-line" id="config-model-row" hidden>
+                <span>model</span>
+                <span id="config-model">jev-latest</span>
+              </div>
+
+              <div class="config-line" id="config-key-row" hidden>
+                <span>apiKey</span>
+                <span>configured</span>
+              </div>
+
+              <div class="config-line">
+                <span>path</span>
+                <span>/v1/systemone</span>
+              </div>
+            </div>
+
+            <div class="same-contract">
+              <strong>SAME CONTRACT</strong>
+              SystemOneProvider stays stable while the backend changes.
+            </div>
+
+            <div class="only-changes">ONLY THIS SIDE CHANGES</div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- PI -->
+<hr style="border:0;border-top:1px solid var(--border);margin:0">
+<div class="wrap"><p class="sec-label">03 / Pi — One primitive, two consumers</p></div>
+
+<section class="block" id="pi" aria-labelledby="pi-title">
+  <div class="wrap">
+    <h2 class="big" id="pi-title">System One<br>for Pi.</h2>
+
+    <p class="lede">
+      <code>pi-system-one</code> exposes System One directly to agents.
+      Pi-Bifrost consumes the same core runtime for routing.
+      Both depend on the primitive; neither owns it.
+    </p>
+
+    <div class="pi-ecosystem" role="group" aria-label="system-one-core consumed by pi-system-one and pi-bifrost">
+      <div class="pi-core">
+        <strong>system-one-core</strong>
+        <span>provider-neutral primitive</span>
+      </div>
+
+      <div class="pi-branches">
+        <article class="pi-branch primary">
+          <div class="pi-kicker">consumer 01 / agent capability</div>
+          <h3>pi-system-one</h3>
+          <p>Adds a single <code>system_one</code> tool beside Pi's existing capabilities.</p>
+
+          <div class="pi-meta">
+            <span>system_one</span>
+            <span>choice</span>
+            <span>noul</span>
+            <span>score</span>
+          </div>
+
+          <div class="pi-install">
+            <code>pi install npm:pi-system-one</code>
+            <button class="install-copy" data-copy="pi install npm:pi-system-one">COPY</button>
+          </div>
+        </article>
+
+        <article class="pi-branch">
+          <div class="pi-kicker">consumer 02 / routing</div>
+          <h3>pi-bifrost</h3>
+          <p>Uses the same System One boundary for routing decisions without owning provider-specific logic.</p>
+
+          <div class="pi-meta">
+            <span>routing policy</span>
+            <span>confidence</span>
+            <span>escalation</span>
+          </div>
+
+          <div class="pi-install">
+            <code>pi install npm:pi-bifrost</code>
+            <button class="install-copy" data-copy="pi install npm:pi-bifrost">COPY</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
-<footer><div class="wrap">
-<div><p class="fbrand">system-one<small>S1 / RUNTIME</small></p><p style="color:var(--text-secondary);margin-top:8px">Provider-neutral System One runtime.</p></div>
-<nav aria-label="Footer"><a href="https://github.com/iamaamir/system-one">GitHub</a><a href="https://github.com/iamaamir/pi-bifrost">Pi-Bifrost</a></nav>
-</div></footer>
+
+<footer>
+  <div class="wrap">
+    <span class="footer-brand">system-one</span>
+
+    <nav aria-label="Footer">
+      <a href="https://github.com/iamaamir/system-one">GitHub</a>
+      <a href="https://github.com/iamaamir/pi-bifrost">Pi-Bifrost</a>
+    </nav>
+  </div>
+</footer>
+
 <script>
 (function(){
-var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-var head=document.getElementById("sitehead");
-function onScroll(){head.classList.toggle("scrolled",window.scrollY>8)}
-window.addEventListener("scroll",onScroll,{passive:true});onScroll();
-/* hero machine cycling */
-var order=["REFLEX","JEV","CUSTOM"],idx=0;
-var label=document.getElementById("hero-provider"),via=document.getElementById("hero-via");
-var transport=document.getElementById("hero-transport");
-var transports={"REFLEX":"TRANSPORT /v1/systemone","JEV":"TRANSPORT /v1/systemone","CUSTOM":"TRANSPORT PROVIDER INTERFACE"};
-var nodes=Array.prototype.slice.call(document.querySelectorAll("#hero-providers .mnode"));
-var result=document.getElementById("hero-result");
-function show(i){
-idx=i%order.length;var name=order[idx];
-if(label)label.innerHTML="<strong>"+name+"</strong>";
-if(via)via.textContent="via "+name;
-if(transport)transport.textContent=transports[name];
-nodes.forEach(function(n){
-var match=n.getAttribute("data-p")===name;
-n.classList.toggle("on",match);
-var st=n.querySelector(".st");if(st)st.textContent=match?"●":"○";
-});
-if(result&&!reduce){result.classList.remove("flash");void result.offsetWidth;result.classList.add("flash")}
-}
-show(0);
-if(!reduce)setInterval(function(){show(idx+1)},4000);
-/* swap toggle */
-var cfgBase=document.getElementById("cfg-base"),cfgExtra=document.getElementById("cfg-extra");
-var pcName=document.getElementById("pc-name"),pcBase=document.getElementById("pc-base");
-var panel=document.querySelector(".swap-grid .codepanel");
-var provCard=document.getElementById("prov-card");
-var cfg={"reflex":{base:'"http://localhost:8008"',extra:"",name:"REFLEX"},"jev":{base:'"https://api.typesafe.ai"',extra:',<br>    model: <span class="s">"jev-latest"</span>,<br>    apiKey: <span class="c">configured</span>',name:"JEV"}};
-document.querySelectorAll(".prov-toggle button").forEach(function(b){
-b.addEventListener("click",function(){
-document.querySelectorAll(".prov-toggle button").forEach(function(x){x.setAttribute("aria-pressed","false")});
-b.setAttribute("aria-pressed","true");
-var c=cfg[b.getAttribute("data-prov")];
-if(cfgBase)cfgBase.textContent=c.base;
-if(cfgExtra)cfgExtra.innerHTML=c.extra;
-if(pcName)pcName.textContent=c.name;
-if(pcBase)pcBase.textContent=c.base.replace(/"/g,"");
-if(panel&&!reduce){panel.classList.remove("cfg-flash");void panel.offsetWidth;panel.classList.add("cfg-flash")}
-if(provCard&&!reduce){provCard.classList.remove("cfg-flash");void provCard.offsetWidth;provCard.classList.add("cfg-flash")}
-});
-});
-/* tabs */
-var tabBtns=Array.prototype.slice.call(document.querySelectorAll(".qs-tabs [role=tab]"));
-function selectTab(btn,focus){
-tabBtns.forEach(function(x){x.setAttribute("aria-selected","false");x.setAttribute("tabindex","-1")});
-btn.setAttribute("aria-selected","true");btn.setAttribute("tabindex","0");
-var t=btn.getAttribute("data-tab");
-document.getElementById("tab-core").hidden=(t!=="core");
-document.getElementById("tab-pi").hidden=(t!=="pi");
-if(focus)btn.focus();
-}
-tabBtns.forEach(function(b,i){
-b.addEventListener("click",function(){selectTab(b,false)});
-b.addEventListener("keydown",function(e){
-var j=null;
-if(e.key==="ArrowRight")j=(i+1)%tabBtns.length;
-else if(e.key==="ArrowLeft")j=(i-1+tabBtns.length)%tabBtns.length;
-else if(e.key==="Home")j=0;
-else if(e.key==="End")j=tabBtns.length-1;
-if(j!==null){e.preventDefault();selectTab(tabBtns[j],true)}
-});
-});
-/* copy */
-async function copyText(text){
-try{
-if(navigator.clipboard&&navigator.clipboard.writeText){await navigator.clipboard.writeText(text);return true}
-}catch(e){/* fall through to legacy */}
-try{
-var ta=document.createElement("textarea");
-ta.value=text;ta.setAttribute("readonly","");
-ta.style.position="absolute";ta.style.left="-9999px";
-document.body.appendChild(ta);ta.select();
-var ok=document.execCommand("copy");
-document.body.removeChild(ta);
-return !!ok;
-}catch(e){return false}
-}
-document.querySelectorAll(".copybtn").forEach(function(b){
-b.addEventListener("click",function(){
-var t=b.getAttribute("data-copy")||"";
-var o=b.textContent;
-copyText(t).then(function(ok){
-b.textContent=ok?"COPIED":"COPY FAILED";
-setTimeout(function(){b.textContent=o},1200);
-});
-});
-});
-/* bars + marker */
-var io=("IntersectionObserver" in window)?new IntersectionObserver(function(es){
-es.forEach(function(e){if(e.isIntersecting){
-e.target.querySelectorAll(".pfill").forEach(function(f){f.style.width=f.getAttribute("data-w")+"%"});
-e.target.querySelectorAll(".mfill").forEach(function(f){f.style.width=f.getAttribute("data-w")+"%"});
-io.unobserve(e.target)}});
-},{threshold:.3}):null;
-document.querySelectorAll("[data-bars]").forEach(function(el){
-if(!io){el.querySelectorAll(".pfill").forEach(function(f){f.style.width=f.getAttribute("data-w")+"%"})}
-else io.observe(el);
-});
-/* fanout pulse */
-var fan=document.getElementById("fanout");
-if(fan&&!reduce&&"IntersectionObserver" in window){
-var io2=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){fan.classList.add("fanout");io2.disconnect()}})},{threshold:.4});
-io2.observe(fan);
-}
+  var reducedMotion = window.matchMedia &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* sticky header */
+  var header = document.getElementById("sitehead");
+
+  function updateHeader(){
+    header.classList.toggle("scrolled", window.scrollY > 8);
+  }
+
+  window.addEventListener("scroll", updateHeader, { passive:true });
+  updateHeader();
+
+  /* hero provider cycle */
+  var providerOrder = ["REFLEX", "JEV", "CUSTOM"];
+  var providerIndex = 0;
+  var heroProvider = document.getElementById("hero-provider");
+  var heroVia = document.getElementById("hero-via");
+  var heroTransport = document.getElementById("hero-transport");
+  var providerNodes = Array.prototype.slice.call(
+    document.querySelectorAll("#hero-providers .provider-node")
+  );
+
+  var transportByProvider = {
+    REFLEX:"TRANSPORT /v1/systemone",
+    JEV:"TRANSPORT /v1/systemone",
+    CUSTOM:"TRANSPORT PROVIDER INTERFACE"
+  };
+
+  function showHeroProvider(index){
+    providerIndex = index % providerOrder.length;
+    var name = providerOrder[providerIndex];
+
+    heroProvider.textContent = name;
+    heroVia.textContent = "via " + name;
+    heroTransport.textContent = transportByProvider[name];
+
+    providerNodes.forEach(function(node){
+      var active = node.getAttribute("data-provider") === name;
+      node.classList.toggle("active", active);
+
+      var state = node.querySelector(".provider-state");
+      if(state){
+        state.textContent = active ? "●" : "○";
+      }
+    });
+  }
+
+  showHeroProvider(0);
+
+  if(!reducedMotion){
+    window.setInterval(function(){
+      showHeroProvider(providerIndex + 1);
+    }, 4200);
+  }
+
+  /* provider configuration toggle */
+  var configName = document.getElementById("config-provider-name");
+  var configBase = document.getElementById("config-base-url");
+  var configModelRow = document.getElementById("config-model-row");
+  var configModel = document.getElementById("config-model");
+  var configKeyRow = document.getElementById("config-key-row");
+  var providerCodeExample = document.getElementById("provider-code-example");
+
+  var providerConfig = {
+    reflex:{
+      name:"REFLEX",
+      base:"http://localhost:8008",
+      model:null,
+      key:false,
+      code:
+'<span class="ln">01</span> <span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span>\n' +
+'<span class="ln">02</span>\n' +
+'<span class="ln">03</span> <span class="k">const</span> <span class="p">provider = </span><span class="k">new</span> <span class="f">HttpSystemOneProvider</span><span class="p">({</span>\n' +
+'<span class="ln">04</span> <span class="p">  baseUrl: </span><span class="s">"http://localhost:8008"</span><span class="p">,</span>\n' +
+'<span class="ln">05</span> <span class="p">});</span>\n' +
+'<span class="ln">06</span>\n' +
+'<span class="ln">07</span> <span class="k">const</span> <span class="p">systemOne = </span><span class="k">new</span> <span class="f">SystemOne</span><span class="p">({ provider });</span>\n' +
+'<span class="ln">08</span> <span class="k">const</span> <span class="p">result = </span><span class="k">await</span> <span class="p">systemOne.</span><span class="f">evaluate</span><span class="p">(request);</span>'
+    },
+    jev:{
+      name:"JEV",
+      base:"https://api.typesafe.ai",
+      model:"jev-latest",
+      key:true,
+      code:
+'<span class="ln">01</span> <span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span>\n' +
+'<span class="ln">02</span>\n' +
+'<span class="ln">03</span> <span class="k">const</span> <span class="p">provider = </span><span class="k">new</span> <span class="f">HttpSystemOneProvider</span><span class="p">({</span>\n' +
+'<span class="ln">04</span> <span class="p">  baseUrl: </span><span class="s">"https://api.typesafe.ai"</span><span class="p">,</span>\n' +
+'<span class="ln">05</span> <span class="p">  model: </span><span class="s">"jev-latest"</span><span class="p">,</span>\n' +
+'<span class="ln">06</span> <span class="p">  apiKey: process.env.SYSTEM_ONE_API_KEY,</span>\n' +
+'<span class="ln">07</span> <span class="p">});</span>\n' +
+'<span class="ln">08</span>\n' +
+'<span class="ln">09</span> <span class="k">const</span> <span class="p">systemOne = </span><span class="k">new</span> <span class="f">SystemOne</span><span class="p">({ provider });</span>\n' +
+'<span class="ln">10</span> <span class="k">const</span> <span class="p">result = </span><span class="k">await</span> <span class="p">systemOne.</span><span class="f">evaluate</span><span class="p">(request);</span>'
+    }
+  };
+
+  function selectProvider(key){
+    var config = providerConfig[key];
+
+    document.querySelectorAll("[data-provider-toggle]").forEach(function(item){
+      item.setAttribute(
+        "aria-pressed",
+        item.getAttribute("data-provider-toggle") === key ? "true" : "false"
+      );
+    });
+
+    configName.textContent = config.name;
+    configBase.textContent = config.base;
+    configModel.textContent = config.model || "";
+    configModelRow.hidden = !config.model;
+    configKeyRow.hidden = !config.key;
+    providerCodeExample.innerHTML = config.code;
+  }
+
+  document.querySelectorAll("[data-provider-toggle]").forEach(function(button){
+    button.addEventListener("click", function(){
+      selectProvider(button.getAttribute("data-provider-toggle"));
+    });
+  });
+
+  selectProvider("reflex");
+
+  /* copy buttons */
+  function temporaryButtonState(button, label){
+    var original = button.textContent;
+    button.textContent = label;
+
+    window.setTimeout(function(){
+      button.textContent = original;
+    }, 1200);
+  }
+
+  async function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch(error){}
+    }
+
+    var textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly","");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    var success = false;
+
+    try{
+      success = document.execCommand("copy");
+    }catch(error){
+      success = false;
+    }
+
+    textarea.remove();
+    return success;
+  }
+
+  document.querySelectorAll(".copy-btn").forEach(function(button){
+    button.addEventListener("click", async function(){
+      var text = button.getAttribute("data-copy") || "";
+      var success = await copyText(text);
+
+      temporaryButtonState(
+        button,
+        success ? "COPIED" : "COPY FAILED"
+      );
+    });
+  });
 })();
 </script>
+
 </body>
 </html>
