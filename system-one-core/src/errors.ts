@@ -28,7 +28,11 @@ export class SystemOneHttpError extends SystemOneError {
   readonly status: number;
   readonly provider: string;
   readonly requestId?: string;
-  constructor(message: string, opts: { status: number; provider: string; requestId?: string }, options?: ErrorOptions) {
+  constructor(
+    message: string,
+    opts: { status: number; provider: string; requestId?: string },
+    options?: ErrorOptions,
+  ) {
     super(message, "SYSTEM_ONE_HTTP", options);
     this.name = "SystemOneHttpError";
     this.status = opts.status;

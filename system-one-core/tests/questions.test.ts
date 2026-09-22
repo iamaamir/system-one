@@ -1,6 +1,7 @@
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import { choice, noul, score } from "../src/questions.ts";
+
 describe("builders", () => {
   it("builds typed choice/noul/score questions", () => {
     const q = choice("Which?", { coding: "impl", research: null });
@@ -26,7 +27,7 @@ describe("builders", () => {
     const first: "easy" = s.criteria[0];
     assert.equal(first, "easy");
     // @ts-expect-error - "nope" is not in the tuple
-    const _wrong: typeof s.criteria[number] = "nope";
+    const _wrong: (typeof s.criteria)[number] = "nope";
     void _wrong;
   });
 });

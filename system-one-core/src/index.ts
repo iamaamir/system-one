@@ -1,11 +1,11 @@
-export * from "./types.ts";
+export * from "./client.ts";
 export * from "./errors.ts";
+export * from "./provider.ts";
+export type { HttpSystemOneProviderOptions } from "./providers/http.ts";
+export { HttpSystemOneProvider } from "./providers/http.ts";
+export type { MockSystemOneProviderOptions } from "./providers/mock.ts";
+export { MockSystemOneProvider } from "./providers/mock.ts";
 export * from "./questions.ts";
 export * from "./responses.ts";
-export * from "./provider.ts";
-export * from "./client.ts";
+export * from "./types.ts";
 export * from "./validation.ts";
-export { HttpSystemOneProvider } from "./providers/http.ts";
-export type { HttpSystemOneProviderOptions } from "./providers/http.ts";
-export { MockSystemOneProvider } from "./providers/mock.ts";
-export type { MockSystemOneProviderOptions } from "./providers/mock.ts";

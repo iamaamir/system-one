@@ -1,9 +1,17 @@
 {
   "private": true,
   "type": "module",
-  "workspaces": ["system-one-core", "pi-system-one"],
+  "workspaces": [
+    "system-one-core",
+    "pi-system-one"
+  ],
   "scripts": {
-    "test": "npm --workspace system-one-core run test",
-    "typecheck": "npm --workspace system-one-core run typecheck"
+    "test": "npm --workspace system-one-core run test && npm --workspace pi-system-one run test",
+    "typecheck": "npm --workspace system-one-core run typecheck && npm --workspace pi-system-one run typecheck",
+    "lint": "biome check .",
+    "format": "biome check --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.14"
   }
 }
