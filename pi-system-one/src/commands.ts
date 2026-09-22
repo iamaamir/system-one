@@ -38,7 +38,7 @@ export function registerSystemOneCommands(
   async function cmdConfig(ctx: ExtensionCommandContext): Promise<void> {
     const cur = store.session?.current;
     const baseUrl = await ctx.ui.input(
-      "SYSTEM_ONE_BASE_URL:",
+      `SYSTEM_ONE_BASE_URL (current: ${cur?.baseUrl ?? "unset"}):`,
       cur?.baseUrl ?? "",
     );
     if (!baseUrl) {
@@ -46,7 +46,7 @@ export function registerSystemOneCommands(
       return;
     }
     const model = await ctx.ui.input(
-      "SYSTEM_ONE_MODEL (empty = keep):",
+      `SYSTEM_ONE_MODEL (current: ${cur?.model ?? "server default"}):`,
       cur?.model ?? "",
     );
     if (model === undefined) {
