@@ -4,6 +4,11 @@
   "description": "System One decisions for Pi. Plug in TypeSafe Jev, Reflex, or your own provider.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamaamir/system-one.git",
+    "directory": "pi-system-one"
+  },
   "exports": {
     ".": "./src/extension.ts"
   },

@@ -4,6 +4,11 @@
   "description": "Provider-neutral System One runtime for TypeScript. Plug in TypeSafe Jev, Reflex, or your own provider.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamaamir/system-one.git",
+    "directory": "system-one-core"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
