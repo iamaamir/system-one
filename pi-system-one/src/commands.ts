@@ -6,18 +6,26 @@ import type {
 import { HttpSystemOneProvider } from "system-one-core";
 import {
   applyConfigAnswers,
-  createSessionConfig,
+  blankSession,
+  type ConfigAnswers,
+  DEFAULT_TIMEOUT_MS,
   describeConfig,
   type SessionConfig,
 } from "./config.ts";
 import { buildSystemOneTool } from "./tool.ts";
 
+/** Mutable holder: empty until env or `/so config` provides a base URL. */
+export interface SessionStore {
+  session?: SessionConfig;
+}
+
 export function registerSystemOneCommands(
   pi: ExtensionAPI,
-  session: SessionConfig,
+  store: SessionStore,
 ) {
   function applyProvider() {
-    const ext = session.current;
+    if (!store.session) return;
+    const ext = store.session.current;
     const provider = new HttpSystemOneProvider({
       id: "configured",
       baseUrl: ext.baseUrl,
@@ -29,15 +37,18 @@ export function registerSystemOneCommands(
   }
 
   async function cmdConfig(ctx: ExtensionCommandContext): Promise<void> {
-    const cur = session.current;
-    const baseUrl = await ctx.ui.input("SYSTEM_ONE_BASE_URL:", cur.baseUrl);
-    if (baseUrl === undefined) {
-      ctx.ui.notify("Cancelled.", "info");
+    const cur = store.session?.current;
+    const baseUrl = await ctx.ui.input(
+      "SYSTEM_ONE_BASE_URL:",
+      cur?.baseUrl ?? "",
+    );
+    if (!baseUrl) {
+      ctx.ui.notify("Cancelled (base URL is required).", "info");
       return;
     }
     const model = await ctx.ui.input(
       "SYSTEM_ONE_MODEL (empty = keep):",
-      cur.model ?? "",
+      cur?.model ?? "",
     );
     if (model === undefined) {
       ctx.ui.notify("Cancelled.", "info");
@@ -53,18 +64,17 @@ export function registerSystemOneCommands(
     }
     const timeoutMs = await ctx.ui.input(
       "SYSTEM_ONE_TIMEOUT_MS:",
-      String(cur.timeoutMs),
+      String(cur?.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     );
     if (timeoutMs === undefined) {
       ctx.ui.notify("Cancelled.", "info");
       return;
     }
-    const memoryKey = applyConfigAnswers(session, {
-      baseUrl,
-      model,
-      apiKey,
-      timeoutMs,
-    });
+    const answers: ConfigAnswers = { baseUrl, model, apiKey, timeoutMs };
+    if (!store.session) {
+      store.session = blankSession();
+    }
+    const memoryKey = applyConfigAnswers(store.session, answers);
     applyProvider();
     ctx.ui.notify(
       memoryKey
@@ -75,7 +85,14 @@ export function registerSystemOneCommands(
   }
 
   async function cmdStatus(ctx: ExtensionCommandContext): Promise<void> {
-    ctx.ui.notify(describeConfig(session), "info");
+    if (!store.session) {
+      ctx.ui.notify(
+        "System One is not configured. Export SYSTEM_ONE_BASE_URL or run /so config.",
+        "info",
+      );
+      return;
+    }
+    ctx.ui.notify(describeConfig(store.session), "info");
   }
 
   pi.registerCommand("so", {
@@ -87,9 +104,5 @@ export function registerSystemOneCommands(
     },
   });
 
-  return { applyProvider, session };
-}
-
-export function createSystemOneSession(): SessionConfig {
-  return createSessionConfig();
+  return { applyProvider, store };
 }

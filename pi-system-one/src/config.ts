@@ -56,6 +56,19 @@ export function createSessionConfig(
   return { current: loadSystemOneConfig(env), keyInMemory: false };
 }
 
+/** Empty session for `/so config` when no env is present. */
+export function blankSession(): SessionConfig {
+  return {
+    current: {
+      baseUrl: "",
+      apiKey: undefined,
+      model: undefined,
+      timeoutMs: DEFAULT_TIMEOUT_MS,
+    },
+    keyInMemory: false,
+  };
+}
+
 export interface ConfigAnswers {
   /** Empty string keeps the existing value. */
   baseUrl: string;
