@@ -1,0 +1,51 @@
+{
+  "request": {
+    "state": "Migrate the auth module to the new session protocol.",
+    "questions": {
+      "complexity": {
+        "type": "score",
+        "instructions": "How complex is this task?",
+        "criteria": [
+          "Trivial",
+          "Moderate",
+          "Complex",
+          "Highly complex"
+        ]
+      },
+      "needsReasoning": {
+        "type": "noul",
+        "instructions": "Does this request require substantial reasoning?"
+      }
+    }
+  },
+  "response": {
+    "model": "/Users/mak/models/Qwen3.5-2B",
+    "answers": {
+      "complexity": {
+        "type": "score",
+        "score": 0.987655,
+        "probabilities": {
+          "0": 0.274612,
+          "1": 0.476377,
+          "2": 0.235756,
+          "3": 0.013256
+        },
+        "legend": {
+          "0": "Trivial",
+          "1": "Moderate",
+          "2": "Complex",
+          "3": "Highly complex"
+        },
+        "confidence": 0.202097
+      },
+      "needsReasoning": {
+        "type": "noul",
+        "noul": 0.529666
+      }
+    },
+    "usage": {
+      "inputTokens": 339,
+      "outputTokens": 0
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "request": {
+    "state": {
+      "request": "Fix this React rendering issue"
+    },
+    "questions": {
+      "intent": {
+        "type": "choice",
+        "instructions": "What is the user's primary intent?",
+        "criteria": {
+          "coding": "Implement, modify, or debug software",
+          "research": "Investigate or gather information",
+          "writing": "Create or edit prose",
+          "explanation": "Explain a concept"
+        }
+      }
+    }
+  },
+  "response": {
+    "model": "/Users/mak/models/Qwen3.5-2B",
+    "answers": {
+      "intent": {
+        "type": "choice",
+        "choice": "coding",
+        "probabilities": {
+          "coding": 0.995755,
+          "research": 0.000516,
+          "writing": 0.000325,
+          "explanation": 0.003403
+        },
+        "confidence": 0.978293
+      }
+    },
+    "usage": {
+      "inputTokens": 213,
+      "outputTokens": 0
+    }
+  }
+}

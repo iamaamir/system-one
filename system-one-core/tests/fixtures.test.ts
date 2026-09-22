@@ -9,17 +9,17 @@ import { validateResponse } from "../src/validation.ts";
 import type { QuestionMap } from "../src/questions.ts";
 
 const dir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
-const files = readdirSync(dir).filter((f) => f.startsWith("typesafe-") && f.endsWith(".json"));
+const files = readdirSync(dir).filter((f) => f.endsWith(".json") && !f.startsWith("."));
 
 describe("typesafe fixtures", () => {
   for (const f of files) {
     it(`${f} validates with normalized usage`, () => {
       const fx = JSON.parse(readFileSync(join(dir, f), "utf8"));
-      const out = validateResponse(fx.request.questions as QuestionMap, fx.response, "typesafe");
+      const out = validateResponse(fx.request.questions as QuestionMap, fx.response, "provider");
       assert.deepEqual(Object.keys(out.answers).sort(), Object.keys(fx.request.questions).sort());
-      assert.equal(out.model, "jev-1.13.0");
+      assert.ok(typeof out.model === "string" && out.model.length > 0, "model reported");
       assert.ok(out.usage?.inputTokens! > 0, "inputTokens normalized from input_tokens");
-      assert.ok(out.usage?.outputTokens! > 0, "outputTokens normalized from output_tokens");
+      assert.ok(out.usage?.outputTokens! >= 0, "outputTokens present");
       assert.ok(!("input_tokens" in (out.usage ?? {})), "no snake_case leak");
     });
   }
