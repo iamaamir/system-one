@@ -24,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      # NOTE: npm caching is disabled for releases (fresh resolve every time).
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -34,10 +35,12 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - id: pkg
+        env:
+          TAG_DIR: ${{ github.ref_name }}
         run: |
-          TAG="${GITHUB_REF_NAME%@*}"
+          TAG="${TAG_DIR%@*}"
           echo "name=$TAG" >> "$GITHUB_OUTPUT"
-          test "$(node -p "require('./$TAG/package.json').version")" = "${GITHUB_REF_NAME#*@}" \
+          test "$(TAG_DIR="$TAG" node -p "require('./' + process.env.TAG_DIR + '/package.json').version")" = "${TAG_DIR#*@}" \
             || { echo "tag/version mismatch"; exit 1; }
-      - run: npm test --workspace "${{ steps.pkg.outputs.name }}"
+      - run: npm test
       - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --access public
