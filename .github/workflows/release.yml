@@ -1,0 +1,36 @@
+# Release with npm provenance (Sigstore-signed, verifiable on the registry).
+#
+# PREREQUISITE (one-time, on npmjs.com): add this repo as a trusted
+# publisher for each package (repo iamaamir/system-one, workflow
+# release.yml). No long-lived NPM_TOKEN needed after that.
+#
+# Usage: push a tag like system-one-core@0.1.2 or pi-system-one@1.2.0.
+# The tag version must match the package.json version.
+name: Release
+on:
+  push:
+    tags: ["system-one-core@*", "pi-system-one@*"]
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - id: pkg
+        run: |
+          TAG="${GITHUB_REF_NAME%@*}"
+          echo "name=$TAG" >> "$GITHUB_OUTPUT"
+          test "$(node -p "require('./$TAG/package.json').version")" = "${GITHUB_REF_NAME#*@}" \
+            || { echo "tag/version mismatch"; exit 1; }
+      - run: npm test --workspace "${{ steps.pkg.outputs.name }}"
+      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --provenance --access public
