@@ -1,4 +1,4 @@
-# System One for TypeScript and Pi
+# System One for TypeScript
 
 > **Write the decision once. Run it on any System One provider.**
 
