@@ -7,17 +7,28 @@
 <title>system-one — Provider-neutral System One SDK for TypeScript, Jev, Reflex & Pi</title>
 <meta name="description" content="A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider. Includes direct Pi integration.">
 <meta name="theme-color" content="#F3F1EA">
+<meta name="application-name" content="system-one">
 <meta name="robots" content="index,follow,max-image-preview:large">
 
 <link rel="canonical" href="https://iamaamir.github.io/system-one/">
+<link rel="alternate" type="text/markdown" href="https://iamaamir.github.io/system-one/index.md">
+<link rel="describedby" href="https://iamaamir.github.io/system-one/llms.txt">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="system-one">
 <meta property="og:title" content="system-one — One interface. Any System One provider.">
 <meta property="og:description" content="A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider.">
 <meta property="og:url" content="https://iamaamir.github.io/system-one/">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamaamir.github.io/system-one/social-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="system-one — One interface. Any System One provider.">
 
 <meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="system-one — One interface. Any System One provider.">
+<meta name="twitter:description" content="Provider-neutral TypeScript runtime for System One decisions with Jev, Reflex, compatible endpoints, custom providers, and Pi integration.">
+<meta name="twitter:image" content="https://iamaamir.github.io/system-one/social-card.png">
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23111111'/%3E%3Ctext x='32' y='42' font-family='monospace' font-size='28' font-weight='bold' fill='%23F3F1EA' text-anchor='middle'%3ES1%3C/text%3E%3C/svg%3E">
 
@@ -30,17 +41,46 @@
       "@id": "https://iamaamir.github.io/system-one/#website",
       "url": "https://iamaamir.github.io/system-one/",
       "name": "system-one",
-      "description": "Provider-neutral System One runtime for TypeScript and Pi."
+      "description": "Provider-neutral System One runtime for TypeScript and Pi.",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://iamaamir.github.io/system-one/#webpage",
+      "url": "https://iamaamir.github.io/system-one/",
+      "name": "system-one — Provider-neutral System One SDK for TypeScript, Jev, Reflex & Pi",
+      "description": "A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider. Includes direct Pi integration.",
+      "isPartOf": {
+        "@id": "https://iamaamir.github.io/system-one/#website"
+      },
+      "about": {
+        "@id": "https://iamaamir.github.io/system-one/#software"
+      },
+      "mainEntity": {
+        "@id": "https://iamaamir.github.io/system-one/#software"
+      },
+      "inLanguage": "en",
+      "dateModified": "2026-09-22"
     },
     {
       "@type": "SoftwareSourceCode",
       "@id": "https://iamaamir.github.io/system-one/#software",
       "name": "system-one",
-      "description": "Provider-neutral TypeScript runtime for System One decisions.",
+      "description": "Provider-neutral TypeScript runtime for bounded System One decisions.",
       "url": "https://iamaamir.github.io/system-one/",
       "codeRepository": "https://github.com/iamaamir/system-one",
       "programmingLanguage": "TypeScript",
-      "license": "https://opensource.org/licenses/MIT"
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "keywords": [
+        "System One",
+        "TypeScript",
+        "Jev",
+        "Reflex",
+        "Pi",
+        "typed decisions",
+        "provider-neutral AI"
+      ]
     }
   ]
 }
@@ -1262,6 +1302,28 @@ footer a:hover{
   }
 }
 
+@media(max-width:360px){
+  .site-head .wrap{
+    gap:10px;
+  }
+
+  .wordmark{
+    gap:7px;
+    font-size:17px;
+    white-space:nowrap;
+    flex-shrink:0;
+  }
+
+  .wordmark .tag{
+    padding:2px 5px;
+    font-size:9px;
+  }
+
+  .site-nav{
+    font-size:11px;
+  }
+}
+
 @media(max-width:600px){
   .provider-bus{
     grid-template-columns:1fr;
@@ -1278,6 +1340,143 @@ footer a:hover{
   html{scroll-behavior:auto}
   *{transition-duration:.01ms !important}
 }
+
+/* ---------- modern reveal v6 ---------- */
+
+/* active nav */
+.site-nav a[data-section-link]{
+  position:relative;
+}
+.site-nav a[data-section-link]::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-7px;
+  height:1px;
+  background:currentColor;
+  transform:scaleX(0);
+  transform-origin:left center;
+  transition:transform .24s var(--ease);
+}
+.site-nav a[data-section-link].is-active::after{
+  transform:scaleX(1);
+}
+
+/* provider switch highlight */
+.change-line{
+  display:inline;
+  border-radius:2px;
+}
+.provider-code-flash .change-line{
+  animation:providerChanged .72s var(--ease);
+}
+@keyframes providerChanged{
+  0%{background:rgba(197,240,75,.42)}
+  100%{background:transparent}
+}
+
+/*
+  Primary implementation:
+  progress is derived from the element's position in the viewport.
+  There is no timer "catching up" after a fast scroll.
+*/
+@supports (animation-timeline:view()){
+  @media(min-width:901px) and (prefers-reduced-motion:no-preference){
+    .reveal-section > .wrap{
+      animation-name:sectionReveal;
+      animation-duration:1ms;
+      animation-timing-function:linear;
+      animation-fill-mode:both;
+      animation-timeline:view(block);
+      animation-range:entry 0% cover 24%;
+    }
+
+    .reveal-section h2.big{
+      animation-name:headingFocus;
+      animation-duration:1ms;
+      animation-timing-function:linear;
+      animation-fill-mode:both;
+      animation-timeline:view(block);
+      animation-range:entry 0% cover 17%;
+    }
+
+    @keyframes sectionReveal{
+      from{
+        opacity:.22;
+        transform:translate3d(0,28px,0) scale(.992);
+      }
+      to{
+        opacity:1;
+        transform:translate3d(0,0,0) scale(1);
+      }
+    }
+
+    @keyframes headingFocus{
+      from{
+        filter:blur(7px);
+        opacity:.48;
+      }
+      to{
+        filter:blur(0);
+        opacity:1;
+      }
+    }
+
+    @media(hover:hover) and (pointer:fine){
+      #what .primitive-card{
+        transition:transform .24s var(--ease),box-shadow .24s var(--ease);
+      }
+
+      #what .primitive-card:hover{
+        transform:translateY(-3px);
+        box-shadow:6px 8px 0 rgba(17,17,17,.9);
+      }
+    }
+  }
+}
+
+/* Fallback is activated by JS only when view timelines are unavailable. */
+@media(min-width:901px) and (prefers-reduced-motion:no-preference){
+  html.io-reveal .reveal-section > .wrap{
+    opacity:.20;
+    transform:translate3d(0,22px,0);
+    transition:
+      opacity .42s var(--ease),
+      transform .46s var(--ease);
+  }
+
+  html.io-reveal .reveal-section h2.big{
+    filter:blur(5px);
+    transition:filter .38s var(--ease),opacity .38s var(--ease);
+  }
+
+  html.io-reveal .reveal-section.is-revealed > .wrap{
+    opacity:1;
+    transform:none;
+  }
+
+  html.io-reveal .reveal-section.is-revealed h2.big{
+    filter:blur(0);
+  }
+}
+
+/* phones/tablets and reduced-motion are intentionally plain */
+@media(max-width:900px), (prefers-reduced-motion:reduce){
+  .reveal-section > .wrap,
+  .reveal-section h2.big{
+    opacity:1 !important;
+    transform:none !important;
+    filter:none !important;
+    animation:none !important;
+    transition:none !important;
+  }
+
+  .provider-code-flash .change-line{
+    animation:none;
+  }
+}
+
 </style>
 </head>
 
@@ -1287,13 +1486,13 @@ footer a:hover{
   <div class="wrap">
     <a class="wordmark" href="./">
       system-one
-      <span class="tag">S1 / RUNTIME</span>
+      <span class="tag" id="section-tag">S1 / RUNTIME</span>
     </a>
 
     <nav class="site-nav" aria-label="Primary">
-      <a href="#what">What</a>
-      <a href="#interop">Interop</a>
-      <a href="#pi">Pi</a>
+      <a href="#what" data-section-link="what">What</a>
+      <a href="#interop" data-section-link="interop">Interop</a>
+      <a href="#pi" data-section-link="pi">Pi</a>
       <a href="https://github.com/iamaamir/system-one">GitHub</a>
     </nav>
   </div>
@@ -1302,7 +1501,7 @@ footer a:hover{
 <main>
 
 <!-- HERO -->
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero" id="hero" aria-labelledby="hero-title">
   <div class="field" aria-hidden="true">
     <div class="blob b1"></div>
     <div class="blob b2"></div>
@@ -1418,7 +1617,7 @@ footer a:hover{
 <hr style="border:0;border-top:1px solid var(--border);margin:0">
 <div class="wrap"><p class="sec-label">01 / What — System One</p></div>
 
-<section class="block" id="what" aria-labelledby="what-title">
+<section class="block reveal-section" id="what" aria-labelledby="what-title">
   <div class="wrap">
     <h2 class="big" id="what-title">System One is<br>the abstraction.</h2>
 
@@ -1504,7 +1703,11 @@ footer a:hover{
     </div>
 
     <p class="shared-note">
-      provider boundary → Jev · Reflex · compatible endpoint · custom implementation
+      provider boundary →
+      <a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Jev</a> ·
+      <a href="https://github.com/kshetrajna12/reflex">Reflex</a> ·
+      compatible <code>/v1/systemone</code> endpoint ·
+      custom <code>SystemOneProvider</code>
     </p>
   </div>
 </section>
@@ -1513,7 +1716,7 @@ footer a:hover{
 <div class="dark" id="interop">
   <div class="wrap"><p class="sec-label">02 / Interop — Swap the provider</p></div>
 
-  <section class="block" aria-labelledby="interop-title">
+  <section class="block reveal-section" aria-labelledby="interop-title">
     <div class="wrap">
       <h2 class="big" id="interop-title">Swap the provider.<br>Keep the application.</h2>
 
@@ -1523,7 +1726,7 @@ footer a:hover{
 
       <div class="install-row">
         <code>npm install system-one-core</code>
-        <button class="install-copy" data-copy="npm install system-one-core">COPY</button>
+        <button type="button" class="install-copy" aria-label="Copy system-one-core install command" data-copy="npm install system-one-core">COPY</button>
       </div>
 
       <div class="swap-shell">
@@ -1534,8 +1737,8 @@ footer a:hover{
           </div>
 
           <div class="provider-toggle" role="group" aria-label="Select provider configuration">
-            <button aria-pressed="true" data-provider-toggle="reflex">REFLEX</button>
-            <button aria-pressed="false" data-provider-toggle="jev">JEV</button>
+            <button type="button" aria-pressed="true" aria-controls="provider-code-example provider-config-panel" data-provider-toggle="reflex">REFLEX</button>
+            <button type="button" aria-pressed="false" aria-controls="provider-code-example provider-config-panel" data-provider-toggle="jev">JEV</button>
           </div>
         </div>
 
@@ -1546,10 +1749,17 @@ footer a:hover{
               <span>provider-neutral</span>
             </div>
 
-<pre class="code-pre" id="provider-code-example" aria-label="Provider-specific System One configuration example"></pre>
+<pre class="code-pre" id="provider-code-example" aria-label="Provider-specific System One configuration example"><span class="ln">01</span> <span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span>
+<span class="ln">02</span>
+<span class="ln">03</span> <span class="k">const</span> <span class="p">provider = </span><span class="k">new</span> <span class="f">HttpSystemOneProvider</span><span class="p">({</span>
+<span class="change-line"><span class="ln">04</span> <span class="p">  baseUrl: </span><span class="s">"http://localhost:8008"</span><span class="p">,</span></span>
+<span class="ln">05</span> <span class="p">});</span>
+<span class="ln">06</span>
+<span class="ln">07</span> <span class="k">const</span> <span class="p">systemOne = </span><span class="k">new</span> <span class="f">SystemOne</span><span class="p">({ provider });</span>
+<span class="ln">08</span> <span class="k">const</span> <span class="p">result = </span><span class="k">await</span> <span class="p">systemOne.</span><span class="f">evaluate</span><span class="p">(request);</span></pre>
           </div>
 
-          <aside class="swap-pane" aria-live="polite">
+          <aside class="swap-pane" id="provider-config-panel" aria-live="polite">
             <div class="pane-head">
               <strong>PROVIDER</strong>
               <span>replaceable</span>
@@ -1599,7 +1809,7 @@ footer a:hover{
 <hr style="border:0;border-top:1px solid var(--border);margin:0">
 <div class="wrap"><p class="sec-label">03 / Pi — One primitive, two consumers</p></div>
 
-<section class="block" id="pi" aria-labelledby="pi-title">
+<section class="block reveal-section" id="pi" aria-labelledby="pi-title">
   <div class="wrap">
     <h2 class="big" id="pi-title">System One<br>for Pi.</h2>
 
@@ -1630,7 +1840,7 @@ footer a:hover{
 
           <div class="pi-install">
             <code>pi install npm:pi-system-one</code>
-            <button class="install-copy" data-copy="pi install npm:pi-system-one">COPY</button>
+            <button type="button" class="install-copy" aria-label="Copy pi-system-one install command" data-copy="pi install npm:pi-system-one">COPY</button>
           </div>
         </article>
 
@@ -1647,7 +1857,7 @@ footer a:hover{
 
           <div class="pi-install">
             <code>pi install npm:pi-bifrost</code>
-            <button class="install-copy" data-copy="pi install npm:pi-bifrost">COPY</button>
+            <button type="button" class="install-copy" aria-label="Copy pi-bifrost install command" data-copy="pi install npm:pi-bifrost">COPY</button>
           </div>
         </article>
       </div>
@@ -1744,7 +1954,7 @@ footer a:hover{
 '<span class="ln">01</span> <span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span>\n' +
 '<span class="ln">02</span>\n' +
 '<span class="ln">03</span> <span class="k">const</span> <span class="p">provider = </span><span class="k">new</span> <span class="f">HttpSystemOneProvider</span><span class="p">({</span>\n' +
-'<span class="ln">04</span> <span class="p">  baseUrl: </span><span class="s">"http://localhost:8008"</span><span class="p">,</span>\n' +
+'<span class="change-line"><span class="ln">04</span> <span class="p">  baseUrl: </span><span class="s">"http://localhost:8008"</span><span class="p">,</span></span>\n' +
 '<span class="ln">05</span> <span class="p">});</span>\n' +
 '<span class="ln">06</span>\n' +
 '<span class="ln">07</span> <span class="k">const</span> <span class="p">systemOne = </span><span class="k">new</span> <span class="f">SystemOne</span><span class="p">({ provider });</span>\n' +
@@ -1759,9 +1969,9 @@ footer a:hover{
 '<span class="ln">01</span> <span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span>\n' +
 '<span class="ln">02</span>\n' +
 '<span class="ln">03</span> <span class="k">const</span> <span class="p">provider = </span><span class="k">new</span> <span class="f">HttpSystemOneProvider</span><span class="p">({</span>\n' +
-'<span class="ln">04</span> <span class="p">  baseUrl: </span><span class="s">"https://api.typesafe.ai"</span><span class="p">,</span>\n' +
-'<span class="ln">05</span> <span class="p">  model: </span><span class="s">"jev-latest"</span><span class="p">,</span>\n' +
-'<span class="ln">06</span> <span class="p">  apiKey: process.env.SYSTEM_ONE_API_KEY,</span>\n' +
+'<span class="change-line"><span class="ln">04</span> <span class="p">  baseUrl: </span><span class="s">"https://api.typesafe.ai"</span><span class="p">,</span></span>\n' +
+'<span class="change-line"><span class="ln">05</span> <span class="p">  model: </span><span class="s">"jev-latest"</span><span class="p">,</span></span>\n' +
+'<span class="change-line"><span class="ln">06</span> <span class="p">  apiKey: process.env.SYSTEM_ONE_API_KEY,</span></span>\n' +
 '<span class="ln">07</span> <span class="p">});</span>\n' +
 '<span class="ln">08</span>\n' +
 '<span class="ln">09</span> <span class="k">const</span> <span class="p">systemOne = </span><span class="k">new</span> <span class="f">SystemOne</span><span class="p">({ provider });</span>\n' +
@@ -1785,6 +1995,14 @@ footer a:hover{
     configModelRow.hidden = !config.model;
     configKeyRow.hidden = !config.key;
     providerCodeExample.innerHTML = config.code;
+
+    if(!reducedMotion && providerCodeExample.dataset.ready === "true"){
+      providerCodeExample.classList.remove("provider-code-flash");
+      void providerCodeExample.offsetWidth;
+      providerCodeExample.classList.add("provider-code-flash");
+    }
+
+    providerCodeExample.dataset.ready = "true";
   }
 
   document.querySelectorAll("[data-provider-toggle]").forEach(function(button){
@@ -1794,6 +2012,119 @@ footer a:hover{
   });
 
   selectProvider("reflex");
+
+
+  /* modern reveal */
+  var revealSections = Array.prototype.slice.call(
+    document.querySelectorAll(".reveal-section")
+  );
+
+  var supportsViewTimeline =
+    window.CSS &&
+    CSS.supports &&
+    CSS.supports("animation-timeline: view()");
+
+  if(!supportsViewTimeline && !reducedMotion){
+    document.documentElement.classList.add("io-reveal");
+
+    if("IntersectionObserver" in window){
+      var revealObserver = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(entry.isIntersecting){
+            entry.target.classList.add("is-revealed");
+            revealObserver.unobserve(entry.target);
+          }
+        });
+      }, {
+        threshold:.08,
+        rootMargin:"0px 0px -8% 0px"
+      });
+
+      revealSections.forEach(function(section){
+        revealObserver.observe(section);
+      });
+    }else{
+      revealSections.forEach(function(section){
+        section.classList.add("is-revealed");
+      });
+    }
+  }
+
+  /* active header/nav without scroll-event layout work */
+  var sectionTag = document.getElementById("section-tag");
+  var navLinks = Array.prototype.slice.call(
+    document.querySelectorAll("[data-section-link]")
+  );
+
+  var sectionMeta = [
+    { id:"hero", label:"S1 / RUNTIME" },
+    { id:"what", label:"S1 / WHAT" },
+    { id:"interop", label:"S1 / INTEROP" },
+    { id:"pi", label:"S1 / PI" }
+  ];
+
+  function setHeaderSection(id,label){
+    if(sectionTag){
+      sectionTag.textContent = label;
+    }
+
+    navLinks.forEach(function(link){
+      var active = link.getAttribute("data-section-link") === id;
+      link.classList.toggle("is-active",active);
+
+      if(active){
+        link.setAttribute("aria-current","location");
+      }else{
+        link.removeAttribute("aria-current");
+      }
+    });
+  }
+
+  if("IntersectionObserver" in window){
+    var visibleSections = new Map();
+
+    var sectionObserver = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          visibleSections.set(entry.target.id,entry.intersectionRatio);
+        }else{
+          visibleSections.delete(entry.target.id);
+        }
+      });
+
+      var active = null;
+
+      sectionMeta.forEach(function(meta){
+        var ratio = visibleSections.get(meta.id);
+
+        if(typeof ratio !== "number"){
+          return;
+        }
+
+        if(!active || ratio > active.ratio){
+          active = {
+            id:meta.id,
+            label:meta.label,
+            ratio:ratio
+          };
+        }
+      });
+
+      if(active){
+        setHeaderSection(active.id,active.label);
+      }
+    },{
+      threshold:[0,.12,.25,.4,.6],
+      rootMargin:"-68px 0px -48% 0px"
+    });
+
+    sectionMeta.forEach(function(meta){
+      var section = document.getElementById(meta.id);
+      if(section){
+        sectionObserver.observe(section);
+      }
+    });
+  }
 
   /* copy buttons */
   function temporaryButtonState(button, label){
@@ -1835,7 +2166,7 @@ footer a:hover{
     return success;
   }
 
-  document.querySelectorAll(".copy-btn").forEach(function(button){
+  document.querySelectorAll(".install-copy, .copy-btn").forEach(function(button){
     button.addEventListener("click", async function(){
       var text = button.getAttribute("data-copy") || "";
       var success = await copyText(text);
