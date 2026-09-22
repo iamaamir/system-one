@@ -27,7 +27,7 @@
     "coding-agent"
   ],
   "dependencies": {
-    "system-one-core": "^0.1.1"
+    "system-one-core": "^0.2.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
