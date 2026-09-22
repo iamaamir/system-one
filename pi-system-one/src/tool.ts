@@ -44,7 +44,7 @@ export function buildSystemOneTool(deps: { provider: SystemOneProvider }) {
         { signal }
       );
       const text = renderSystemOneResult(response as any);
-      return { content: [{ type: "text", text }], details: { answers: response.answers, model: response.model, usage: response.usage } };
+      return { content: [{ type: "text" as const, text }], details: { answers: response.answers, model: response.model, usage: response.usage } };
     },
   };
 }
