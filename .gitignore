@@ -11,3 +11,6 @@ dist/
 # misc
 .DS_Store
 *.tgz
+
+# Pi local state
+.pi/
