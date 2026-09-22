@@ -47,12 +47,12 @@ code,pre{font-family:var(--mono)}
 .site-head .wrap{display:flex;align-items:center;justify-content:space-between}
 .wordmark{font-weight:800;letter-spacing:-.02em;text-decoration:none;font-size:19px;display:flex;align-items:center;gap:10px}
 .wordmark .tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;border:1px solid var(--border);padding:2px 7px;border-radius:2px;font-weight:400}
-.site-nav{display:flex;gap:26px;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.site-nav{display:flex;gap:26px;font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .site-nav a{text-decoration:none}
 .site-nav a:hover{text-decoration:underline}
 /* ---------- shared visual grammar ---------- */
 .mono{font-family:var(--mono)}
-.micro{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+.micro{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
 .panel{border:1px solid var(--border);border-radius:4px;background:rgba(243,241,234,.78)}
 .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--success);margin-right:8px;vertical-align:1px}
 .wire{color:var(--text-muted);line-height:1.3}
@@ -69,10 +69,10 @@ h2.mid{font-size:clamp(2rem,4vw,3rem);letter-spacing:-.02em;margin:0 0 18px;font
 .field{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 .blob{position:absolute;border-radius:50%;filter:blur(90px);animation:drift 16s ease-in-out infinite alternate}
 .blob.b1{width:60vw;height:60vw;left:-12vw;top:-18vw;background:radial-gradient(closest-side,rgba(54,217,232,0.62),transparent 70%)}
-.blob.b2{width:52vw;height:52vw;right:-10vw;top:2vh;background:radial-gradient(closest-side,rgba(227,79,175,0.50),transparent 70%);animation-delay:-6s;animation-duration:19s}
+.blob.b2{width:52vw;height:52vw;right:-4vw;top:6vh;background:radial-gradient(closest-side,rgba(227,79,175,0.58),transparent 70%);animation-delay:-6s;animation-duration:19s}
 .blob.b3{width:48vw;height:48vw;left:24vw;bottom:-20vw;background:radial-gradient(closest-side,rgba(117,88,255,0.52),transparent 70%);animation-delay:-11s;animation-duration:14s}
-.blob.b4{width:28vw;height:28vw;right:20vw;bottom:6vh;background:radial-gradient(closest-side,rgba(197,240,75,0.34),transparent 70%);animation-delay:-3s;animation-duration:20s}
-.blob.b5{width:32vw;height:32vw;left:38vw;top:8vh;background:radial-gradient(closest-side,rgba(54,217,232,0.40),transparent 70%);animation-delay:-8s;animation-duration:17s}
+.blob.b4{width:30vw;height:30vw;right:14vw;bottom:2vh;background:radial-gradient(closest-side,rgba(197,240,75,0.38),transparent 70%);animation-delay:-3s;animation-duration:20s}
+.blob.b5{width:34vw;height:34vw;left:auto;right:6vw;top:22vh;background:radial-gradient(closest-side,rgba(54,217,232,0.48),transparent 70%);animation-delay:-8s;animation-duration:17s}
 /* recurring spectral motif: same field, whisper-quiet, behind key diagrams */
 .motif{position:relative;isolation:isolate}
 .motif::before,.motif::after{content:"";position:absolute;z-index:-1;border-radius:50%;filter:blur(70px);pointer-events:none}
@@ -87,7 +87,7 @@ h1{font-size:clamp(4rem,7.5vw,8rem);line-height:.9;font-weight:800;letter-spacin
 .hero-sub{font-size:19px;max-width:32em}
 .hero-sub code{font-size:.85em;background:rgba(234,231,222,.8);padding:1px 6px;border-radius:2px}
 .cta-row{display:flex;gap:12px;margin-top:30px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;height:44px;padding:0 18px;border:1px solid #111;background:transparent;color:var(--text);text-transform:uppercase;font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-decoration:none;border-radius:4px;transition:background .2s var(--ease),color .2s var(--ease),transform .2s var(--ease)}
+.btn{display:inline-flex;align-items:center;height:46px;padding:0 20px;border:1px solid #111;background:transparent;color:var(--text);text-transform:uppercase;font-family:var(--mono);font-size:14px;letter-spacing:.08em;text-decoration:none;border-radius:4px;transition:background .2s var(--ease),color .2s var(--ease),transform .2s var(--ease)}
 .btn:hover{transform:translateY(-1px)}
 .btn-p{background:#111;color:var(--text-inverse)}
 .btn-p:hover{background:#2a2a2a}
@@ -95,15 +95,22 @@ h1{font-size:clamp(4rem,7.5vw,8rem);line-height:.9;font-weight:800;letter-spacin
 /* hero machine */
 .machine{position:relative;border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.82);backdrop-filter:blur(2px);font-family:var(--mono);font-size:15px;line-height:1.6;box-shadow:8px 8px 0 rgba(17,17,17,.9);max-width:100%}
 .machine .mrow{display:flex;justify-content:space-between;gap:16px;padding:3px 0}
+.machine .sysrow{display:flex;justify-content:space-between;gap:16px;padding:5px 0;font-size:18px;font-weight:800;letter-spacing:.02em}
+.machine .sysrow span:last-child{text-align:right}
+.machine .provrow{display:flex;justify-content:space-between;gap:16px;padding:3px 0;font-size:13px;color:var(--text-secondary)}
+.machine .provrow span:last-child{text-align:right;color:var(--text)}
+.machine .provrow strong{color:var(--text)}
 .machine .mrow span:first-child{flex-shrink:0}
 .machine .mrow span:last-child{text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .machine .rrow span:last-child{text-align:right;flex-shrink:0}
-.machine .mhead{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--border);padding:10px 16px;font-size:12px;letter-spacing:.08em;white-space:nowrap;overflow:hidden}
+.machine .mhead{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--border);padding:10px 16px;font-size:13px;letter-spacing:.08em;white-space:nowrap;overflow:hidden}
 .machine .mbody{padding:20px 20px 22px}
 .machine .bus{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0 4px}
-.mnode{border:1px solid var(--border);border-radius:2px;padding:12px 8px;text-align:center;transition:all .25s var(--ease);background:transparent;min-width:0}
+.mnode{border:1px solid var(--border);border-radius:2px;padding:12px 8px;text-align:center;transition:all .2s var(--ease);background:transparent;min-width:0}
+.mnode:hover:not(.on){background:var(--acid-soft);transform:translateY(-2px)}
+.mnode.on:hover{background:#000}
 .mnode b{display:block;font-size:15px}
-.mnode small{font-size:12px;letter-spacing:.08em;color:var(--text-secondary)}
+.mnode small{font-size:13px;letter-spacing:.08em;color:var(--text-secondary)}
 .mnode.on{background:#111;color:var(--text-inverse)}
 .mnode.on small{color:var(--acid-soft)}
 .mnode .st{font-size:11px}
@@ -111,7 +118,7 @@ h1{font-size:clamp(4rem,7.5vw,8rem);line-height:.9;font-weight:800;letter-spacin
 .mresult .rrow{display:grid;grid-template-columns:1fr 52px;gap:10px;align-items:center;padding:4px 0}
 .mtrack{background:#D7D4CA;border-radius:2px;height:12px;overflow:hidden}
 .mfill{height:100%;width:0;background:var(--text);border-radius:2px;transition:width .8s var(--ease)}
-.machine .mfoot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding:10px 16px;font-size:12px;letter-spacing:.08em;white-space:nowrap;overflow:hidden}
+.machine .mfoot{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--border);padding:10px 16px;font-size:13px;letter-spacing:.08em;white-space:nowrap;overflow:hidden}
 .flash{animation:flash 1s var(--ease)}
 @keyframes flash{0%{background:var(--acid-soft)}100%{background:transparent}}
 .status-chip{position:absolute;top:-16px;right:24px;background:var(--bg);border:1px solid var(--border);border-radius:2px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;padding:4px 10px}
@@ -125,13 +132,13 @@ h1{font-size:clamp(4rem,7.5vw,8rem);line-height:.9;font-weight:800;letter-spacin
 .endpoint:hover{background:#111;color:var(--text-inverse);transform:translateY(-2px)}
 .endpoint:hover small{color:var(--acid-soft)}
 .endpoint b{display:block;font-size:19px}
-.endpoint small{font-size:12px;letter-spacing:.08em;color:var(--text-secondary);text-transform:uppercase}
+.endpoint small{font-size:13px;letter-spacing:.08em;color:var(--text-secondary);text-transform:uppercase}
 /* ---------- primitives ---------- */
 .instrument{border:1px solid var(--border);border-radius:6px;background:rgba(243,241,234,.78);padding:32px;margin-top:24px;box-shadow:6px 6px 0 rgba(17,17,17,.9);transition:transform .25s var(--ease)}
 .instrument:hover{transform:translateY(-2px)}
 .instrument .head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
 .instrument .name{font-family:var(--mono);font-weight:800;font-size:26px;letter-spacing:.02em}
-.instrument .spec{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--text-secondary);text-transform:uppercase}
+.instrument .spec{font-family:var(--mono);font-size:13px;letter-spacing:.08em;color:var(--text-secondary);text-transform:uppercase}
 .instrument .ex{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--text-muted);text-transform:uppercase;margin:18px 0 6px}
 .prow{display:grid;grid-template-columns:150px 1fr 56px;gap:12px;align-items:center;font-family:var(--mono);font-size:15px;padding:8px 0}
 .ptrack{background:#D7D4CA;border-radius:2px;height:16px;overflow:hidden}
@@ -212,6 +219,8 @@ h1{font-size:clamp(4rem,7.5vw,8rem);line-height:.9;font-weight:800;letter-spacin
 .depmap .box.core{background:#111;color:var(--text-inverse);font-weight:800;font-size:26px;padding:22px 44px}
 .depmap a.box:hover{background:#111;color:var(--text-inverse);transform:translateY(-2px)}
 .depmap .pair{display:flex;gap:28px;justify-content:center;margin:8px 0;flex-wrap:wrap}
+.depmap .wire{font-size:24px;font-weight:700;line-height:1.2;color:var(--text)}
+.depmap .caption{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-secondary);margin-top:20px}
 .depmap a{text-decoration:underline}
 /* ---------- state fanout ---------- */
 .statediag{margin-top:36px;font-family:var(--mono);font-size:17px;text-align:center;overflow:hidden;padding:24px 12px}
@@ -235,7 +244,7 @@ h1{font-size:clamp(4rem,7.5vw,8rem);line-height:.9;font-weight:800;letter-spacin
 .qs-body{padding:32px}
 /* ---------- closing / footer ---------- */
 .closing{padding:96px 0}
-.closing h2{font-size:clamp(3rem,7vw,7rem);line-height:.92;letter-spacing:-.03em;font-weight:800;margin:0 0 22px}
+.closing h2{font-size:clamp(4rem,10vw,10rem);line-height:.9;letter-spacing:-.03em;font-weight:800;margin:0 0 24px;text-transform:uppercase}
 footer{border-top:1px solid var(--border);padding:36px 0 48px;font-family:var(--mono);font-size:13px}
 footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
 footer .fbrand{font-weight:700;font-size:16px}
@@ -289,8 +298,8 @@ html{scroll-behavior:auto}
 <div class="mbody">
 <div class="mrow"><span>STATE</span><span>"export button crashes in Safari"</span></div>
 <div class="wire">│<br>▼</div>
-<div class="mrow"><span><strong>SYSTEM ONE</strong></span><span>● ACTIVE</span></div>
-<div class="mrow"><span>SystemOneProvider</span><span id="hero-provider"><strong>REFLEX</strong></span></div>
+<div class="sysrow"><span>SYSTEM ONE</span><span>● ACTIVE</span></div>
+<div class="provrow"><span>SystemOneProvider</span><span id="hero-provider"><strong>REFLEX</strong></span></div>
 <div class="wire">│<br>▼</div>
 <div class="bus" id="hero-providers">
 <div class="mnode" data-p="JEV"><b>JEV</b><small>hosted</small><div class="st">○</div></div>
@@ -391,7 +400,7 @@ html{scroll-behavior:auto}
 <p class="lede" style="margin-top:24px">Compatible <code>/v1/systemone</code> endpoints can use the same HTTP provider.</p>
 <div class="asym">
 <div><h2 class="mid">The protocol is<br>open at the edge.</h2></div>
-<div class="codepanel light" aria-label="Custom provider sketch"><span class="ln">1</span> <span class="k">class</span> <span class="f">MyProvider</span> <span class="k">implements</span> <span class="f">SystemOneProvider</span> <span class="p">{</span><br><span class="ln">2</span><span class="p">  </span><span class="k">readonly</span><span class="p"> id = </span><span class="s">"my-provider"</span><span class="p">;</span><br><span class="ln">3</span><br><span class="ln">4</span><span class="p">  </span><span class="k">async</span> <span class="f">evaluate</span><span class="p">(request) {</span><br><span class="ln">5</span><span class="p">    </span><span class="c">// your inference implementation</span><br><span class="ln">6</span><span class="p">  }</span><br><span class="ln">7</span> <span class="p">}</span></div>
+<div class="codepanel light" style="font-size:15.5px" aria-label="Custom provider sketch"><span class="ln">1</span> <span class="k">class</span> <span class="f">MyProvider</span> <span class="k">implements</span> <span class="f"><strong>SystemOneProvider</strong></span> <span class="p">{</span><br><span class="ln">2</span><span class="p">  </span><span class="k">readonly</span><span class="p"> id = </span><span class="s">"my-provider"</span><span class="p">;</span><br><span class="ln">3</span><br><span class="ln">4</span><span class="p">  </span><span class="k">async</span> <span class="f">evaluate</span><span class="p">(request) {</span><br><span class="ln">5</span><span class="p">    </span><span class="c">// your inference implementation</span><br><span class="ln">6</span><span class="p">  }</span><br><span class="ln">7</span> <span class="p">}</span></div>
 </div>
 <p class="lede" style="margin-top:32px">The provider interface leaves room for HTTP, local inference, native runtimes, WASM, and future transports.</p>
 </div></section>
@@ -418,6 +427,7 @@ html{scroll-behavior:auto}
 <div class="pair"><span class="box">pi-system-one</span><a class="box" href="https://github.com/iamaamir/pi-bifrost" style="text-decoration:underline">pi-bifrost</a></div>
 <div class="wire">│<br>▼</div>
 <div class="box">Pi</div>
+<p class="caption mono">pi-system-one · pi-bifrost consume system-one-core — core knows nothing about either</p>
 </div>
 <p class="lede" style="margin-top:32px">Pi exposes System One directly to agents. Pi-Bifrost consumes the same provider-neutral runtime for routing. Both depend on the primitive. Neither owns the abstraction.</p>
 </div></section>
@@ -451,7 +461,7 @@ html{scroll-behavior:auto}
 <hr style="border:0;border-top:1px solid var(--border);margin:0">
 <section class="closing" aria-labelledby="close-h"><div class="wrap">
 <p class="eyebrow">S1 / Runtime</p>
-<h2 id="close-h">System One is<br>the abstraction.</h2>
+<h2 id="close-h">System One<br>is the<br>abstraction.</h2>
 <p class="lede">Choose your provider. Keep your application.</p>
 <div class="cta-row"><a class="btn btn-p" href="https://github.com/iamaamir/system-one">View on GitHub</a><a class="btn btn-s" href="#architecture">Read architecture</a></div>
 </div></section>
