@@ -11,6 +11,13 @@ A provider-neutral System One runtime for TypeScript and Pi. System One is the a
 
 Dependency direction: `pi-system-one` → `system-one-core`. Nothing here depends on routing, model tiers, or Bifrost policy.
 
+## Tested against
+
+- **TypeSafe Jev** (`jev-latest`, resolved `jev-1.13.0`): live contract + golden fixtures + end-to-end Pi agent run
+- **Reflex** (local `Qwen3.5-2B`): live contract + golden fixtures + end-to-end Pi agent run
+
+Same client, same provider class — only configuration changes.
+
 ## Quickstart
 
 ```ts
