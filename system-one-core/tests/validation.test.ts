@@ -96,4 +96,48 @@ describe("validation", () => {
       /protocol/i,
     );
   });
+  it("binds score keys to criteria in either convention", () => {
+    const questions = { s: score("How hard?", ["easy", "hard"]) };
+    const goodIndex = {
+      answers: {
+        s: {
+          type: "score",
+          score: 1,
+          probabilities: { "0": 0.5, "1": 0.5 },
+          legend: { "0": "easy", "1": "hard" },
+          confidence: 0.5,
+        },
+      },
+    };
+    assert.equal(
+      (validateResponse(questions, goodIndex, "p").answers.s as any).score,
+      1,
+    );
+    for (const bad of [
+      {
+        answers: {
+          s: {
+            type: "score",
+            score: 1,
+            probabilities: { "0": 0.5, "9": 0.5 },
+            legend: { "0": "easy", "1": "hard" },
+            confidence: 0.5,
+          },
+        },
+      },
+      {
+        answers: {
+          s: {
+            type: "score",
+            score: 1,
+            probabilities: { "0": 0.5, "1": 0.5 },
+            legend: { "0": "easy" },
+            confidence: 0.5,
+          },
+        },
+      },
+    ]) {
+      assert.throws(() => validateResponse(questions, bad, "p"), /protocol/i);
+    }
+  });
 });

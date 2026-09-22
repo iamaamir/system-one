@@ -29,9 +29,10 @@ function usage() {
   console.log(`usage: release.mjs [--major|--minor|--patch] [pkg...] [--publish] [--dry-run]
   run bare for fully interactive: pick packages, bump type, then dry-run or publish.
   flags preselect steps (useful non-interactively); omitted steps prompt.
+  one bump type applies uniformly to all selected packages.
   pkg: system-one-core, pi-system-one
   --publish: push main + created tags (triggers Release workflow)
-  --dry-run: print plan, change nothing`);
+  --dry-run: print plan, change nothing (mutually exclusive with --publish)`);
 }
 
 function parseArgs(argv) {
@@ -43,6 +44,10 @@ function parseArgs(argv) {
       usage();
       process.exit(0);
     } else if (a === "--minor" || a === "--patch" || a === "--major") {
+      if (args.bump) {
+        console.error("only one bump type allowed");
+        process.exit(1);
+      }
       args.bump = a.slice(2);
     } else if (a.startsWith("-")) {
       console.error(`unknown flag: ${a}`);
@@ -53,8 +58,13 @@ function parseArgs(argv) {
 }
 
 function sh(cmd, opts = {}) {
-  const out = execSync(cmd, { cwd: ROOT, encoding: "utf8", ...opts });
-  return typeof out === "string" ? out.trim() : "";
+  try {
+    const out = execSync(cmd, { cwd: ROOT, encoding: "utf8", ...opts });
+    return typeof out === "string" ? out.trim() : "";
+  } catch (e) {
+    const detail = [e.stdout, e.stderr].filter(Boolean).join("\n");
+    throw new Error(`command failed: ${cmd}${detail ? `\n${detail}` : ""}`);
+  }
 }
 
 function bumpVersion(version, type) {
@@ -72,7 +82,8 @@ function getDepRange(current, newVersion) {
   // Keep the existing range style, retarget at the bumped version.
   if (current.startsWith("^")) return `^${newVersion}`;
   if (current.startsWith("~")) return `~${newVersion}`;
-  return newVersion;
+  if (/^\d+\.\d+\.\d+$/.test(current)) return newVersion;
+  throw new Error(`unsupported dependency range style: ${current}`);
 }
 
 function readPkg(dir) {
@@ -166,6 +177,10 @@ async function main() {
     }
   }
 
+  if (args.publish && args.dryRun) {
+    console.error("--publish and --dry-run are mutually exclusive");
+    process.exit(1);
+  }
   let mode = args.publish ? "publish" : args.dryRun ? "dry-run" : null;
   if (!mode) {
     requireTTY("mode");
@@ -218,6 +233,19 @@ async function main() {
   sh("npm run lint", { stdio: "inherit" });
   sh("npm test", { stdio: "inherit" });
 
+  // A core major exiles dependents: refuse unless pi rides along.
+  const coreBump = plan.find((b) => b.name === "system-one-core");
+  if (
+    coreBump &&
+    bump === "major" &&
+    !plan.some((b) => b.name === "pi-system-one")
+  ) {
+    console.error(
+      "core major bump requires pi-system-one in the same release (its dependency range would be orphaned)",
+    );
+    process.exit(1);
+  }
+
   for (const b of plan) {
     const { path: pkgPath, json } = readPkg(b.dir);
     json.version = b.newVersion;
@@ -241,14 +269,24 @@ async function main() {
     "npm install --package-lock-only --offline || npm install --package-lock-only",
   );
 
+  // One commit for all bumps: lockfile and package.jsons stay consistent.
+  for (const b of plan) sh(`git add ${b.dir}/package.json`);
+  sh("git add package-lock.json");
+  const names = plan.map((b) => `${b.name} to ${b.newVersion}`).join(", ");
+  sh(`git commit -m "chore: bump ${names}"`);
   for (const b of plan) {
-    sh(`git add ${b.dir}/package.json package-lock.json`);
-    sh(`git commit -m "chore: bump ${b.name} to ${b.newVersion}"`);
     sh(`git tag ${b.name}@${b.newVersion}`);
     console.log(`committed + tagged ${b.name}@${b.newVersion}`);
   }
 
   if (mode === "publish") {
+    const branch = sh("git branch --show-current");
+    if (branch !== "main") {
+      console.error(
+        `refusing to publish from branch "${branch}" (must be main)`,
+      );
+      process.exit(1);
+    }
     const tags = plan.map((b) => `${b.name}@${b.newVersion}`).join(" ");
     sh(`git push origin main ${tags}`, { stdio: "inherit" });
     console.log("pushed main + tags (Release workflow triggered)");

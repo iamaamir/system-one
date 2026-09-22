@@ -82,12 +82,18 @@ export interface ConfigAnswers {
 export function applyConfigAnswers(
   session: SessionConfig,
   answers: ConfigAnswers,
+  env: SystemOneEnv = process.env,
 ): boolean {
   if (answers.baseUrl) session.current.baseUrl = answers.baseUrl;
   if (answers.model) session.current.model = answers.model;
   const timeoutMs = Number(answers.timeoutMs);
   if (answers.timeoutMs && Number.isFinite(timeoutMs) && timeoutMs > 0) {
     session.current.timeoutMs = timeoutMs;
+  }
+  if (answers.apiKey === "-") {
+    session.current.apiKey = env.SYSTEM_ONE_API_KEY || undefined;
+    session.keyInMemory = false;
+    return false;
   }
   if (answers.apiKey) {
     session.current.apiKey = answers.apiKey;

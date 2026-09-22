@@ -19,7 +19,7 @@
     }
   },
   "response": {
-    "model": "/Users/mak/models/Qwen3.5-2B",
+    "model": "Qwen3.5-2B-local",
     "answers": {
       "complexity": {
         "type": "score",

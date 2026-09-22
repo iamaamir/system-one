@@ -7,7 +7,7 @@ import { buildSystemOneTool } from "../src/tool.ts";
 
 describe("system_one tool", () => {
   it("delegates a mixed batch and preserves details", async () => {
-    const tool: any = buildSystemOneTool({
+    const tool = buildSystemOneTool({
       provider: new MockSystemOneProvider({
         answers: {
           t: {
@@ -29,14 +29,14 @@ describe("system_one tool", () => {
       },
       undefined,
       undefined,
-      {},
+      {} as never,
     );
     const text = JSON.stringify(res);
     assert.match(text, /"a"/);
-    assert.equal(res.details.answers.t.choice, "a");
+    assert.equal((res.details.answers.t as { choice: string }).choice, "a");
   });
   it("propagates provider errors by throwing (never error-results)", async () => {
-    const tool: any = buildSystemOneTool({
+    const tool = buildSystemOneTool({
       provider: {
         id: "boom",
         async evaluate() {
@@ -53,7 +53,7 @@ describe("system_one tool", () => {
         },
         undefined,
         undefined,
-        {},
+        {} as never,
       ),
       /down/,
     );
@@ -88,7 +88,7 @@ describe("system_one tool", () => {
         };
       },
     };
-    const tool: any = buildSystemOneTool({ provider: stub as any });
+    const tool = buildSystemOneTool({ provider: stub as any });
     const controller = new AbortController();
     const res = await tool.execute(
       "id-3",
@@ -110,11 +110,14 @@ describe("system_one tool", () => {
         },
       },
       controller.signal,
+      undefined,
+      {} as never,
     );
-    assert.equal(res.details.answers.c.choice, "a");
-    assert.equal(res.details.answers.n.noul, 0.8);
-    assert.equal(res.details.answers.s.score, 1.5);
+    assert.equal((res.details.answers.c as { choice: string }).choice, "a");
+    assert.equal((res.details.answers.n as { noul: number }).noul, 0.8);
+    assert.equal((res.details.answers.s as { score: number }).score, 1.5);
     assert.deepEqual(res.details.usage, { inputTokens: 5, outputTokens: 2 });
+    assert.deepEqual(res.details.metadata, { provider: "stub" });
     assert.equal(seenRequest.model, "jev-latest");
     assert.equal(seenOptions.signal, controller.signal);
   });

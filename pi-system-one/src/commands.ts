@@ -23,7 +23,7 @@ export function registerSystemOneCommands(
   store: SessionStore,
 ) {
   function applyProvider() {
-    if (!store.session) return;
+    if (!store.session?.current.baseUrl) return;
     const ext = store.session.current;
     const provider = new HttpSystemOneProvider({
       id: "configured",
@@ -37,34 +37,39 @@ export function registerSystemOneCommands(
 
   async function cmdConfig(ctx: ExtensionCommandContext): Promise<void> {
     const cur = store.session?.current;
-    const baseUrl = await ctx.ui.input(
-      `SYSTEM_ONE_BASE_URL (current: ${cur?.baseUrl ?? "unset"}):`,
+    const baseUrlRaw = await ctx.ui.input(
+      `SYSTEM_ONE_BASE_URL (current: ${cur?.baseUrl || "unset"}):`,
       cur?.baseUrl ?? "",
     );
-    if (!baseUrl) {
-      ctx.ui.notify("Cancelled (base URL is required).", "info");
-      return;
-    }
-    const model = await ctx.ui.input(
-      `SYSTEM_ONE_MODEL (current: ${cur?.model ?? "server default"}):`,
-      cur?.model ?? "",
-    );
-    if (model === undefined) {
+    if (baseUrlRaw === undefined) {
       ctx.ui.notify("Cancelled.", "info");
       return;
     }
-    const apiKey = await ctx.ui.input(
-      "SYSTEM_ONE_API_KEY (empty = keep, memory-only, gone when the session closes):",
+    const baseUrl = baseUrlRaw.trim();
+    if (!baseUrl && !cur?.baseUrl) {
+      ctx.ui.notify("Cancelled (base URL is required).", "info");
+      return;
+    }
+    const modelRaw = await ctx.ui.input(
+      `SYSTEM_ONE_MODEL (current: ${cur?.model ?? "server default"}):`,
+      cur?.model ?? "",
+    );
+    if (modelRaw === undefined) {
+      ctx.ui.notify("Cancelled.", "info");
+      return;
+    }
+    const apiKeyRaw = await ctx.ui.input(
+      "SYSTEM_ONE_API_KEY (empty = keep, - = forget memory key, memory-only, gone when the session closes):",
       "",
     );
-    if (apiKey === undefined) {
+    if (apiKeyRaw === undefined) {
       ctx.ui.notify("Cancelled.", "info");
       return;
     }
     const answers: ConfigAnswers = {
       baseUrl,
-      model,
-      apiKey,
+      model: modelRaw.trim(),
+      apiKey: apiKeyRaw.trim(),
       timeoutMs: "",
     };
     if (!store.session) {
@@ -93,18 +98,25 @@ export function registerSystemOneCommands(
 
   const completions = [
     {
+      value: "config",
+      label: "config - change endpoint, model, or key",
+      description: "Reconfigure System One for this session",
+    },
+    {
       value: "status",
-      label: "status",
+      label: "status - show current config",
       description: "Show current endpoint, model, and key source",
     },
   ];
 
   pi.registerCommand("so", {
     description: "System One config (/so status for current)",
-    getArgumentCompletions: (prefix: string) =>
-      completions.filter((c) => c.value.startsWith(prefix.trim())),
+    getArgumentCompletions: (prefix: string) => {
+      const p = prefix.trim().toLowerCase();
+      return completions.filter((c) => c.value.startsWith(p));
+    },
     handler: async (args, ctx) => {
-      const [cmd] = args.trim().split(/\s+/);
+      const [cmd] = args.trim().toLowerCase().split(/\s+/);
       if (cmd === "status") await cmdStatus(ctx);
       else await cmdConfig(ctx);
     },

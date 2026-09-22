@@ -7,6 +7,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { SystemOne } from "../src/client.ts";
 import { HttpSystemOneProvider } from "../src/providers/http.ts";
+import type { QuestionMap } from "../src/questions.ts";
+
+interface StoredFixture {
+  request: { state: string; questions: QuestionMap };
+}
 
 const dir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -22,7 +27,7 @@ async function check(
   provider: HttpSystemOneProvider,
   request: {
     state: string;
-    questions: Record<string, never>;
+    questions: QuestionMap;
     model?: string;
   },
 ): Promise<void> {
@@ -31,8 +36,15 @@ async function check(
     await s1.evaluate(request);
     console.log(`ok   ${name}`);
   } catch (e) {
+    const msg = (e as Error).message;
+    if (provider.id === "reflex" && /ECONNREFUSED|fetch failed/i.test(msg)) {
+      console.log(
+        `skip ${name} (no Reflex server; start one or set SYSTEM_ONE_REFLEX_URL)`,
+      );
+      return;
+    }
     failures.push(name);
-    console.log(`FAIL ${name}: ${(e as Error).message}`);
+    console.log(`FAIL ${name}: ${msg}`);
   }
 }
 
@@ -49,7 +61,7 @@ const reflex = new HttpSystemOneProvider({
 for (const f of readdirSync(dir)
   .filter((x) => x.endsWith(".json") && !x.startsWith("."))
   .sort()) {
-  const fx = JSON.parse(readFileSync(join(dir, f), "utf8"));
+  const fx = JSON.parse(readFileSync(join(dir, f), "utf8")) as StoredFixture;
   if (f.startsWith("typesafe-") && !reflexOnly) {
     if (!process.env.TYPESAFE_API_KEY) {
       console.log(`skip ${f} (no TYPESAFE_API_KEY)`);
@@ -65,6 +77,8 @@ for (const f of readdirSync(dir)
       state: fx.request.state,
       questions: fx.request.questions,
     });
+  } else {
+    console.log(`skip ${f} (unknown filename prefix)`);
   }
 }
 if (failures.length > 0) {

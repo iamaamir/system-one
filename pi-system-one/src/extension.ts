@@ -10,11 +10,13 @@ export default function piSystemOneExtension(pi: ExtensionAPI) {
   try {
     store.session = createSessionConfig();
   } catch {
-    pi.on("session_start", (_event, ctx) => {
-      ctx.ui.notify(
-        "System One: SYSTEM_ONE_BASE_URL is not set. Export it or run /so config.",
-        "warning",
-      );
+    pi.on("session_start", (event, ctx) => {
+      if (event.reason === "startup" || event.reason === "new") {
+        ctx.ui.notify(
+          "System One: SYSTEM_ONE_BASE_URL is not set. Export it or run /so config.",
+          "warning",
+        );
+      }
     });
   }
 

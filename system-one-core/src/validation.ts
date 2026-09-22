@@ -18,8 +18,8 @@ function normalizeUsage(
 ): { inputTokens?: number; outputTokens?: number } | undefined {
   if (!u || typeof u !== "object") return undefined;
   const o = u as Record<string, unknown>;
-  const inputTokens = asCount(o.inputTokens ?? o.input_tokens);
-  const outputTokens = asCount(o.outputTokens ?? o.output_tokens);
+  const inputTokens = asCount(o.inputTokens) ?? asCount(o.input_tokens);
+  const outputTokens = asCount(o.outputTokens) ?? asCount(o.output_tokens);
   if (inputTokens === undefined && outputTokens === undefined) return undefined;
   return {
     ...(inputTokens !== undefined ? { inputTokens } : {}),
@@ -64,16 +64,33 @@ export function validateResponse<Q extends QuestionMap>(
         confidence: a.confidence,
       };
     } else {
+      // Score keys come in two conventions (both seen live): index slots
+      // ("0".."n-1") or criteria values. Accept either, reject anything else.
+      const criteria = (q as any).criteria as readonly unknown[];
+      const slots = criteria.map((_, i) => String(i));
+      const values = criteria.map((c) => String(c));
+      const keyOk = (k: string) => slots.includes(k) || values.includes(k);
       if (!isFiniteNum(a.score))
         throw new SystemOneProtocolError(`invalid score for ${id}`);
       if (!isFiniteNum(a.confidence) || a.confidence < 0 || a.confidence > 1)
         throw new SystemOneProtocolError(`invalid confidence for ${id}`);
       if (!a.legend || typeof a.legend !== "object")
         throw new SystemOneProtocolError(`missing legend for ${id}`);
+      const legendKeys = Object.keys(a.legend as object);
+      const legendOk =
+        slots.every((s) => legendKeys.includes(s)) ||
+        values.every((v) => legendKeys.includes(v));
+      if (!legendOk)
+        throw new SystemOneProtocolError(`incomplete legend for ${id}`);
       if (!a.probabilities || typeof a.probabilities !== "object")
         throw new SystemOneProtocolError(`missing probabilities for ${id}`);
-      for (const v of Object.values(a.probabilities))
-        assertProb(v, `${id}.prob`);
+      for (const k of Object.keys(a.probabilities)) {
+        if (!keyOk(k))
+          throw new SystemOneProtocolError(
+            `unknown probability key for ${id}.${k}`,
+          );
+        assertProb((a.probabilities as any)[k], `${id}.${k}`);
+      }
       answers[id] = {
         type: "score",
         score: a.score,

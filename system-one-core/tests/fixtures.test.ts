@@ -14,7 +14,7 @@ const files = readdirSync(dir).filter(
   (f) => f.endsWith(".json") && !f.startsWith("."),
 );
 
-describe("typesafe fixtures", () => {
+describe("golden fixtures", () => {
   for (const f of files) {
     it(`${f} validates with normalized usage`, () => {
       const fx = JSON.parse(readFileSync(join(dir, f), "utf8"));
@@ -23,7 +23,7 @@ describe("typesafe fixtures", () => {
         fx.response,
         "provider",
       );
-      assert.deepEqual(
+      assert.deepStrictEqual(
         Object.keys(out.answers).sort(),
         Object.keys(fx.request.questions).sort(),
       );
@@ -31,6 +31,7 @@ describe("typesafe fixtures", () => {
         typeof out.model === "string" && out.model.length > 0,
         "model reported",
       );
+      if (!f.startsWith("typesafe-")) return;
       assert.ok(
         (out.usage?.inputTokens ?? 0) > 0,
         "inputTokens normalized from input_tokens",

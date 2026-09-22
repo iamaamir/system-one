@@ -16,12 +16,19 @@ export function renderSystemOneResult(response: {
         lines.push(`    ${k}: ${v}`);
     } else if (a?.type === "noul") {
       lines.push(`${id}:`, `  noul: ${a.noul}`);
-    } else {
+    } else if (a?.type === "score") {
       lines.push(
         `${id}:`,
         `  score: ${a.score}`,
         `  confidence: ${a.confidence}`,
       );
+      if (a.probabilities && typeof a.probabilities === "object") {
+        lines.push(`  probabilities:`);
+        for (const [k, v] of Object.entries(a.probabilities))
+          lines.push(`    ${k}: ${v}`);
+      }
+    } else {
+      lines.push(`${id}:`, `  unknown answer type: ${a?.type ?? "missing"}`);
     }
     lines.push("");
   }

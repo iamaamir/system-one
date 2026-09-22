@@ -29,4 +29,19 @@ describe("render", () => {
     assert.match(text, /complex:[\s\S]*noul: 0\.82/);
     assert.match(text, /difficulty:[\s\S]*score: 1\.7/);
   });
+  it("renders score probabilities and flags unknown types", () => {
+    const text = renderSystemOneResult({
+      answers: {
+        difficulty: {
+          type: "score",
+          score: 1.7,
+          probabilities: { "0": 0.1, "2": 0.7 },
+          confidence: 0.84,
+        },
+        weird: { type: "mystery", value: 1 },
+      },
+    } as any);
+    assert.match(text, /difficulty:[\s\S]*0: 0\.1/);
+    assert.match(text, /weird:[\s\S]*unknown answer type: mystery/);
+  });
 });

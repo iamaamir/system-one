@@ -65,18 +65,17 @@ export class HttpSystemOneProvider implements SystemOneProvider {
       controller.abort();
     }, this.opts.timeoutMs);
     (timer as any)?.unref?.();
+    const onExternalAbort = () => controller.abort();
     if (options?.signal) {
       if (options.signal.aborted) controller.abort();
-      else
-        options.signal.addEventListener("abort", () => controller.abort(), {
-          once: true,
-        });
+      else options.signal.addEventListener("abort", onExternalAbort);
     }
     try {
       const headers: Record<string, string> = {
         "content-type": "application/json",
         ...this.opts.headers,
       };
+      // Explicit apiKey wins over an Authorization entry in opts.headers.
       if (this.opts.apiKey)
         headers.Authorization = `Bearer ${this.opts.apiKey}`;
       const model = options?.model ?? request.model ?? this.opts.defaultModel;
@@ -138,6 +137,7 @@ export class HttpSystemOneProvider implements SystemOneProvider {
       return out;
     } finally {
       clearTimeout(timer);
+      options?.signal?.removeEventListener("abort", onExternalAbort);
     }
   }
 }

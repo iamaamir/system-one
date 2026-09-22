@@ -1,6 +1,7 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: intentional dynamic boundary over JSON protocol values
 // pi-system-one/src/tool.ts
 
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import { SystemOne, type SystemOneProvider } from "system-one-core";
 import type { Static } from "typebox";
 import { Type } from "typebox";
@@ -34,9 +35,16 @@ export const systemOneParams = Type.Object({
 });
 export type SystemOneParams = Static<typeof systemOneParams>;
 
+export interface SystemOneDetails {
+  answers: Record<string, unknown>;
+  model?: string;
+  usage?: { inputTokens?: number; outputTokens?: number };
+  metadata: { provider: string; latencyMs?: number };
+}
+
 export function buildSystemOneTool(deps: { provider: SystemOneProvider }) {
   const systemOne = new SystemOne({ provider: deps.provider });
-  return {
+  const tool: ToolDefinition<typeof systemOneParams, SystemOneDetails> = {
     name: "system_one",
     label: "System One",
     description:
@@ -44,11 +52,8 @@ export function buildSystemOneTool(deps: { provider: SystemOneProvider }) {
       "Use this when the answer space is known and a fast probabilistic decision is preferable to generating free-form text. " +
       "Multiple independent choice, noul, and score questions should be batched into one call when they share the same state.",
     parameters: systemOneParams,
-    async execute(
-      _toolCallId: string,
-      params: SystemOneParams,
-      signal: AbortSignal | undefined,
-    ) {
+    async execute(toolCallId, params, signal, _onUpdate, _ctx) {
+      void toolCallId;
       // Throw on failure per Pi contract — never encode errors in content.
       // Safe to propagate unwrapped: core error messages/codes never contain secrets.
       const response = await systemOne.evaluate(
@@ -66,8 +71,10 @@ export function buildSystemOneTool(deps: { provider: SystemOneProvider }) {
           answers: response.answers,
           model: response.model,
           usage: response.usage,
+          metadata: response.metadata,
         },
       };
     },
   };
+  return tool;
 }
