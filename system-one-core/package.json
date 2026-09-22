@@ -1,0 +1,18 @@
+{
+  "name": "system-one-core",
+  "version": "0.1.0",
+  "description": "Provider-neutral System One runtime for TypeScript. Plug in TypeSafe Jev, Reflex, or your own provider.",
+  "type": "module",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "test": "node --test --experimental-strip-types \"tests/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.5.0" }
+}

@@ -1,0 +1,38 @@
+{
+  "request": {
+    "state": "Find the current price of gold and summarize it in a file.",
+    "questions": {
+      "tool": {
+        "type": "choice",
+        "instructions": "Which capability should handle this request?",
+        "criteria": {
+          "web": "Current public information",
+          "files": "User-provided files",
+          "shell": "Local development operations",
+          "none": "No external capability required"
+        }
+      }
+    },
+    "model": "jev-latest"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tool": {
+        "type": "choice",
+        "choice": "web",
+        "probabilities": {
+          "shell": 0,
+          "files": 0,
+          "web": 1,
+          "none": 0
+        },
+        "confidence": 0.99
+      }
+    },
+    "usage": {
+      "input_tokens": 354,
+      "output_tokens": 45
+    }
+  }
+}

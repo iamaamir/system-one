@@ -1,0 +1,13 @@
+# deps
+node_modules/
+
+# build output
+*/dist/
+dist/
+
+# local reference only — separate repo outside this monorepo
+/pi-bifrost
+
+# misc
+.DS_Store
+*.tgz

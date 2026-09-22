@@ -1,0 +1,52 @@
+{
+  "request": {
+    "state": "Migrate the auth module to the new session protocol.",
+    "questions": {
+      "complexity": {
+        "type": "score",
+        "instructions": "How complex is this task?",
+        "criteria": [
+          "Trivial",
+          "Moderate",
+          "Complex",
+          "Highly complex"
+        ]
+      },
+      "needsReasoning": {
+        "type": "noul",
+        "instructions": "Does this request require substantial reasoning?"
+      }
+    },
+    "model": "jev-latest"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "complexity": {
+        "type": "score",
+        "score": 2.18,
+        "probabilities": {
+          "0": 0,
+          "1": 0.04,
+          "2": 0.75,
+          "3": 0.21
+        },
+        "legend": {
+          "0": "Trivial",
+          "1": "Moderate",
+          "2": "Complex",
+          "3": "Highly complex"
+        },
+        "confidence": 0.75
+      },
+      "needsReasoning": {
+        "type": "noul",
+        "noul": 0.62
+      }
+    },
+    "usage": {
+      "input_tokens": 333,
+      "output_tokens": 38
+    }
+  }
+}

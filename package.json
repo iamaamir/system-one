@@ -1,0 +1,9 @@
+{
+  "private": true,
+  "type": "module",
+  "workspaces": ["system-one-core", "pi-system-one"],
+  "scripts": {
+    "test": "npm --workspace system-one-core run test",
+    "typecheck": "npm --workspace system-one-core run typecheck"
+  }
+}
