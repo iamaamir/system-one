@@ -45,5 +45,4 @@ Live contract tests (skipped by default): `SYSTEM_ONE_TEST_TYPESAFE=1` (+ `TYPES
 
 ## Related
 
-- `pi-bifrost` (separate repo, symlinked here untracked for reference): consumes `system-one-core` for model routing
-- [Reflex](https://github.com/kshetrajna12/reflex): open local System One implementation
+- [pi-bifrost](https://github.com/iamaamir/pi-bifrost) (separate repo): model routing for Pi, consumes `system-one-core`
