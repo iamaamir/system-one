@@ -91,8 +91,18 @@ export function registerSystemOneCommands(
     ctx.ui.notify(describeConfig(store.session), "info");
   }
 
+  const completions = [
+    {
+      value: "status",
+      label: "status",
+      description: "Show current endpoint, model, and key source",
+    },
+  ];
+
   pi.registerCommand("so", {
     description: "System One config (/so status for current)",
+    getArgumentCompletions: (prefix: string) =>
+      completions.filter((c) => c.value.startsWith(prefix.trim())),
     handler: async (args, ctx) => {
       const [cmd] = args.trim().split(/\s+/);
       if (cmd === "status") await cmdStatus(ctx);
