@@ -1477,6 +1477,238 @@ footer a:hover{
   }
 }
 
+
+/* ---------- editorial micro-details ---------- */
+.primitive-card{
+  position:relative;
+  overflow:hidden;
+}
+.primitive-card::after{
+  content:attr(data-index);
+  position:absolute;
+  right:14px;
+  bottom:8px;
+  font-family:var(--mono);
+  font-size:34px;
+  line-height:1;
+  letter-spacing:-.08em;
+  color:rgba(17,17,17,.055);
+  pointer-events:none;
+  transition:color .22s var(--ease),transform .22s var(--ease);
+}
+.primitive-card::before{
+  content:"";
+  position:absolute;
+  left:-1px;
+  top:18px;
+  width:3px;
+  height:34px;
+  background:var(--acid);
+  transform:scaleY(.28);
+  transform-origin:top;
+  transition:transform .24s var(--ease);
+}
+@media(hover:hover) and (pointer:fine){
+  .primitive-card:hover::after{
+    color:rgba(17,17,17,.11);
+    transform:translateY(-2px);
+  }
+  .primitive-card:hover::before{
+    transform:scaleY(1);
+  }
+}
+
+.marker-code{
+  position:relative;
+  isolation:isolate;
+  display:inline-block;
+  padding:1px 2px;
+  font-family:var(--mono);
+  font-size:11px;
+  line-height:1.55;
+}
+.marker-code::before,
+.marker-code::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  left:-6px;
+  right:-7px;
+  height:.78em;
+  background:rgba(234,244,113,.78);
+  transform-origin:left center;
+  pointer-events:none;
+}
+.marker-code::before{
+  top:48%;
+  transform:rotate(-1.2deg) skewX(-7deg);
+  border-radius:4px 2px 5px 2px;
+}
+.marker-code::after{
+  left:-2px;
+  right:-4px;
+  top:58%;
+  height:.46em;
+  opacity:.44;
+  transform:rotate(.65deg) skewX(5deg);
+  border-radius:2px 5px 3px 4px;
+}
+
+.pi-install-copy{
+  min-width:0;
+  display:grid;
+  justify-items:start;
+  gap:8px;
+}
+.micro-link{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  color:var(--text-secondary);
+  font-family:var(--mono);
+  font-size:9px;
+  font-weight:700;
+  letter-spacing:.07em;
+  text-decoration:none;
+  text-transform:uppercase;
+}
+.micro-link::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:16px;
+  bottom:-3px;
+  height:1px;
+  background:currentColor;
+  transform:scaleX(.32);
+  transform-origin:left center;
+  opacity:.48;
+  transition:transform .22s var(--ease),opacity .22s var(--ease);
+}
+.micro-link span{
+  display:inline-block;
+  transition:transform .22s var(--ease);
+}
+@media(hover:hover) and (pointer:fine){
+  .micro-link:hover::after{
+    transform:scaleX(1);
+    opacity:1;
+  }
+  .micro-link:hover span{
+    transform:translate(2px,-2px);
+  }
+}
+
+.install-row-core{
+  padding:11px 13px;
+}
+.install-command-group{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.install-context{
+  flex:0 0 auto;
+  padding-right:12px;
+  border-right:1px solid #353535;
+  color:#8F8F87;
+  font-family:var(--mono);
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.12em;
+}
+.install-row-actions{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+.dark-link{
+  color:#BDBDB5;
+}
+
+.inline-discovery-link{
+  position:relative;
+  color:inherit;
+  text-decoration:none;
+}
+.inline-discovery-link::after{
+  content:"";
+  position:absolute;
+  left:-1px;
+  right:-1px;
+  bottom:-2px;
+  height:4px;
+  z-index:-1;
+  background:rgba(54,217,232,.28);
+  transform:rotate(-.7deg) scaleX(.72);
+  transform-origin:left center;
+  transition:transform .2s var(--ease),background .2s var(--ease);
+}
+.inline-discovery-link:nth-of-type(2)::after{
+  background:rgba(117,88,255,.22);
+  transform:rotate(.8deg) scaleX(.72);
+}
+@media(hover:hover) and (pointer:fine){
+  .inline-discovery-link:hover::after{
+    transform:rotate(0) scaleX(1);
+    background:rgba(197,240,75,.48);
+  }
+}
+
+.pi-core{
+  position:relative;
+  overflow:hidden;
+}
+.pi-core::after{
+  content:"00 / SHARED";
+  position:absolute;
+  right:18px;
+  bottom:-3px;
+  font-family:var(--mono);
+  font-size:26px;
+  font-weight:800;
+  letter-spacing:-.07em;
+  color:rgba(244,242,235,.055);
+  pointer-events:none;
+}
+
+@media(max-width:850px){
+  .install-row-core{
+    align-items:flex-start;
+  }
+  .install-command-group{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:5px;
+  }
+  .install-context{
+    padding-right:0;
+    border-right:0;
+  }
+  .install-row-actions{
+    align-self:center;
+  }
+}
+@media(max-width:520px){
+  .install-row-core{
+    flex-wrap:wrap;
+  }
+  .install-row-actions{
+    width:100%;
+    justify-content:space-between;
+    margin-top:5px;
+  }
+  .pi-install{
+    align-items:flex-end;
+  }
+  .marker-code{
+    font-size:10px;
+  }
+}
+
 </style>
 </head>
 
@@ -1629,7 +1861,7 @@ footer a:hover{
     </div>
 
     <div class="primitive-grid" aria-label="System One primitives">
-      <article class="primitive-card">
+      <article class="primitive-card" data-index="01">
         <div class="primitive-head">
           <strong>CHOICE</strong>
           <span>bounded option</span>
@@ -1656,7 +1888,7 @@ footer a:hover{
         <div class="primitive-result">example → selected: <strong>coding</strong></div>
       </article>
 
-      <article class="primitive-card">
+      <article class="primitive-card" data-index="02">
         <div class="primitive-head">
           <strong>NOUL</strong>
           <span>proposition</span>
@@ -1676,7 +1908,7 @@ footer a:hover{
         <div class="primitive-result">example → P(statement = true)</div>
       </article>
 
-      <article class="primitive-card">
+      <article class="primitive-card" data-index="03">
         <div class="primitive-head">
           <strong>SCORE</strong>
           <span>ordered scale</span>
@@ -1704,8 +1936,8 @@ footer a:hover{
 
     <p class="shared-note">
       provider boundary →
-      <a href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Jev</a> ·
-      <a href="https://github.com/kshetrajna12/reflex">Reflex</a> ·
+      <a class="inline-discovery-link" href="https://typesafe.ai/blog/introducing-system-one-models-and-jev">Jev</a> ·
+      <a class="inline-discovery-link" href="https://github.com/kshetrajna12/reflex">Reflex</a> ·
       compatible <code>/v1/systemone</code> endpoint ·
       custom <code>SystemOneProvider</code>
     </p>
@@ -1724,9 +1956,15 @@ footer a:hover{
         Application code stays fixed. Only provider configuration changes.
       </p>
 
-      <div class="install-row">
-        <code>npm install system-one-core</code>
-        <button type="button" class="install-copy" aria-label="Copy system-one-core install command" data-copy="npm install system-one-core">COPY</button>
+      <div class="install-row install-row-core">
+        <div class="install-command-group">
+          <span class="install-context">CORE / NPM</span>
+          <code>npm install system-one-core</code>
+        </div>
+        <div class="install-row-actions">
+          <a class="micro-link dark-link" href="https://github.com/iamaamir/system-one">SOURCE <span aria-hidden="true">↗</span></a>
+          <button type="button" class="install-copy" aria-label="Copy system-one-core install command" data-copy="npm install system-one-core">COPY</button>
+        </div>
       </div>
 
       <div class="swap-shell">
@@ -1765,25 +2003,15 @@ footer a:hover{
               <span>replaceable</span>
             </div>
 
-            <div class="provider-config">
+            <div class="provider-config" id="provider-config-details">
               <div class="provider-name">
-                <strong id="config-provider-name">REFLEX</strong>
+                <strong>REFLEX</strong>
                 <span>HTTP</span>
               </div>
 
               <div class="config-line">
                 <span>baseUrl</span>
-                <span id="config-base-url">http://localhost:8008</span>
-              </div>
-
-              <div class="config-line" id="config-model-row" hidden>
-                <span>model</span>
-                <span id="config-model">jev-latest</span>
-              </div>
-
-              <div class="config-line" id="config-key-row" hidden>
-                <span>apiKey</span>
-                <span>configured</span>
+                <span>http://localhost:8008</span>
               </div>
 
               <div class="config-line">
@@ -1839,7 +2067,10 @@ footer a:hover{
           </div>
 
           <div class="pi-install">
-            <code>pi install npm:pi-system-one</code>
+            <div class="pi-install-copy">
+              <code class="marker-code">pi install npm:pi-system-one</code>
+              <a class="micro-link" href="https://github.com/iamaamir/system-one/tree/main/pi-system-one">Learn more <span aria-hidden="true">↗</span></a>
+            </div>
             <button type="button" class="install-copy" aria-label="Copy pi-system-one install command" data-copy="pi install npm:pi-system-one">COPY</button>
           </div>
         </article>
@@ -1856,7 +2087,10 @@ footer a:hover{
           </div>
 
           <div class="pi-install">
-            <code>pi install npm:pi-bifrost</code>
+            <div class="pi-install-copy">
+              <code class="marker-code">pi install npm:pi-bifrost</code>
+              <a class="micro-link" href="https://github.com/iamaamir/pi-bifrost">Learn more <span aria-hidden="true">↗</span></a>
+            </div>
             <button type="button" class="install-copy" aria-label="Copy pi-bifrost install command" data-copy="pi install npm:pi-bifrost">COPY</button>
           </div>
         </article>
@@ -1937,19 +2171,17 @@ footer a:hover{
   }
 
   /* provider configuration toggle */
-  var configName = document.getElementById("config-provider-name");
-  var configBase = document.getElementById("config-base-url");
-  var configModelRow = document.getElementById("config-model-row");
-  var configModel = document.getElementById("config-model");
-  var configKeyRow = document.getElementById("config-key-row");
+  var providerConfigDetails = document.getElementById("provider-config-details");
   var providerCodeExample = document.getElementById("provider-code-example");
 
   var providerConfig = {
     reflex:{
       name:"REFLEX",
       base:"http://localhost:8008",
-      model:null,
-      key:false,
+      details:
+'<div class="provider-name"><strong>REFLEX</strong><span>HTTP</span></div>' +
+'<div class="config-line"><span>baseUrl</span><span>http://localhost:8008</span></div>' +
+'<div class="config-line"><span>path</span><span>/v1/systemone</span></div>',
       code:
 '<span class="ln">01</span> <span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span>\n' +
 '<span class="ln">02</span>\n' +
@@ -1963,8 +2195,12 @@ footer a:hover{
     jev:{
       name:"JEV",
       base:"https://api.typesafe.ai",
-      model:"jev-latest",
-      key:true,
+      details:
+'<div class="provider-name"><strong>JEV</strong><span>HTTP</span></div>' +
+'<div class="config-line"><span>baseUrl</span><span>https://api.typesafe.ai</span></div>' +
+'<div class="config-line"><span>model</span><span>jev-latest</span></div>' +
+'<div class="config-line"><span>apiKey</span><span>configured</span></div>' +
+'<div class="config-line"><span>path</span><span>/v1/systemone</span></div>',
       code:
 '<span class="ln">01</span> <span class="k">import</span> <span class="p">{ SystemOne, HttpSystemOneProvider } </span><span class="k">from</span> <span class="s">"system-one-core"</span><span class="p">;</span>\n' +
 '<span class="ln">02</span>\n' +
@@ -1989,11 +2225,7 @@ footer a:hover{
       );
     });
 
-    configName.textContent = config.name;
-    configBase.textContent = config.base;
-    configModel.textContent = config.model || "";
-    configModelRow.hidden = !config.model;
-    configKeyRow.hidden = !config.key;
+    providerConfigDetails.innerHTML = config.details;
     providerCodeExample.innerHTML = config.code;
 
     if(!reducedMotion && providerCodeExample.dataset.ready === "true"){
