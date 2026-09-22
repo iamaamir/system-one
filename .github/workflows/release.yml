@@ -1,11 +1,17 @@
-# Release with npm provenance (Sigstore-signed, verifiable on the registry).
+# Release via npm trusted publishing (OIDC). No tokens.
 #
-# PREREQUISITE (one-time, on npmjs.com): add this repo as a trusted
-# publisher for each package (repo iamaamir/system-one, workflow
-# release.yml). No long-lived NPM_TOKEN needed after that.
+# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one):
+#   Settings -> Trusted publishing -> Add GitHub Actions publisher with
+#     user iamaamir, repo system-one, workflow filename release.yml,
+#   and allow direct `npm publish` (not stage-only).
+# Afterwards (recommended): Settings -> Publishing access ->
+#   "Require two-factor authentication and disallow tokens",
+#   then revoke old automation tokens.
+# NOTE: repository.url in each package.json must match this repo.
 #
 # Usage: push a tag like system-one-core@0.1.2 or pi-system-one@1.2.0.
 # The tag version must match the package.json version.
+# Provenance attestations are generated automatically (public repo).
 name: Release
 on:
   push:
@@ -17,12 +23,12 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
-          cache: npm
+          package-manager-cache: false
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
@@ -33,4 +39,4 @@ jobs:
           test "$(node -p "require('./$TAG/package.json').version")" = "${GITHUB_REF_NAME#*@}" \
             || { echo "tag/version mismatch"; exit 1; }
       - run: npm test --workspace "${{ steps.pkg.outputs.name }}"
-      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --provenance --access public
+      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --access public
