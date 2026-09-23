@@ -2,14 +2,50 @@
 
 System One decisions for Pi. Plug in TypeSafe Jev, Reflex, or your own provider.
 
-![Demo: judging with /judge](demo.gif)
-
 ```bash
 pi install npm:pi-system-one
-export SYSTEM_ONE_BASE_URL=http://localhost:8008
 ```
 
-## Try this first
+<img src="./demo.gif" alt="Description" width="640" >   
+
+---
+
+Setup Provider:
+##### locally hosted model e.g Reflex, von, laya etc, any model that supports `POST /v1/systemone`
+```bash
+export SYSTEM_ONE_BASE_URL=http://localhost:8008
+```
+or
+
+##### typesafe/JEV
+```bash
+export SYSTEM_ONE_BASE_URL=https://api.typesafe.ai
+export SYSTEM_ONE_MODEL=jev-latest
+export SYSTEM_ONE_API_KEY=$(echo $TYPESAFE_API_KEY) # or directly paste the key
+```
+
+
+---
+
+**Configuration**
+
+The extension provides a `/so` command for configuring the System One client:
+
+- `SYSTEM_ONE_BASE_URL` – required endpoint URL.
+- `SYSTEM_ONE_MODEL` – optional default model name.
+- `SYSTEM_ONE_API_KEY` – optional API key.
+
+When you run `/so config`, you can:
+
+- **Enter a new API key** – it is stored in memory only and will be lost when the session ends.
+- **Enter `-`** – forget the memory‑only key. If an `SYSTEM_ONE_API_KEY` environment variable is present, the client will fall back to it; otherwise the key becomes absent.
+- **Leave the input empty** – keep the existing value.
+
+The current configuration can be inspected with `/so status`.
+
+---
+
+## Example Prompts
 
 For short, unstructured asks, use the `/judge` shortcut — it expands
 into instructions that call `system_one` explicitly, so routing doesn't
@@ -24,13 +60,8 @@ depend on inferring intent:
 ```
 
 Without the shortcut, ask for quantified answers — probabilities and
-confidence are the words that route to the tool. Try these in a fresh
-session and check whether Pi calls `system_one` on its own: you'll see
-a "System One result" block with choices, probabilities, and
-confidence. If it answers in prose instead, that prompt needs
-rewording; please report it.
+confidence are the words that route to the tool.
 
-Proven to route:
 
 ```
 Pick one: fix forward with a minimal patch, or revert and re-land
@@ -58,24 +89,3 @@ the test coverage — none, partial, or full — with probabilities.
 Independent judgments over the same context should be batched into one
 call, and answers should come back as calibrated probabilities with
 confidence — not prose guesses.
-
-**Configuration**
-
-The extension provides a `/so` command for configuring the System One client:
-
-- `SYSTEM_ONE_BASE_URL` – required endpoint URL.
-- `SYSTEM_ONE_MODEL` – optional default model name.
-- `SYSTEM_ONE_API_KEY` – optional API key.
-
-When you run `/so config`, you can:
-
-- **Enter a new API key** – it is stored in memory only and will be lost when the session ends.
-- **Enter `-`** – forget the memory‑only key. If an `SYSTEM_ONE_API_KEY` environment variable is present, the client will fall back to it; otherwise the key becomes absent.
-- **Leave the input empty** – keep the existing value.
-
-The current configuration can be inspected with `/so status`.
-
----
-
-For further details see the source code and comments in `src/commands.ts`.
-```
