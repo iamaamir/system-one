@@ -179,7 +179,7 @@ To use TypeSafe Jev, keep the evaluation code and change the provider configurat
 const provider = new HttpSystemOneProvider({
   baseUrl: "https://api.typesafe.ai",
   apiKey: process.env.TYPESAFE_API_KEY,
-  model: "jev-latest",
+  defaultModel: "jev-latest",
 });
 ```
 
