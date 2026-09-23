@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import {
-  SystemOne,
   type QuestionMap,
+  SystemOne,
   type SystemOneProvider,
   type SystemOneState,
 } from "system-one-core";
@@ -26,7 +26,8 @@ const JsonValue = Type.Union(
     Type.Record(Type.String(), Type.Any()),
   ],
   {
-    description: "A JSON value: string, number, boolean, null, object, or array.",
+    description:
+      "A JSON value: string, number, boolean, null, object, or array.",
   },
 );
 
@@ -59,8 +60,7 @@ const NoulCriteria = Type.Object(
   {
     additionalProperties: false,
     minProperties: 1,
-    description:
-      "Optional descriptions of the true/yes and false/no outcomes.",
+    description: "Optional descriptions of the true/yes and false/no outcomes.",
   },
 );
 
@@ -129,8 +129,7 @@ export const systemOneParams = Type.Object(
   },
   {
     additionalProperties: false,
-    description:
-      "Evaluate bounded decision questions against shared state.",
+    description: "Evaluate bounded decision questions against shared state.",
   },
 );
 

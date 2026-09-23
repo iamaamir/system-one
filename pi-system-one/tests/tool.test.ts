@@ -118,5 +118,6 @@ describe("system_one tool", () => {
     assert.deepEqual(res.details.usage, { inputTokens: 5, outputTokens: 2 });
     assert.deepEqual(res.details.metadata, { provider: "stub" });
     assert.equal(seenOptions.signal, controller.signal);
+    assert.equal(seenRequest.state, "hi");
   });
 });
