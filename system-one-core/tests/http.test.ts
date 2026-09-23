@@ -56,6 +56,54 @@ describe("http provider", () => {
       assert.doesNotMatch(String(e.stack) + JSON.stringify(e), /s3cr3t/);
     }
   });
+  it("forwards a bounded backend error body on 422", async () => {
+    const fakeFetch = async () =>
+      new Response(JSON.stringify({ detail: "criteria must not be empty" }), {
+        status: 422,
+      });
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      fetch: fakeFetch as any,
+    });
+    await assert.rejects(
+      p.evaluate({ state: "x", questions: { c: choice("W?", { a: null }) } }),
+      /provider error 422.*criteria must not be empty/,
+    );
+  });
+  it("omits the detail suffix when the error body is empty", async () => {
+    const fakeFetch = async () => new Response("", { status: 400 });
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      fetch: fakeFetch as any,
+    });
+    try {
+      await p.evaluate({
+        state: "x",
+        questions: { c: choice("W?", { a: null }) },
+      });
+      assert.fail("should throw");
+    } catch (e: any) {
+      assert.equal(e.message, "provider error 400");
+    }
+  });
+  it("truncates long backend error bodies", async () => {
+    const fakeFetch = async () =>
+      new Response("e".repeat(5000), { status: 422 });
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      fetch: fakeFetch as any,
+    });
+    try {
+      await p.evaluate({
+        state: "x",
+        questions: { c: choice("W?", { a: null }) },
+      });
+      assert.fail("should throw");
+    } catch (e: any) {
+      assert.match(e.message, /^provider error 422: e+$/);
+      assert.ok(e.message.length < 600);
+    }
+  });
   it("times out", async () => {
     const fakeFetch = async (_u: any, init: any) =>
       new Promise((_res, rej) => {

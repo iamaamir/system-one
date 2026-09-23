@@ -11,6 +11,7 @@ dist/
 # misc
 .DS_Store
 *.tgz
+*.cast
 
 # local provider launchers (machine-specific paths, model dirs, ports)
 /providers/

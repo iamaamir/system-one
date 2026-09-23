@@ -32,6 +32,50 @@ export interface HttpSystemOneProviderOptions {
 const DEFAULT_PATH = "/v1/systemone";
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 1_000_000;
+/** Upper bound for error-body buffering on non-OK responses. */
+const MAX_ERROR_BODY_BYTES = 2048;
+/**
+ * Read at most `maxBytes` of a response body for error diagnostics. The
+ * success path enforces `maxResponseBytes`; error bodies need the same
+ * bound so a misconfigured backend returning megabytes of HTML/trace on
+ * 4xx/5xx is never fully buffered. Never throws: failures yield "".
+ */
+async function readBoundedBody(
+  res: Response,
+  maxBytes: number,
+): Promise<string> {
+  try {
+    const reader = res.body?.getReader();
+    if (!reader) return (await res.text()).slice(0, maxBytes);
+    const chunks: Uint8Array[] = [];
+    let bytes = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > maxBytes) {
+        chunks.push(
+          value.slice(0, Math.max(0, value.byteLength - (bytes - maxBytes))),
+        );
+        break;
+      }
+      chunks.push(value);
+    }
+    await reader.cancel();
+    const merged = new Uint8Array(
+      chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
+    );
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(merged);
+  } catch {
+    // Unreadable body (e.g. aborted mid-read); status still informs.
+    return "";
+  }
+}
 export class HttpSystemOneProvider implements SystemOneProvider {
   readonly id: string;
   private readonly opts: Required<
@@ -104,13 +148,27 @@ export class HttpSystemOneProvider implements SystemOneProvider {
         });
       }
       if (!res.ok) {
-        throw new SystemOneHttpError(`provider error ${res.status}`, {
+        const requestId =
+          res.headers.get("x-request-id") ??
+          res.headers.get("x-typesafe-request-id") ??
+          undefined;
+        // Backends (Reflex, Von, Laya, TypeSafe) explain 4xx rejections in
+        // the response body. Forward a bounded snippet so calling agents can
+        // self-correct; the status alone ("provider error 422") is not
+        // actionable. Never forward credentials: the body is server-generated
+        // and only its first bytes are kept.
+        const snippet = (await readBoundedBody(res, MAX_ERROR_BODY_BYTES))
+          .trim()
+          .slice(0, 500);
+        let detail = "";
+        if (snippet) detail = `: ${snippet}`;
+        if (controller.signal.aborted && !timedOut) {
+          throw new SystemOneTransportError("request aborted");
+        }
+        throw new SystemOneHttpError(`provider error ${res.status}${detail}`, {
           status: res.status,
           provider: this.id,
-          requestId:
-            res.headers.get("x-request-id") ??
-            res.headers.get("x-typesafe-request-id") ??
-            undefined,
+          requestId,
         });
       }
       const text = await res.text();

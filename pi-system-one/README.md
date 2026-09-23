@@ -7,6 +7,56 @@ pi install npm:pi-system-one
 export SYSTEM_ONE_BASE_URL=http://localhost:8008
 ```
 
+## Try this first
+
+For short, unstructured asks, use the `/judge` shortcut — it expands
+into instructions that call `system_one` explicitly, so routing doesn't
+depend on inferring intent:
+
+```
+/judge should I ship this? <paste diff plus test summary>
+```
+
+```
+/judge which team should take this ticket? <paste ticket>
+```
+
+Without the shortcut, ask for quantified answers — probabilities and
+confidence are the words that route to the tool. Try these in a fresh
+session and check whether Pi calls `system_one` on its own: you'll see
+a "System One result" block with choices, probabilities, and
+confidence. If it answers in prose instead, that prompt needs
+rewording; please report it.
+
+Proven to route:
+
+```
+Pick one: fix forward with a minimal patch, or revert and re-land
+later. Give me the probability of each and your confidence.
+<paste context>
+```
+
+Candidates under test — same decisions, quantified wording:
+
+```
+This just landed in our support queue — which team is the most likely
+owner: billing, technical, or sales? Give me the probability for each
+and your confidence. Also, how urgent is it on a low / medium /
+critical scale, and should I escalate?
+<paste ticket>
+```
+
+```
+Should I ship this or revert it? Give me the probability that shipping
+causes a follow-up bug within a week, plus your confidence. Also rate
+the test coverage — none, partial, or full — with probabilities.
+<paste diff plus test summary>
+```
+
+Independent judgments over the same context should be batched into one
+call, and answers should come back as calibrated probabilities with
+confidence — not prose guesses.
+
 **Configuration**
 
 The extension provides a `/so` command for configuring the System One client:
