@@ -52,6 +52,13 @@ export function buildSystemOneTool(deps: { provider: SystemOneProvider }) {
       "Use this when the answer space is known and a fast probabilistic decision is preferable to generating free-form text. " +
       "Multiple independent choice, noul, and score questions should be batched into one call when they share the same state.",
     parameters: systemOneParams,
+    promptSnippet:
+      "Perform calibrated structured decisions and classifications over state",
+    promptGuidelines: [
+      "Use system_one to evaluate one or more bounded decision questions",
+      "Use system_one when you need structured probability, categorical choice, or scored rubric decisions rather than text generation.",
+    ],
+
     async execute(toolCallId, params, signal, _onUpdate, _ctx) {
       void toolCallId;
       // Throw on failure per Pi contract — never encode errors in content.
@@ -64,7 +71,7 @@ export function buildSystemOneTool(deps: { provider: SystemOneProvider }) {
         },
         { signal },
       );
-      const text = renderSystemOneResult(response as any);
+      const text = renderSystemOneResult(response);
       return {
         content: [{ type: "text" as const, text }],
         details: {
