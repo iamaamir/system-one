@@ -31,7 +31,6 @@ export const systemOneParams = Type.Object({
     Type.Array(Type.Any()),
   ]),
   questions: Type.Record(Type.String(), Type.Union([ChoiceQ, NoulQ, ScoreQ])),
-  model: Type.Optional(Type.String()),
 });
 export type SystemOneParams = Static<typeof systemOneParams>;
 
@@ -67,7 +66,6 @@ export function buildSystemOneTool(deps: { provider: SystemOneProvider }) {
         {
           state: params.state as any,
           questions: params.questions as any,
-          ...(params.model ? { model: params.model } : {}),
         },
         { signal },
       );
