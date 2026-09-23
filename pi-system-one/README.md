@@ -2,6 +2,8 @@
 
 System One decisions for Pi. Plug in TypeSafe Jev, Reflex, or your own provider.
 
+![Demo: judging with /judge](demo.gif)
+
 ```bash
 pi install npm:pi-system-one
 export SYSTEM_ONE_BASE_URL=http://localhost:8008
