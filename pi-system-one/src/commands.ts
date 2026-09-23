@@ -59,7 +59,7 @@ export function registerSystemOneCommands(
       return;
     }
     const apiKeyRaw = await ctx.ui.input(
-      "SYSTEM_ONE_API_KEY (empty = keep, - = forget memory key, memory-only, gone when the session closes):",
+      "SYSTEM_ONE_API_KEY (empty = keep, - = forget memory key (reverts to environment variable if set, otherwise becomes absent), memory-only, gone when the session closes):",
       "",
     );
     if (apiKeyRaw === undefined) {

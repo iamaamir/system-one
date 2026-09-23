@@ -109,8 +109,13 @@ describe("so command", () => {
     await cap.handler?.("", ctxFor(["", "", "sk-mem", ""], cap));
     assert.equal(store.session?.keyInMemory, true);
     await cap.handler?.("", ctxFor(["", "", "-", ""], cap));
+    // After forgetting the memory key, the API key should revert to the environment variable (if any).
+    // In the CI environment, SYSTEM_ONE_API_KEY may be set; otherwise it will be undefined.
     assert.equal(store.session?.keyInMemory, false);
-    assert.equal(store.session?.current.apiKey, undefined);
+    assert.equal(
+      store.session?.current.apiKey,
+      process.env.SYSTEM_ONE_API_KEY || undefined,
+    );
   });
   it("status shows current config; STATUS routes case-insensitively", async () => {
     const { pi, cap } = harness();
