@@ -94,7 +94,6 @@ describe("system_one tool", () => {
       "id-3",
       {
         state: "hi",
-        model: "jev-latest",
         questions: {
           c: {
             type: "choice",
@@ -118,7 +117,6 @@ describe("system_one tool", () => {
     assert.equal((res.details.answers.s as { score: number }).score, 1.5);
     assert.deepEqual(res.details.usage, { inputTokens: 5, outputTokens: 2 });
     assert.deepEqual(res.details.metadata, { provider: "stub" });
-    assert.equal(seenRequest.model, "jev-latest");
     assert.equal(seenOptions.signal, controller.signal);
   });
 });
