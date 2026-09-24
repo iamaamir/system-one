@@ -1,10 +1,10 @@
-import type { QuestionMap } from "./questions.ts";
+import type { QuestionMap, ReadonlyQuestionMap } from "./questions.ts";
 import type { SystemOneResponse } from "./responses.ts";
 import type { SystemOneState } from "./types.ts";
 export interface SystemOneRequest<Q extends QuestionMap = QuestionMap> {
-  state: SystemOneState;
-  questions: Q;
-  model?: string;
+  readonly state: SystemOneState;
+  readonly questions: ReadonlyQuestionMap<Q>;
+  readonly model?: string;
 }
 export interface SystemOneCallOptions {
   signal?: AbortSignal;

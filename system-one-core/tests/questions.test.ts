@@ -1,6 +1,159 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { choice, noul, score } from "../src/questions.ts";
+import type { SystemOne } from "../src/client.ts";
+import type { SystemOneRequest } from "../src/provider.ts";
+import {
+  type ChoiceQuestion,
+  choice,
+  type NoulQuestion,
+  noul,
+  type QuestionMap,
+  type ScoreQuestion,
+  score,
+} from "../src/questions.ts";
+import type { SystemOneResponse } from "../src/responses.ts";
+
+type ReadonlyRequestQuestions = {
+  choice: ChoiceQuestion<{ a: null; b: "b" }>;
+  score: ScoreQuestion<string[]>;
+  noul: NoulQuestion;
+};
+
+function checkRequestReadonlyContract(): void {
+  const choiceQuestion = choice("Which?", { a: null, b: "b" });
+  const scoreCriteria: string[] = ["low", "high"];
+  const scoreQuestion = score("How?", scoreCriteria);
+  const noulQuestion = noul("Is it hard?", {
+    coding: "impl",
+    research: null,
+  });
+  const request: SystemOneRequest<ReadonlyRequestQuestions> = {
+    state: "state",
+    questions: {
+      choice: choiceQuestion,
+      score: scoreQuestion,
+      noul: noulQuestion,
+    },
+  };
+
+  // @ts-expect-error - request slots are readonly
+  request.state = "changed";
+  // @ts-expect-error - request slots are readonly
+  request.questions = {
+    choice: choiceQuestion,
+    score: scoreQuestion,
+    noul: noulQuestion,
+  };
+  // @ts-expect-error - request slots are readonly
+  request.model = "changed";
+  // @ts-expect-error - question map entries are readonly
+  request.questions.choice = choiceQuestion;
+  // @ts-expect-error - question map entries cannot be deleted
+  delete request.questions.choice;
+  // @ts-expect-error - question fields are readonly
+  request.questions.choice.instructions = "changed";
+  // @ts-expect-error - question criteria are readonly
+  request.questions.choice.criteria = choiceQuestion.criteria;
+  // @ts-expect-error - choice criteria entries are readonly
+  request.questions.choice.criteria.a = null;
+  // @ts-expect-error - score criteria arrays are readonly
+  request.questions.score.criteria.push("new");
+  // @ts-expect-error - score criteria entries are readonly
+  request.questions.score.criteria[0] = "new";
+  // @ts-expect-error - noul question fields are readonly
+  request.questions.noul.instructions = "changed";
+  // @ts-expect-error - noul criteria are readonly
+  request.questions.noul.criteria = noulQuestion.criteria;
+  if (request.questions.noul.criteria) {
+    // @ts-expect-error - noul criteria entries are readonly
+    request.questions.noul.criteria.coding = "changed";
+  }
+  void request;
+}
+
+async function checkInlineResponseInference(client: SystemOne) {
+  const result = await client.evaluate({
+    state: "state",
+    questions: {
+      c: {
+        type: "choice",
+        instructions: "Which?",
+        criteria: { a: null, b: null },
+      },
+      s: {
+        type: "score",
+        instructions: "How severe?",
+        criteria: ["low", "high"],
+      },
+    },
+  });
+  const choice: "a" | "b" = result.answers.c.choice;
+  const score: number = result.answers.s.score;
+  return { choice, score };
+}
+
+function checkMutableConstruction() {
+  const questions = {
+    c: {
+      type: "choice" as const,
+      instructions: "Which?",
+      criteria: { a: null, b: null },
+    },
+  };
+  const request: SystemOneRequest = {
+    state: "state",
+    questions,
+  };
+  void request;
+}
+
+function checkCallerQuestionMutation(): void {
+  const choiceQuestion = choice("Which?", { a: null, b: null });
+  choiceQuestion.instructions = "Changed?";
+  choiceQuestion.criteria = { a: null, b: null };
+
+  const scoreQuestion = score("Risk?", ["low", "medium", "high"]);
+  scoreQuestion.instructions = "Changed?";
+  scoreQuestion.criteria = ["low", "medium", "high"];
+
+  const noulQuestion = noul("Is it hard?", { coding: "impl" });
+  noulQuestion.instructions = "Changed?";
+  if (noulQuestion.criteria) noulQuestion.criteria.coding = "research";
+
+  const questionMap: QuestionMap = {};
+  questionMap.decision = choiceQuestion;
+  delete questionMap.decision;
+
+  const request: SystemOneRequest = {
+    state: { foo: "bar" },
+    questions: { decision: choiceQuestion },
+  };
+  void request;
+}
+
+function checkResponseMutability(): void {
+  const response: SystemOneResponse<{
+    decision: ChoiceQuestion<{ a: null; b: null }>;
+  }> = {
+    answers: {
+      decision: {
+        type: "choice",
+        choice: "a",
+        probabilities: { a: 0.5, b: 0.5 },
+        confidence: 0.5,
+      },
+    },
+    metadata: { provider: "test" },
+  };
+  response.answers.decision.choice = "b";
+  response.answers.decision.probabilities.a = 1;
+}
+
+void checkRequestReadonlyContract;
+void checkInlineResponseInference;
+void checkMutableConstruction;
+void checkCallerQuestionMutation;
+void checkResponseMutability;
 
 describe("builders", () => {
   it("builds typed choice/noul/score questions", () => {

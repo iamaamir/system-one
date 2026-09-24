@@ -1,7 +1,27 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import type { SystemOneRequest } from "../src/provider.ts";
+import type { QuestionMap } from "../src/questions.ts";
 import { choice, noul, score } from "../src/questions.ts";
+import type { SystemOneResponse } from "../src/responses.ts";
 import { validateResponse } from "../src/validation.ts";
+
+function checkGenericValidationInference<Q extends QuestionMap>(
+  questions: Q,
+  raw: unknown,
+): SystemOneResponse<Q> {
+  return validateResponse(questions, raw, "p");
+}
+
+function checkRequestValidationInference<Q extends QuestionMap>(
+  request: SystemOneRequest<Q>,
+  raw: unknown,
+): SystemOneResponse<Q> {
+  return validateResponse(request.questions, raw, "p");
+}
+
+void checkGenericValidationInference;
+void checkRequestValidationInference;
 
 describe("validation", () => {
   it("accepts a valid mixed response", () => {
