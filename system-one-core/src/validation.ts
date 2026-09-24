@@ -13,6 +13,24 @@ function assertProb(n: unknown, what: string): void {
 function asCount(n: unknown): number | undefined {
   return typeof n === "number" && Number.isFinite(n) && n >= 0 ? n : undefined;
 }
+
+/**
+ * Insert under an externally controlled id. Plain `obj[id] = v` with
+ * `id === "__proto__"` would reparent the object instead of storing an
+ * answer; defineProperty always creates an ordinary own data property.
+ */
+function setOwnAnswer(
+  answers: Record<string, any>,
+  id: string,
+  value: unknown,
+): void {
+  Object.defineProperty(answers, id, {
+    value,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+}
 function normalizeUsage(
   u: unknown,
 ): { inputTokens?: number; outputTokens?: number } | undefined {
@@ -38,7 +56,9 @@ export function validateResponse<Q extends QuestionMap>(
     throw new SystemOneProtocolError("missing answers");
   const answers: Record<string, any> = {};
   for (const [id, q] of Object.entries(questions)) {
-    const a = r.answers[id];
+    // Own-key read: a provider-controlled answers object must not satisfy
+    // the presence check via an inherited property.
+    const a = Object.hasOwn(r.answers, id) ? r.answers[id] : undefined;
     if (!a || typeof a !== "object")
       throw new SystemOneProtocolError(`missing answer for ${id}`);
     if (a.type !== (q as any).type)
@@ -46,7 +66,7 @@ export function validateResponse<Q extends QuestionMap>(
     if (q.type === "noul") {
       if (!isFiniteNum(a.noul) || a.noul < 0 || a.noul > 1)
         throw new SystemOneProtocolError(`invalid noul for ${id}`);
-      answers[id] = { type: "noul", noul: a.noul };
+      setOwnAnswer(answers, id, { type: "noul", noul: a.noul });
     } else if (q.type === "choice") {
       const criteria = (q as any).criteria as Record<string, unknown>;
       const keys = Object.keys(criteria);
@@ -57,12 +77,12 @@ export function validateResponse<Q extends QuestionMap>(
       for (const k of keys) assertProb(a.probabilities[k], `${id}.${k}`);
       if (!isFiniteNum(a.confidence) || a.confidence < 0 || a.confidence > 1)
         throw new SystemOneProtocolError(`invalid confidence for ${id}`);
-      answers[id] = {
+      setOwnAnswer(answers, id, {
         type: "choice",
         choice: a.choice,
         probabilities: a.probabilities,
         confidence: a.confidence,
-      };
+      });
     } else {
       // Score keys come in two conventions (both seen live): index slots
       // ("0".."n-1") or criteria values. Accept either, reject anything else.
@@ -91,13 +111,13 @@ export function validateResponse<Q extends QuestionMap>(
           );
         assertProb((a.probabilities as any)[k], `${id}.${k}`);
       }
-      answers[id] = {
+      setOwnAnswer(answers, id, {
         type: "score",
         score: a.score,
         probabilities: a.probabilities,
         legend: a.legend,
         confidence: a.confidence,
-      };
+      });
     }
   }
   const usage = normalizeUsage((r as Record<string, any>).usage);

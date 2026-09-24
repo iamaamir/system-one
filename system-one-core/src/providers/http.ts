@@ -274,10 +274,29 @@ export class HttpSystemOneProvider implements SystemOneProvider {
             provider: this.id,
           });
       } else {
-        const { chunks, truncated } = await readLimitedChunks(
-          reader,
-          this.opts.maxResponseBytes,
-        );
+        // A stalled/thrown/aborted success-body read must classify like
+        // any other transport failure — never leak a raw reader
+        // exception, and never let a timeout masquerade as a bad body.
+        let chunks: Uint8Array[];
+        let truncated: boolean;
+        try {
+          ({ chunks, truncated } = await readLimitedChunks(
+            reader,
+            this.opts.maxResponseBytes,
+          ));
+        } catch (e: unknown) {
+          if (timedOut)
+            throw new SystemOneTimeoutError(
+              `request timed out after ${this.opts.timeoutMs}ms`,
+              { cause: e },
+            );
+          if (controller.signal.aborted)
+            throw new SystemOneTransportError("request aborted", { cause: e });
+          throw new SystemOneTransportError(
+            e instanceof Error ? e.message : "response body read failure",
+            { cause: e },
+          );
+        }
         await reader.cancel().catch(() => {});
         if (truncated)
           throw new SystemOneHttpError("response too large", {

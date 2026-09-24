@@ -70,26 +70,26 @@ export type SystemOneParams = Static<typeof systemOneParams>;
  * - "ranking": ordering items relative to each other is not scoring each
  *   against a rubric. Mapping it to score would corrupt the task.
  */
-const QUESTION_TYPE_ALIASES: Record<string, string> = {
-  choice: "choice",
-  choose: "choice",
-  multiple_choice: "choice",
-  categorical: "choice",
-  select: "choice",
-  classify: "choice",
-  classification: "choice",
-  noul: "noul",
-  boolean: "noul",
-  bool: "noul",
-  yes_no: "noul",
-  yesno: "noul",
-  score: "score",
-  rating: "score",
-  rate: "score",
-  scale: "score",
-  rubric: "score",
-  grade: "score",
-};
+const QUESTION_TYPE_ALIASES = new Map<string, string>([
+  ["choice", "choice"],
+  ["choose", "choice"],
+  ["multiple_choice", "choice"],
+  ["categorical", "choice"],
+  ["select", "choice"],
+  ["classify", "choice"],
+  ["classification", "choice"],
+  ["noul", "noul"],
+  ["boolean", "noul"],
+  ["bool", "noul"],
+  ["yes_no", "noul"],
+  ["yesno", "noul"],
+  ["score", "score"],
+  ["rating", "score"],
+  ["rate", "score"],
+  ["scale", "score"],
+  ["rubric", "score"],
+  ["grade", "score"],
+]);
 
 /** Field aliases models use instead of `criteria`. First hit wins. */
 const CRITERIA_ALIASES = [
@@ -136,6 +136,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Assign an externally controlled key. Plain `obj[key] = value` with
+ * `key === "__proto__"` would reparent the object instead of storing an
+ * entry; defineProperty always creates an ordinary own data property.
+ */
+function setOwn(
+  obj: Record<string, unknown>,
+  key: string,
+  value: unknown,
+): void {
+  Object.defineProperty(obj, key, {
+    value,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  });
+}
+
 function normalizeQuestionType(raw: unknown): unknown {
   if (typeof raw !== "string") return raw;
   const key = raw
@@ -143,7 +161,9 @@ function normalizeQuestionType(raw: unknown): unknown {
     .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
     .toLowerCase()
     .replace(/[-\s/.]+/g, "_");
-  return QUESTION_TYPE_ALIASES[key] ?? raw;
+  // Map lookup (not a plain object) so inherited names like "__proto__"
+  // or "constructor" can never accidentally resolve to an alias.
+  return QUESTION_TYPE_ALIASES.get(key) ?? raw;
 }
 
 function pickAlias(
@@ -165,10 +185,12 @@ function pickAlias(
 function normalizeQuestion(input: unknown): unknown {
   if (!isRecord(input)) return input;
   const out: Record<string, unknown> = {};
-  if ("type" in input) out.type = normalizeQuestionType(input.type);
+  if (Object.hasOwn(input, "type"))
+    out.type = normalizeQuestionType(input.type);
   const instructions = pickAlias(input, INSTRUCTIONS_ALIASES);
   if (instructions !== undefined) out.instructions = instructions;
-  else if ("instructions" in input) out.instructions = input.instructions;
+  else if (Object.hasOwn(input, "instructions"))
+    out.instructions = input.instructions;
   let criteria = pickAlias(input, CRITERIA_ALIASES);
   // `null` is this schema's idiom for "no content"; on noul it reads as
   // "omitted" rather than a degenerate value worth a backend round trip.
@@ -179,7 +201,7 @@ function normalizeQuestion(input: unknown): unknown {
     criteria.every((item) => typeof item === "string")
   ) {
     const folded: Record<string, unknown> = {};
-    for (const item of criteria as string[]) folded[item] = null;
+    for (const item of criteria as string[]) setOwn(folded, item, null);
     criteria = folded;
   }
   if (criteria !== undefined) out.criteria = criteria;
@@ -194,7 +216,7 @@ function normalizeQuestion(input: unknown): unknown {
     ) {
       continue;
     }
-    out[key] = value;
+    setOwn(out, key, value);
   }
   return out;
 }
@@ -219,9 +241,9 @@ function normalizeQuestions(input: unknown): unknown {
           typeof rawName === "string" && rawName.trim() !== ""
             ? rawName
             : `q${index + 1}`;
-        record[claimName(base)] = normalizeQuestion(rest);
+        setOwn(record, claimName(base), normalizeQuestion(rest));
       } else {
-        record[claimName(`q${index + 1}`)] = entry;
+        setOwn(record, claimName(`q${index + 1}`), entry);
       }
     });
     return record;
@@ -250,7 +272,7 @@ function normalizeQuestions(input: unknown): unknown {
     }
     const record: Record<string, unknown> = {};
     for (const [name, question] of Object.entries(input)) {
-      record[name] = normalizeQuestion(question);
+      setOwn(record, name, normalizeQuestion(question));
     }
     return record;
   }
@@ -276,7 +298,7 @@ export function prepareSystemOneArgs(args: unknown): SystemOneParams {
     args.questions ?? args.question ?? args.queries ?? undefined;
   if (questions !== undefined) out.questions = normalizeQuestions(questions);
   // Drop unknown top-level keys; a missing `state` / `questions` still
-  // produces a clear required-property error from validation.
+  // produces a clear error from semantic validation in execute().
   return out as SystemOneParams;
 }
 
@@ -311,10 +333,13 @@ function assertAnswerableQuestions(questions: unknown): void {
       'system_one: questions is required. Provide at least one named question, e.g. {"q1": {"type": "choice", "instructions": "...", "criteria": {"a": null}}}.',
     );
   }
-  // Missing/non-object questions on direct calls are left for the backend
-  // to report; on the Pi path the schema gates the shape loosely and this
-  // function gates the meaning strictly.
-  if (!isRecord(questions)) return;
+  // The semantic gate is authoritative: anything that is not a question
+  // map after normalization is rejected here, never sent to the provider.
+  if (!isRecord(questions)) {
+    throw new Error(
+      'system_one: "questions" must resolve to a question map after normalization, e.g. {"q1": {"type": "choice", "instructions": "...", "criteria": {"a": null}}}.',
+    );
+  }
   if (Object.keys(questions).length === 0) {
     throw new Error(
       "system_one: at least one question is required in questions.",

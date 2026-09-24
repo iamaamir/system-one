@@ -140,4 +140,28 @@ describe("validation", () => {
       assert.throws(() => validateResponse(questions, bad, "p"), /protocol/i);
     }
   });
+  it("handles prototype-like question ids as ordinary entries", () => {
+    // Computed keys (like JSON-parsed model output) create own "__proto__"
+    // entries; a bare literal would set the prototype instead.
+    const questions = JSON.parse(
+      JSON.stringify({ ["__proto__"]: noul("Is it?") }),
+    );
+    const raw = JSON.parse(
+      JSON.stringify({
+        answers: { ["__proto__"]: { type: "noul", noul: 0.5 } },
+      }),
+    );
+    const out = validateResponse(questions, raw, "p");
+    assert.ok(Object.hasOwn(out.answers, "__proto__"));
+    // biome-ignore lint/suspicious/noProto: reads the own entry to prove it is data, not a reparented prototype.
+    assert.equal((out.answers as any).__proto__.noul, 0.5);
+    assert.equal(Object.getPrototypeOf(out.answers), Object.prototype);
+  });
+  it("still reports a missing answer for inherited-only ids", () => {
+    const questions = JSON.parse(JSON.stringify({ toString: noul("Is it?") }));
+    assert.throws(
+      () => validateResponse(questions, { answers: {} }, "p"),
+      /missing answer for toString/,
+    );
+  });
 });

@@ -580,6 +580,10 @@ describe("system_one tool", () => {
           },
         },
       ],
+      [
+        "scalar questions still reach execute for a clear rejection",
+        { state: "hi", questions: "do something" },
+      ],
     ];
     for (const [name, raw] of rawShapes) {
       it(`schema accepts raw: ${name}`, () => {
@@ -838,6 +842,26 @@ describe("system_one tool", () => {
         /at least one question is required/,
       ],
       [
+        "scalar string questions",
+        { state: "hi", questions: "foo" },
+        /"questions" must resolve to a question map/,
+      ],
+      [
+        "scalar number questions",
+        { state: "hi", questions: 42 },
+        /"questions" must resolve to a question map/,
+      ],
+      [
+        "scalar boolean questions",
+        { state: "hi", questions: true },
+        /"questions" must resolve to a question map/,
+      ],
+      [
+        "null questions reads as missing",
+        { state: "hi", questions: null },
+        /questions is required/,
+      ],
+      [
         "unknown field",
         {
           state: "hi",
@@ -891,6 +915,126 @@ describe("system_one tool", () => {
       });
     }
   });
+  describe("prototype-key safety", () => {
+    function captureTool() {
+      let calls = 0;
+      let seen: any;
+      const stub = {
+        id: "stub",
+        async evaluate(req: any) {
+          calls += 1;
+          seen = req;
+          return { answers: {}, metadata: { provider: "stub" } };
+        },
+      };
+      return {
+        tool: buildSystemOneTool({ provider: stub as never }),
+        calls: () => calls,
+        seen: () => seen,
+      };
+    }
+
+    for (const tricky of ["__proto__", "constructor", "toString"]) {
+      it(`handles question id "${tricky}" as an ordinary entry`, async () => {
+        const { tool, calls, seen } = captureTool();
+        // Build via JSON so "__proto__" is an own key, as from a model.
+        const raw = JSON.parse(
+          JSON.stringify({
+            state: "hi",
+            questions: {
+              [tricky]: { type: "noul", instructions: "Is it?" },
+            },
+          }),
+        );
+        await tool.execute(
+          "id-proto",
+          raw as never,
+          undefined,
+          undefined,
+          {} as never,
+        );
+        assert.equal(calls(), 1);
+        assert.ok(Object.hasOwn(seen().questions, tricky));
+        assert.equal(Object.getPrototypeOf(seen().questions), Object.prototype);
+      });
+    }
+
+    it("keeps array-form duplicate-prone names prototype-safe", async () => {
+      const { tool, calls, seen } = captureTool();
+      const raw = JSON.parse(
+        JSON.stringify({
+          state: "hi",
+          questions: [
+            { name: "__proto__", type: "noul", instructions: "Is it?" },
+          ],
+        }),
+      );
+      await tool.execute(
+        "id-proto-arr",
+        raw as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.equal(calls(), 1);
+      assert.ok(Object.hasOwn(seen().questions, "__proto__"));
+    });
+
+    for (const label of ["__proto__", "constructor"]) {
+      it(`folds choice label "${label}" without reparenting criteria`, async () => {
+        const { tool, calls, seen } = captureTool();
+        await tool.execute(
+          "id-proto-label",
+          {
+            state: "hi",
+            questions: {
+              t: {
+                type: "choice",
+                instructions: "W?",
+                criteria: ["a", label],
+              },
+            },
+          } as never,
+          undefined,
+          undefined,
+          {} as never,
+        );
+        assert.equal(calls(), 1);
+        const criteria = seen().questions.t.criteria;
+        assert.ok(Object.hasOwn(criteria, label));
+        assert.equal(Object.keys(criteria).length, 2);
+        assert.equal(Object.getPrototypeOf(criteria), Object.prototype);
+      });
+    }
+
+    it('never resolves "__proto__" or "constructor" as a type alias', async () => {
+      for (const tricky of ["__proto__", "constructor"]) {
+        const prepared = prepareSystemOneArgs({
+          state: "hi",
+          questions: { t: { type: tricky, instructions: "W?" } },
+        }) as unknown as { questions: { t: { type: unknown } } };
+        // Passes through untouched (a string), so execute rejects it
+        // precisely instead of aliasing Object.prototype.
+        assert.equal(prepared.questions.t.type, tricky);
+      }
+      const { tool, calls } = captureTool();
+      await assert.rejects(
+        tool.execute(
+          "id-proto-type",
+          {
+            state: "hi",
+            questions: { t: { type: "__proto__", instructions: "W?" } },
+          } as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /unknown type "__proto__"/,
+      );
+      assert.equal(calls(), 0);
+    });
+  });
+
   describe("tool advertising copy", () => {
     // Pi appends promptGuidelines flat with no tool-name prefix, so every
     // bullet must name the tool; and the copy must bid against direct

@@ -25,11 +25,18 @@ export class MockSystemOneProvider implements SystemOneProvider {
   ): Promise<SystemOneResponse<Q>> {
     const answers: Record<string, any> = {};
     for (const id of Object.keys(request.questions)) {
-      if (!(id in this.canned))
+      // Own-key membership: inherited names like "toString" must not
+      // match, and "__proto__" must become an entry, not a reparenting.
+      if (!Object.hasOwn(this.canned, id))
         throw new SystemOneConfigurationError(
           `Mock "${this.id}" has no canned answer for "${id}" (available: ${Object.keys(this.canned).join(", ") || "(none)"})`,
         );
-      answers[id] = this.canned[id];
+      Object.defineProperty(answers, id, {
+        value: this.canned[id],
+        enumerable: true,
+        writable: true,
+        configurable: true,
+      });
     }
     return { answers: answers as any, metadata: { provider: this.id } };
   }

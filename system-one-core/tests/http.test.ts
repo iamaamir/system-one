@@ -185,6 +185,93 @@ describe("http provider", () => {
     // 100+ chunks available; the read must stop once the bound is hit.
     assert.ok(pulls < 10, `buffered the whole body (${pulls} pulls)`);
   });
+  it("reports timeout when the success body stalls after 200 headers", async () => {
+    const fakeFetch = async (_u: any, init: any) =>
+      new Response(
+        new ReadableStream({
+          start(c) {
+            // 200 headers flush; the body never arrives. Aborting the
+            // signal errors the stream like a real fetch would.
+            init.signal?.addEventListener("abort", () => {
+              c.error(new Error("body stalled"));
+            });
+          },
+        }),
+        { status: 200 },
+      );
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      timeoutMs: 20,
+      fetch: fakeFetch as any,
+    });
+    try {
+      await p.evaluate({
+        state: "x",
+        questions: { c: choice("W?", { a: null }) },
+      });
+      assert.fail("should throw");
+    } catch (e: any) {
+      assert.equal(e.code, "SYSTEM_ONE_TIMEOUT");
+      assert.equal(e.name, "SystemOneTimeoutError");
+    }
+  });
+  it("reports transport on external abort while the success body streams", async () => {
+    const fakeFetch = async (_u: any, init: any) =>
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(new TextEncoder().encode('{"answers":'));
+            init.signal?.addEventListener("abort", () => {
+              c.error(new Error("aborted mid-body"));
+            });
+          },
+        }),
+        { status: 200 },
+      );
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      timeoutMs: 5000,
+      fetch: fakeFetch as any,
+    });
+    const ac = new AbortController();
+    setTimeout(() => ac.abort(), 20);
+    try {
+      await p.evaluate(
+        { state: "x", questions: { c: choice("W?", { a: null }) } },
+        { signal: ac.signal },
+      );
+      assert.fail("should throw");
+    } catch (e: any) {
+      assert.equal(e.code, "SYSTEM_ONE_TRANSPORT");
+      assert.equal(e.name, "SystemOneTransportError");
+    }
+  });
+  it("wraps mid-stream success-body failures as transport, never raw", async () => {
+    const fakeFetch = async () =>
+      new Response(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(new TextEncoder().encode('{"answers":'));
+            c.error(new Error("boom mid-stream"));
+          },
+        }),
+        { status: 200 },
+      );
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      fetch: fakeFetch as any,
+    });
+    try {
+      await p.evaluate({
+        state: "x",
+        questions: { c: choice("W?", { a: null }) },
+      });
+      assert.fail("should throw");
+    } catch (e: any) {
+      assert.equal(e.code, "SYSTEM_ONE_TRANSPORT");
+      assert.match(e.message, /boom mid-stream/);
+    }
+  });
   it("reports timeout when the error body stalls after error headers", async () => {
     const fakeFetch = async (_u: any, init: any) =>
       new Response(
