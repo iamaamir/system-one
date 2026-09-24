@@ -1,6 +1,6 @@
 ---
 name: system-one
-description: "Judge with System One decision models (Jev, Reflex, Von, Laya): choice, noul, and score questions over shared state, returning calibrated probabilities with confidence. Use whenever the request resolves to picking one option from several, estimating a yes/no chance, or placing something on an ordered scale — in any domain, any phrasing — instead of answering from priors. Backends speak POST /v1/systemone."
+description: "Judge bounded decisions over supplied state with System One models (Jev, Reflex, Von, Laya): choice, noul, and score questions returning calibrated state-conditional probabilities (confidence for choice/score only; noul has no confidence). Use when the request is a pick, yes/no likelihood, or scale score over material already in context — instead of answering from priors. The judge cannot recall facts; retrieve evidence first. Backends speak POST /v1/systemone."
 ---
 
 # System One decisions
@@ -16,12 +16,18 @@ hand-rolling HTTP.
 
 ## When to call
 
-If the request resolves to one of these, judge it with the System One
-tool instead of answering from priors — in any domain, any phrasing:
+If the request resolves to one of these over material already in
+context, judge it with the System One tool instead of answering from
+priors — in any domain, any phrasing:
 
 - exactly one option must be picked from several → `choice`
 - a yes/no must be estimated as a chance → `noul`
 - something must be placed on an ordered scale → `score`
+
+Retrieve evidence first, then judge with the evidence as state — never
+ask the judge to recall facts. System One turns evidence into a bounded
+decision; it is not a substitute for factual lookup or open-ended
+reasoning.
 
 One user message can hold several such judgments; batch them over the
 same state in a single call.
@@ -30,12 +36,13 @@ same state in a single call.
 
 Decide by the shape of the answer, not the difficulty of the judgment:
 
-- **choice** — the answer is one item from a list (up to 255 labelled
-  options). Returns winner + per-option probabilities + confidence.
-  Add an `other` option when the set might not cover the input, and use
-  `null` criteria values for self-explanatory labels.
-- **score** — the answer is a position on an ordered scale (2–10 levels,
-  each described concretely, low to high). Returns a fractional score
+- **choice** — the answer is one item from a list (at least one
+  labelled option; keep sets small enough to judge — accuracy falls as
+  the set grows). Returns winner + per-option probabilities +
+  confidence. Add an `other` option when the set might not cover the
+  input, and use `null` criteria values for self-explanatory labels.
+- **score** — the answer is a position on an ordered scale (at least
+  two levels, each described concretely, low to high). Returns a fractional score
   (probability-weighted mean — it can land between levels) + legend +
   probabilities + confidence. Use when you will threshold, sort, or
   average the result.

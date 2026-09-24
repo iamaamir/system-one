@@ -261,6 +261,22 @@ describe("system_one tool", () => {
         },
       ],
       [
+        "YesNo camelCase synonym",
+        {
+          state: "x",
+          questions: { q: { type: "YesNo", instructions: "Is it?" } },
+        },
+      ],
+      [
+        "noul null criteria reads as omitted",
+        {
+          state: "x",
+          questions: {
+            q: { type: "noul", instructions: "Is it?", criteria: null },
+          },
+        },
+      ],
+      [
         "duplicate array names",
         {
           state: "hi",
@@ -332,7 +348,7 @@ describe("system_one tool", () => {
       );
     });
 
-    it("unwraps single questions with extra fields so validation reports the field", () => {
+    it("unwraps single questions with extra fields so execute reports the field", async () => {
       const prepared = prepareSystemOneArgs({
         state: "hi",
         questions: {
@@ -353,23 +369,60 @@ describe("system_one tool", () => {
           },
         },
       });
-      assert.equal(Value.Check(systemOneParams, prepared), false);
-      const dump = [...Value.Errors(systemOneParams, prepared)].map((e: any) =>
-        JSON.stringify(e),
+      // The permissive boundary schema lets this through (older Pi must be
+      // able to reach execute); the semantic gate rejects it precisely.
+      assert.equal(Value.Check(systemOneParams, prepared), true);
+      let calls = 0;
+      const tool = buildSystemOneTool({
+        provider: {
+          id: "stub",
+          async evaluate() {
+            calls += 1;
+            return { answers: {}, metadata: { provider: "stub" } };
+          },
+        } as never,
+      });
+      await assert.rejects(
+        tool.execute(
+          "id-foo",
+          prepared as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /question "q" has unknown field "foo"/,
       );
-      assert.ok(
-        dump.some((d) => d.includes("foo") && d.includes("/questions/q")),
-        `expected an error attributing foo to questions.q, got ${dump.join(" | ")}`,
-      );
+      assert.equal(calls, 0);
     });
 
-    it("leaves genuinely unknown types for validation to reject", () => {
+    it("lets unknown types through the schema so execute rejects them clearly", async () => {
       const prepared = prepareSystemOneArgs({
         state: "hi",
         questions: { t: { type: "essay", instructions: "W?" } },
       }) as unknown as { questions: { t: { type: string } } };
       assert.equal(prepared.questions.t.type, "essay");
-      assert.equal(Value.Check(systemOneParams, prepared), false);
+      assert.equal(Value.Check(systemOneParams, prepared), true);
+      let calls = 0;
+      const tool = buildSystemOneTool({
+        provider: {
+          id: "stub",
+          async evaluate() {
+            calls += 1;
+            return { answers: {}, metadata: { provider: "stub" } };
+          },
+        } as never,
+      });
+      await assert.rejects(
+        tool.execute(
+          "id-essay",
+          prepared as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /unknown type "essay".*use "choice", "noul", or "score"/,
+      );
+      assert.equal(calls, 0);
     });
 
     it("exposes prepareArguments on the tool definition", () => {
@@ -436,6 +489,382 @@ describe("system_one tool", () => {
     });
   });
 
+  describe("pre-validation compatibility (older Pi without prepareArguments)", () => {
+    // On older Pi the raw model output is validated against the public
+    // schema BEFORE execute() can normalize it. Every repairable shape
+    // must therefore pass Value.Check raw — testing prepareSystemOneArgs
+    // alone would not prove that.
+    const rawShapes: Array<[string, unknown]> = [
+      [
+        "singular question with capitalized type and options array",
+        {
+          state: "hi",
+          question: { type: "Choice", instructions: "W?", options: ["a", "b"] },
+        },
+      ],
+      [
+        "array questions with bool type and prompt alias",
+        {
+          state: "hi",
+          questions: [{ type: "bool", prompt: "Is this safe?" }],
+        },
+      ],
+      [
+        "context alias with singular rating question and choices",
+        {
+          context: "some evidence",
+          question: {
+            type: "rating",
+            prompt: "Rate it",
+            choices: ["bad", "ok", "good"],
+          },
+        },
+      ],
+      [
+        "queries and evidence aliases",
+        {
+          evidence: { doc: "..." },
+          queries: {
+            q: { type: "select", instructions: "W?", criteria: { a: null } },
+          },
+        },
+      ],
+      [
+        "unknown top-level keys are ignored, not rejected",
+        {
+          state: "hi",
+          questions: {
+            t: { type: "choice", instructions: "W?", criteria: { a: null } },
+          },
+          session_id: "abc",
+        },
+      ],
+      [
+        "ambiguous type alias still reaches execute for a clear rejection",
+        {
+          state: "hi",
+          questions: { t: { type: "probability", instructions: "W?" } },
+        },
+      ],
+      [
+        "missing state still reaches execute for a clear rejection",
+        {
+          questions: {
+            t: { type: "choice", instructions: "W?", criteria: { a: null } },
+          },
+        },
+      ],
+    ];
+    for (const [name, raw] of rawShapes) {
+      it(`schema accepts raw: ${name}`, () => {
+        assert.equal(
+          Value.Check(systemOneParams, raw),
+          true,
+          `raw payload fails pre-execution validation: ${JSON.stringify(raw)}`,
+        );
+      });
+    }
+  });
+
+  describe("weak-model adversarial corpus", () => {
+    function stubTool() {
+      let calls = 0;
+      const stub = {
+        id: "stub",
+        async evaluate(_req: unknown) {
+          calls += 1;
+          return { answers: {}, metadata: { provider: "stub" } };
+        },
+      };
+      return {
+        tool: buildSystemOneTool({ provider: stub as never }),
+        calls: () => calls,
+      };
+    }
+
+    // Each entry: repaired shapes must BOTH survive pre-execution schema
+    // validation raw AND succeed end to end; rejected shapes must fail
+    // with an actionable error before any backend call.
+    const repaired: Array<[string, unknown]> = [
+      [
+        "wrong capitalization",
+        {
+          state: "hi",
+          questions: {
+            t: { type: "Choice", instructions: "W?", criteria: { a: null } },
+          },
+        },
+      ],
+      [
+        "singular question key",
+        {
+          state: "hi",
+          question: {
+            t: { type: "choice", instructions: "W?", criteria: { a: null } },
+          },
+        },
+      ],
+      [
+        "array where object was expected",
+        {
+          state: "hi",
+          questions: [
+            {
+              name: "t",
+              type: "choice",
+              instructions: "W?",
+              criteria: { a: null },
+            },
+          ],
+        },
+      ],
+      [
+        "criteria as string array",
+        {
+          state: "hi",
+          questions: {
+            t: { type: "choice", instructions: "W?", criteria: ["a", "b"] },
+          },
+        },
+      ],
+      [
+        "criteria as keyed object",
+        {
+          state: "hi",
+          questions: {
+            t: {
+              type: "choice",
+              instructions: "W?",
+              choices: { a: "first", b: "second" },
+            },
+          },
+        },
+      ],
+      [
+        "duplicate question names",
+        {
+          state: "hi",
+          questions: [
+            {
+              name: "t",
+              type: "choice",
+              instructions: "W?",
+              criteria: { a: null },
+            },
+            { name: "t", type: "noul", instructions: "Is it?" },
+          ],
+        },
+      ],
+      [
+        "context alias",
+        {
+          context: "hi",
+          questions: { t: { type: "noul", instructions: "Is it?" } },
+        },
+      ],
+      [
+        "prompt alias",
+        {
+          state: "hi",
+          questions: { t: { type: "noul", prompt: "Is it?" } },
+        },
+      ],
+      [
+        "boolean naming variation",
+        {
+          state: "x",
+          questions: { q: { type: "YesNo", instructions: "Is it?" } },
+        },
+      ],
+      [
+        "rating naming variation",
+        {
+          state: "x",
+          questions: {
+            q: {
+              type: "rating",
+              instructions: "How?",
+              options: ["low", "high"],
+            },
+          },
+        },
+      ],
+      [
+        "noul null criteria",
+        {
+          state: "x",
+          questions: {
+            q: { type: "noul", instructions: "Is it?", criteria: null },
+          },
+        },
+      ],
+      [
+        "noul object criteria",
+        {
+          state: "x",
+          questions: {
+            q: {
+              type: "noul",
+              instructions: "Is it?",
+              criteria: { true: "yes", false: "no" },
+            },
+          },
+        },
+      ],
+      [
+        "junk naming fields",
+        {
+          state: "hi",
+          questions: {
+            t: {
+              type: "choice",
+              instructions: "W?",
+              criteria: { a: null },
+              name: "t",
+              title: "pick",
+            },
+          },
+        },
+      ],
+    ];
+    for (const [name, raw] of repaired) {
+      it(`repairs ${name}`, async () => {
+        assert.equal(
+          Value.Check(systemOneParams, raw),
+          true,
+          `repaired shape must survive pre-execution validation: ${JSON.stringify(raw)}`,
+        );
+        const { tool, calls } = stubTool();
+        await tool.execute(
+          `id-rep-${name}`,
+          raw as never,
+          undefined,
+          undefined,
+          {} as never,
+        );
+        assert.equal(calls(), 1);
+      });
+    }
+
+    const rejected: Array<[string, unknown, RegExp]> = [
+      [
+        "ambiguous probability alias",
+        {
+          state: "hi",
+          questions: { t: { type: "probability", instructions: "W?" } },
+        },
+        /unknown type "probability".*use "choice", "noul", or "score"/,
+      ],
+      [
+        "ambiguous likelihood alias",
+        {
+          state: "hi",
+          questions: { t: { type: "likelihood", instructions: "W?" } },
+        },
+        /unknown type "likelihood"/,
+      ],
+      [
+        "ambiguous ranking alias",
+        {
+          state: "hi",
+          questions: {
+            t: { type: "ranking", instructions: "W?", criteria: ["a", "b"] },
+          },
+        },
+        /unknown type "ranking"/,
+      ],
+      [
+        "missing instructions",
+        {
+          state: "hi",
+          questions: { t: { type: "choice", criteria: { a: null } } },
+        },
+        /question "t" needs "instructions"/,
+      ],
+      [
+        "null instructions",
+        {
+          state: "hi",
+          questions: {
+            t: { type: "choice", instructions: null, criteria: { a: null } },
+          },
+        },
+        /question "t" needs "instructions"/,
+      ],
+      [
+        "missing state",
+        {
+          questions: {
+            t: { type: "choice", instructions: "W?", criteria: { a: null } },
+          },
+        },
+        /state is required/,
+      ],
+      ["missing questions", { state: "hi" }, /questions is required/],
+      [
+        "empty questions object",
+        { state: "hi", questions: {} },
+        /at least one question is required/,
+      ],
+      [
+        "empty questions array",
+        { state: "hi", questions: [] },
+        /at least one question is required/,
+      ],
+      [
+        "unknown field",
+        {
+          state: "hi",
+          questions: {
+            t: {
+              type: "choice",
+              instructions: "W?",
+              criteria: { a: null },
+              confidence: 0.9,
+            },
+          },
+        },
+        /question "t" has unknown field "confidence"/,
+      ],
+      [
+        "noul criteria as array",
+        {
+          state: "hi",
+          questions: {
+            t: { type: "noul", instructions: "Is it?", criteria: ["y", "n"] },
+          },
+        },
+        /noul question "t" needs criteria omitted/,
+      ],
+      [
+        "mixed valid and invalid questions",
+        {
+          state: "hi",
+          questions: {
+            ok: { type: "noul", instructions: "Is it?" },
+            bad: { type: "ranking", instructions: "Order them" },
+          },
+        },
+        /question "bad" has unknown type "ranking"/,
+      ],
+    ];
+    for (const [name, raw, expected] of rejected) {
+      it(`rejects ${name}`, async () => {
+        const { tool, calls } = stubTool();
+        await assert.rejects(
+          tool.execute(
+            `id-rej-${name}`,
+            raw as never,
+            undefined,
+            undefined,
+            {} as never,
+          ),
+          expected,
+        );
+        assert.equal(calls(), 0);
+      });
+    }
+  });
   describe("tool advertising copy", () => {
     // Pi appends promptGuidelines flat with no tool-name prefix, so every
     // bullet must name the tool; and the copy must bid against direct
@@ -601,6 +1030,50 @@ describe("system_one tool", () => {
           {} as never,
         ),
         /noul question "n" needs criteria omitted or as an object/,
+      );
+      assert.equal(calls(), 0);
+    });
+
+    it("rejects score questions with object criteria", async () => {
+      const { tool, calls } = stubTool();
+      await assert.rejects(
+        tool.execute(
+          "id-min-8",
+          {
+            state: "hi",
+            questions: {
+              s: {
+                type: "score",
+                instructions: "How?",
+                criteria: { low: "bad", high: "good" },
+              },
+            },
+          } as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /score question "s" needs criteria as an ordered array/,
+      );
+      assert.equal(calls(), 0);
+    });
+
+    it("rejects choice questions with non-string array criteria", async () => {
+      const { tool, calls } = stubTool();
+      await assert.rejects(
+        tool.execute(
+          "id-min-9",
+          {
+            state: "hi",
+            questions: {
+              t: { type: "choice", instructions: "W?", criteria: [1, 2] },
+            },
+          } as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /choice question "t" needs criteria as an object/,
       );
       assert.equal(calls(), 0);
     });

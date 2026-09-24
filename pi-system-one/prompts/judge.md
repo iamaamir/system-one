@@ -2,9 +2,10 @@
 description: Judge a decision with calibrated probabilities via System One
 argument-hint: "<decision and context>"
 ---
-The user wants a judgment with measured probabilities, not a prose
-opinion. Call the system_one tool for the request below — do not
-answer it directly from priors.
+The user wants a calibrated judgment conditional on the supplied
+state, not a prose opinion and not recalled facts. Retrieve any missing
+factual evidence into the state first — then call the system_one tool
+for the request below, do not answer it directly from priors.
 
 Frame the request as one or more questions:
 
@@ -20,8 +21,9 @@ Put the material under judgment in `state`. Batch all questions sharing
 the same state into a single system_one call.
 
 After the result, summarize per question: the pick, probability, or
-score with its confidence — plus one line on what would change the
-answer.
+score with its confidence (choice/score only — for noul the probability
+itself is the uncertainty measure) — plus one line on what would change
+the answer.
 
 Request:
 $@

@@ -112,6 +112,9 @@ describe("extension resources", () => {
       assert.match(content, /\$@/);
       assert.match(content, /system_one/);
       assert.match(content, /do not\s+answer it directly/i);
+      // noul answers carry no confidence field; the template must not ask
+      // the model to report one or it will invent numbers.
+      assert.match(content, /for noul the probability/i);
     } finally {
       if (prev === undefined) delete process.env.SYSTEM_ONE_BASE_URL;
       else process.env.SYSTEM_ONE_BASE_URL = prev;

@@ -59,8 +59,10 @@ depend on inferring intent:
 /judge which team should take this ticket? <paste ticket>
 ```
 
-Without the shortcut, ask for quantified answers — probabilities and
-confidence are the words that route to the tool.
+Without the shortcut, ask for quantified answers over material already
+in context — probabilities and confidence are the words that route to
+the tool. Retrieve facts first; the judge weighs supplied state, it
+cannot recall facts.
 
 
 ```
@@ -74,19 +76,22 @@ Candidates under test — same decisions, quantified wording:
 ```
 This just landed in our support queue — which team is the most likely
 owner: billing, technical, or sales? Give me the probability for each
-and your confidence. Also, how urgent is it on a low / medium /
-critical scale, and should I escalate?
+and your confidence for the pick. Also, how urgent is it on a low /
+medium / critical scale? And should I escalate (yes/no probability,
+no confidence needed)?
 <paste ticket>
 ```
 
 ```
 Should I ship this or revert it? Give me the probability that shipping
-causes a follow-up bug within a week, plus your confidence. Also rate
-the test coverage — none, partial, or full — with probabilities.
+causes a follow-up bug within a week (yes/no probability only — noul
+has no confidence field). Also rate the test coverage — none, partial,
+or full — with probabilities and confidence for the pick.
 <paste diff plus test summary>
 ```
 
 Independent judgments over the same context should be batched into one
-call, and answers should come back as calibrated probabilities with
-confidence — not prose guesses.
+call, and answers should come back as calibrated, state-conditional
+probabilities — with confidence for choice/score only (noul has no
+confidence) — not prose guesses, and never as recalled facts.
 

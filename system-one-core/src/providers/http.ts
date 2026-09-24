@@ -34,6 +34,74 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 1_000_000;
 /** Upper bound for error-body buffering on non-OK responses. */
 const MAX_ERROR_BODY_BYTES = 2048;
+/** Upper bound for the model-visible error detail after extraction. */
+const MAX_ERROR_DETAIL_CHARS = 500;
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Credential-shaped `key=value` fragments a backend may echo back
+ * (request state, upstream errors, stack traces). Redact the value,
+ * keep the key so the message stays debuggable.
+ */
+const SENSITIVE_VALUE_PATTERN =
+  /((?:api[_-]?key|password|passwd|secret|token|authorization)\s*[:=]\s*["']?)([^"'\s,}]+)/gi;
+
+function sanitizeErrorDetail(detail: string): string {
+  return detail
+    .replace(SENSITIVE_VALUE_PATTERN, "$1[redacted]")
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Pull a useful message out of known error envelopes
+ * (`{"detail"}`, `{"message"}`, `{"error":{"message"}}`, bare strings).
+ * Returns undefined when the body carries nothing structured, so the
+ * caller can fall back to truncated raw text (4xx) or nothing (5xx).
+ */
+function extractStructuredDetail(body: string): string | undefined {
+  let data: unknown;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+  if (typeof data === "string") return data;
+  if (isJsonRecord(data)) {
+    for (const key of ["detail", "message"]) {
+      if (typeof data[key] === "string") return data[key] as string;
+    }
+    const nested = data.error;
+    if (typeof nested === "string") return nested;
+    if (isJsonRecord(nested) && typeof nested.message === "string") {
+      return nested.message as string;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Format the model-visible detail for a non-OK response. Remote error
+ * bodies are untrusted data: 5xx bodies are operational noise (stack
+ * traces, upstream errors, HTML pages) with no repair value and are
+ * never forwarded; 4xx details prefer structured envelopes and fall
+ * back to bounded, sanitized raw text. Deterministic and dependency-free.
+ */
+function formatErrorDetail(status: number, body: string): string {
+  if (status >= 500) return "";
+  const structured = extractStructuredDetail(body);
+  const raw = (structured ?? body).trim();
+  if (!raw) return "";
+  // An unstructured body that opens like markup is an error page, not a
+  // validation message.
+  if (structured === undefined && raw.startsWith("<")) return "";
+  const detail = sanitizeErrorDetail(raw).slice(0, MAX_ERROR_DETAIL_CHARS);
+  return detail ? `: ${detail}` : "";
+}
 /**
  * Read at most `maxBytes` of a response body for error diagnostics. The
  * success path enforces `maxResponseBytes`; error bodies need the same
@@ -153,23 +221,28 @@ export class HttpSystemOneProvider implements SystemOneProvider {
           res.headers.get("x-typesafe-request-id") ??
           undefined;
         // Backends (Reflex, Von, Laya, TypeSafe) explain 4xx rejections in
-        // the response body. Forward a bounded snippet so calling agents can
-        // self-correct; the status alone ("provider error 422") is not
-        // actionable. Never forward credentials: the body is server-generated
-        // and only its first bytes are kept.
-        const snippet = (await readBoundedBody(res, MAX_ERROR_BODY_BYTES))
-          .trim()
-          .slice(0, 500);
-        let detail = "";
-        if (snippet) detail = `: ${snippet}`;
-        if (controller.signal.aborted && !timedOut) {
+        // the response body. Forward a bounded, sanitized snippet so calling
+        // agents can self-correct; the status alone ("provider error 422")
+        // is not actionable. The body read itself can stall: check
+        // timeout/abort state explicitly afterwards so a timeout during the
+        // read still reports as a timeout rather than an ordinary 4xx.
+        const body = await readBoundedBody(res, MAX_ERROR_BODY_BYTES);
+        if (timedOut) {
+          throw new SystemOneTimeoutError(
+            `request timed out after ${this.opts.timeoutMs}ms`,
+          );
+        }
+        if (controller.signal.aborted) {
           throw new SystemOneTransportError("request aborted");
         }
-        throw new SystemOneHttpError(`provider error ${res.status}${detail}`, {
-          status: res.status,
-          provider: this.id,
-          requestId,
-        });
+        throw new SystemOneHttpError(
+          `provider error ${res.status}${formatErrorDetail(res.status, body)}`,
+          {
+            status: res.status,
+            provider: this.id,
+            requestId,
+          },
+        );
       }
       const text = await res.text();
       if (text.length > this.opts.maxResponseBytes)
