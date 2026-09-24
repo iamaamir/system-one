@@ -5,6 +5,7 @@ import type { SystemOneRequest } from "../src/provider.ts";
 import {
   type ChoiceQuestion,
   choice,
+  type NoulQuestion,
   noul,
   type ScoreQuestion,
   score,
@@ -12,24 +13,35 @@ import {
 
 type ReadonlyRequestQuestions = {
   choice: ChoiceQuestion<{ a: null; b: "b" }>;
-  score: ScoreQuestion<readonly ["low", "high"]>;
+  score: ScoreQuestion<string[]>;
+  noul: NoulQuestion;
 };
 
 function checkRequestReadonlyContract(): void {
   const choiceQuestion = choice("Which?", { a: null, b: "b" });
-  const scoreQuestion = score("How?", ["low", "high"] as const);
+  const scoreCriteria: string[] = ["low", "high"];
+  const scoreQuestion = score("How?", scoreCriteria);
+  const noulQuestion = noul("Is it hard?", {
+    coding: "impl",
+    research: null,
+  });
   const request: SystemOneRequest<ReadonlyRequestQuestions> = {
     state: "state",
     questions: {
       choice: choiceQuestion,
       score: scoreQuestion,
+      noul: noulQuestion,
     },
   };
 
   // @ts-expect-error - request slots are readonly
   request.state = "changed";
   // @ts-expect-error - request slots are readonly
-  request.questions = { choice: choiceQuestion, score: scoreQuestion };
+  request.questions = {
+    choice: choiceQuestion,
+    score: scoreQuestion,
+    noul: noulQuestion,
+  };
   // @ts-expect-error - request slots are readonly
   request.model = "changed";
   // @ts-expect-error - question map entries are readonly
@@ -44,6 +56,14 @@ function checkRequestReadonlyContract(): void {
   request.questions.score.criteria.push("new");
   // @ts-expect-error - score criteria entries are readonly
   request.questions.score.criteria[0] = "new";
+  // @ts-expect-error - noul question fields are readonly
+  request.questions.noul.instructions = "changed";
+  // @ts-expect-error - noul criteria are readonly
+  request.questions.noul.criteria = noulQuestion.criteria;
+  if (request.questions.noul.criteria) {
+    // @ts-expect-error - noul criteria entries are readonly
+    request.questions.noul.criteria.coding = "changed";
+  }
   void request;
 }
 
