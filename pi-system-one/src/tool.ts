@@ -177,13 +177,94 @@ function pickAlias(
 }
 
 /**
+ * Copy-on-write canonicality check for one question. Returns true when
+ * running the builder below would produce a key-for-key, value-for-value
+ * identical record — in which case the caller reuses the input by
+ * reference instead of allocating a copy. Any doubt returns false (the
+ * builder then produces the correct output); false negatives only cost an
+ * allocation, never correctness.
+ *
+ * Deliberately allocation-free itself (own-key probes, no entries/keys
+ * arrays) so the defensive second normalization in execute() stays cheap.
+ */
+function isCanonicalQuestion(input: Record<string, unknown>): boolean {
+  const hasType = Object.hasOwn(input, "type");
+  // Probe only: an exact canonical spelling (alias-map value identical to
+  // the key) needs no work. Near-miss spellings report non-canonical
+  // WITHOUT running full normalization here — the builder below runs it
+  // exactly once. Non-string types pass (the builder copies them verbatim),
+  // so doubt always errs toward a wasted rebuild, never a wrong share.
+  if (
+    hasType &&
+    typeof input.type === "string" &&
+    QUESTION_TYPE_ALIASES.get(input.type) !== input.type
+  ) {
+    return false;
+  }
+  // Strings reaching here are already canonical, so the raw type doubles
+  // as the normalized one for the criteria decisions below.
+  const normalizedType = hasType ? input.type : undefined;
+  const instructions = pickAlias(input, INSTRUCTIONS_ALIASES);
+  // NOTE: no `else` for an own defined "instructions" slot — "instructions"
+  // is the first alias, so pickAlias would have returned it above; reaching
+  // here with one means it is undefined and the builder omits it too.
+  if (instructions !== undefined) {
+    // The builder emits own "instructions" with this value; canonical only
+    // if it already sits there and no sibling alias key lingers (dropped).
+    if (
+      !Object.hasOwn(input, "instructions") ||
+      input.instructions !== instructions
+    ) {
+      return false;
+    }
+  }
+  for (const alias of INSTRUCTIONS_ALIASES) {
+    if (alias !== "instructions" && Object.hasOwn(input, alias)) return false;
+  }
+  let criteria = pickAlias(input, CRITERIA_ALIASES);
+  if (normalizedType === "noul" && criteria === null) {
+    // The builder drops it; canonical only if no own alias key is dropped.
+    for (const alias of CRITERIA_ALIASES) {
+      if (Object.hasOwn(input, alias)) return false;
+    }
+    criteria = undefined;
+  }
+  if (
+    normalizedType === "choice" &&
+    Array.isArray(criteria) &&
+    (criteria as unknown[]).every((item) => typeof item === "string")
+  ) {
+    return false; // The builder folds string arrays to an object.
+  }
+  if (criteria !== undefined) {
+    if (!Object.hasOwn(input, "criteria") || input.criteria !== criteria) {
+      return false;
+    }
+  } else if (Object.hasOwn(input, "criteria")) {
+    return false; // Own undefined criteria is dropped by the builder.
+  }
+  for (const alias of CRITERIA_ALIASES) {
+    if (alias !== "criteria" && Object.hasOwn(input, alias)) return false;
+  }
+  for (const key of QUESTION_JUNK_KEYS) {
+    if (Object.hasOwn(input, key)) return false;
+  }
+  // Any other own key is preserved by reference, so it cannot differ.
+  return true;
+}
+
+/**
  * Coerce one question into the flat schema shape: canonical `type`,
  * `instructions` / `criteria` resolved through aliases, array-form choice
  * criteria (`["a", "b"]`) folded to `{"a": null, "b": null}`, and
  * naming/junk keys stripped.
+ *
+ * Pure, idempotent, non-mutating, with structural sharing: canonical input
+ * is returned by reference; only repaired questions allocate.
  */
 function normalizeQuestion(input: unknown): unknown {
   if (!isRecord(input)) return input;
+  if (isCanonicalQuestion(input)) return input;
   const out: Record<string, unknown> = {};
   if (Object.hasOwn(input, "type"))
     out.type = normalizeQuestionType(input.type);
@@ -235,13 +316,15 @@ function normalizeQuestions(input: unknown): unknown {
     };
     input.forEach((entry, index) => {
       if (isRecord(entry)) {
-        const { name, id, key, ...rest } = entry;
-        const rawName = name ?? id ?? key;
+        // No intermediate `{...rest}` copy: normalizeQuestion() already
+        // drops name/id/key as junk, so passing the entry through repairs
+        // naming metadata and aliases in a single construction pass.
+        const rawName = entry.name ?? entry.id ?? entry.key;
         const base =
           typeof rawName === "string" && rawName.trim() !== ""
             ? rawName
             : `q${index + 1}`;
-        setOwn(record, claimName(base), normalizeQuestion(rest));
+        setOwn(record, claimName(base), normalizeQuestion(entry));
       } else {
         setOwn(record, claimName(`q${index + 1}`), entry);
       }
@@ -270,9 +353,24 @@ function normalizeQuestions(input: unknown): unknown {
       );
       if (knownKind || allQuestionKeys) return { q: normalizeQuestion(input) };
     }
+    // Copy-on-write: share the map (and each canonical question) when
+    // nothing needs repair; otherwise rebuild with repaired questions and
+    // unaffected siblings shared by reference. The scan probes
+    // canonicality only — it must never build (and discard) repairs.
+    let dirty = false;
+    for (const name in input) {
+      if (!Object.hasOwn(input, name)) continue;
+      const question = input[name];
+      if (!isRecord(question) || !isCanonicalQuestion(question)) {
+        dirty = true;
+        break;
+      }
+    }
+    if (!dirty) return input;
     const record: Record<string, unknown> = {};
-    for (const [name, question] of Object.entries(input)) {
-      setOwn(record, name, normalizeQuestion(question));
+    for (const name in input) {
+      if (!Object.hasOwn(input, name)) continue;
+      setOwn(record, name, normalizeQuestion(input[name]));
     }
     return record;
   }
@@ -286,6 +384,38 @@ function normalizeQuestions(input: unknown): unknown {
  */
 export function prepareSystemOneArgs(args: unknown): SystemOneParams {
   if (!isRecord(args)) return args as SystemOneParams;
+  const questions =
+    args.questions ?? args.question ?? args.queries ?? undefined;
+  const normalizedQuestions =
+    questions !== undefined ? normalizeQuestions(questions) : undefined;
+  // Copy-on-write fast path: canonical state/questions slots, no alias keys
+  // to rename, no unknown keys to drop — return the input by reference so
+  // the defensive re-normalization in execute() allocates ~nothing.
+  const questionsCanonical =
+    normalizedQuestions === questions &&
+    (questions === undefined
+      ? !Object.hasOwn(args, "questions") &&
+        !Object.hasOwn(args, "question") &&
+        !Object.hasOwn(args, "queries")
+      : questions === args.questions &&
+        !Object.hasOwn(args, "question") &&
+        !Object.hasOwn(args, "queries"));
+  if (
+    questionsCanonical &&
+    Object.hasOwn(args, "state") &&
+    args.state !== undefined &&
+    !Object.hasOwn(args, "context") &&
+    !Object.hasOwn(args, "evidence")
+  ) {
+    let knownKeysOnly = true;
+    for (const key in args) {
+      if (Object.hasOwn(args, key) && key !== "state" && key !== "questions") {
+        knownKeysOnly = false;
+        break;
+      }
+    }
+    if (knownKeysOnly) return args as SystemOneParams;
+  }
   const out: Record<string, unknown> = {};
   if (args.state !== undefined) {
     out.state = args.state;
@@ -294,9 +424,7 @@ export function prepareSystemOneArgs(args: unknown): SystemOneParams {
   } else if (args.evidence !== undefined) {
     out.state = args.evidence;
   }
-  const questions =
-    args.questions ?? args.question ?? args.queries ?? undefined;
-  if (questions !== undefined) out.questions = normalizeQuestions(questions);
+  if (normalizedQuestions !== undefined) out.questions = normalizedQuestions;
   // Drop unknown top-level keys; a missing `state` / `questions` still
   // produces a clear error from semantic validation in execute().
   return out as SystemOneParams;
