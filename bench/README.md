@@ -21,6 +21,10 @@ node --experimental-strip-types bench/render.bench.ts
   bodies, provider construction cost. Uses a 10KB cap so it stays fast.
 - `render.bench.ts` — `renderSystemOneResult()` output sizes and the compact
   candidate from the brief (evaluation only; rendering is unchanged).
+- `validation.bench.ts` — `validateResponse()` on the real production path
+  for choice/score at sizes 3/10/50/255 plus a mixed batch. Run against this
+  tree and against the v1.2.0 baseline tree with the same file to compare
+  validation strategies.
 
 ## Interpreting numbers
 
