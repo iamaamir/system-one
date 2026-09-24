@@ -26,9 +26,18 @@ export interface ScoreQuestion<
 
 export type Question = NoulQuestion | ChoiceQuestion | ScoreQuestion;
 export type QuestionMap = Readonly<Record<string, Question>>;
-export type ReadonlyQuestion = Question;
+type ReadonlyQuestionFields<T extends Question> = {
+  readonly [P in keyof T]: P extends "criteria" ? Readonly<T[P]> : T[P];
+};
+export type ReadonlyQuestion<T extends Question = Question> =
+  ReadonlyQuestionFields<T> &
+    (T extends ChoiceQuestion<infer C>
+      ? ChoiceQuestion<C>
+      : T extends ScoreQuestion<infer C>
+        ? ScoreQuestion<C>
+        : NoulQuestion);
 export type ReadonlyQuestionMap<Q extends QuestionMap = QuestionMap> = {
-  readonly [K in keyof Q]: Readonly<Q[K]> & ReadonlyQuestion;
+  readonly [K in keyof Q]: ReadonlyQuestion<Q[K]>;
 };
 
 export function noul(
