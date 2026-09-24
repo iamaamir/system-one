@@ -21,7 +21,10 @@ or
 ```bash
 export SYSTEM_ONE_BASE_URL=https://api.typesafe.ai
 export SYSTEM_ONE_MODEL=jev-latest
-export SYSTEM_ONE_API_KEY=$(echo $TYPESAFE_API_KEY) # or directly paste the key
+# Option 1: paste the key directly
+export SYSTEM_ONE_API_KEY="..."
+# Option 2: reuse an existing variable
+export SYSTEM_ONE_API_KEY="$TYPESAFE_API_KEY"
 ```
 
 
@@ -38,7 +41,7 @@ The extension provides a `/so` command for configuring the System One client:
 When you run `/so config`, you can:
 
 - **Enter a new API key** – it is stored in memory only and will be lost when the session ends.
-- **Enter `-`** – forget the memory‑only key. If an `SYSTEM_ONE_API_KEY` environment variable is present, the client will fall back to it; otherwise the key becomes absent.
+- **Enter `-`** – forget the memory‑only key. If a `SYSTEM_ONE_API_KEY` environment variable is present, the client will fall back to it; otherwise the key becomes absent.
 - **Leave the input empty** – keep the existing value.
 
 The current configuration can be inspected with `/so status`.

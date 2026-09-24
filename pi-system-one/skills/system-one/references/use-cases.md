@@ -3,7 +3,7 @@
 Each recipe shows the tool arguments shape: `{ state, questions }`
 (`system_one` in Pi — the same JSON is the `POST /v1/systemone` body,
 so these recipes transfer to any harness). `state` is always the
-material under judgment; one call, parallel answers. Adapt labels and
+material under judgment; one call, batched answers. Adapt labels and
 levels to the domain — concrete descriptions beat bare words
 ("Blocking issue; no workaround exists" beats "high").
 

@@ -10,7 +10,7 @@ System One models (TypeSafe's Jev, Reflex, Von, Laya — all speak
 `state` plus typed questions and return one calibrated answer per
 question: a pick, a probability, or a position on a scale. No prose to
 parse, no hallucinated formats — the answer shape is fixed by the
-request. Typical calls finish in 70–500ms. Call them through your
+request. Call them through your
 agent's System One tool (exposed as `system_one` in Pi), never by
 hand-rolling HTTP.
 
@@ -56,8 +56,8 @@ Yes/no with two named sides is a `noul`, not a two-option `choice`.
 ## Batching and state hygiene
 
 - Batch every independent question over the same state into **one**
-  `system_one` call — backends evaluate questions in parallel, so five
-  questions cost about the same latency as one.
+  `system_one` call — one request reduces round-trips and lets the
+  provider batch or parallelize evaluation where supported.
 - `state` holds the content plus supporting facts, and nothing else.
   Judgments live in `questions`: text pasted into the state gets judged
   as content, so never put the question itself in the state.
