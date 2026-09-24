@@ -1,6 +1,6 @@
 {
   "name": "pi-system-one",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "System One decisions for Pi. Plug in TypeSafe Jev, Reflex, or your own provider.",
   "type": "module",
   "license": "MIT",
