@@ -7,6 +7,8 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -32,6 +34,17 @@ function packedFiles(): string[] {
 }
 
 describe("npm package runtime resources", () => {
+  it("declares the extension entry for both Pi and OMP", () => {
+    const packageJson = JSON.parse(
+      readFileSync(join(packageRoot, "package.json"), "utf-8"),
+    ) as {
+      pi?: { extensions?: string[] };
+      omp?: { extensions?: string[] };
+    };
+    assert.deepEqual(packageJson.pi, { extensions: ["./src/extension.ts"] });
+    assert.deepEqual(packageJson.omp, { extensions: ["./src/extension.ts"] });
+  });
+
   it("packs the skill, its references, and the /judge prompt", () => {
     const files = packedFiles();
     for (const required of [
