@@ -420,6 +420,14 @@ export function buildSystemOneTool(deps: {
        * the same canonical shape before semantic validation.
        */
       const normalized = prepareSystemOneArgs(params);
+      // prepareSystemOneArgs passes non-objects through untouched; direct
+      // calls bypassing Pi validation must get an actionable error, not a
+      // TypeError from property access on null.
+      if (!isRecord(normalized)) {
+        throw new Error(
+          'system_one: request must be an object with "state" and "questions".',
+        );
+      }
       if (normalized.state === undefined) {
         throw new Error(
           'system_one: state is required. Put the material under judgment in "state" (string or object), e.g. {"state": "<evidence>", "questions": {...}}.',

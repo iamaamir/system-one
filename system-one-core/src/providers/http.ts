@@ -103,10 +103,46 @@ function formatErrorDetail(status: number, body: string): string {
   return detail ? `: ${detail}` : "";
 }
 /**
- * Read at most `maxBytes` of a response body for error diagnostics. The
- * success path enforces `maxResponseBytes`; error bodies need the same
- * bound so a misconfigured backend returning megabytes of HTML/trace on
- * 4xx/5xx is never fully buffered. Never throws: failures yield "".
+ * Stream at most `maxBytes` of a body chunk-by-chunk. Reports whether
+ * the cap cut the stream short so callers can distinguish "complete" from
+ * "truncated". Throws on read failures; callers decide what that means.
+ */
+async function readLimitedChunks(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  maxBytes: number,
+): Promise<{ chunks: Uint8Array[]; truncated: boolean }> {
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return { chunks, truncated: false };
+    bytes += value.byteLength;
+    if (bytes > maxBytes) {
+      chunks.push(
+        value.slice(0, Math.max(0, value.byteLength - (bytes - maxBytes))),
+      );
+      return { chunks, truncated: true };
+    }
+    chunks.push(value);
+  }
+}
+
+function decodeChunks(chunks: Uint8Array[]): string {
+  const merged = new Uint8Array(
+    chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
+  );
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(merged);
+}
+
+/**
+ * Read at most `maxBytes` of a response body for error diagnostics, so a
+ * misconfigured backend returning megabytes of HTML/trace on 4xx/5xx is
+ * never fully buffered. Never throws: failures yield "".
  */
 async function readBoundedBody(
   res: Response,
@@ -115,30 +151,11 @@ async function readBoundedBody(
   try {
     const reader = res.body?.getReader();
     if (!reader) return (await res.text()).slice(0, maxBytes);
-    const chunks: Uint8Array[] = [];
-    let bytes = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      bytes += value.byteLength;
-      if (bytes > maxBytes) {
-        chunks.push(
-          value.slice(0, Math.max(0, value.byteLength - (bytes - maxBytes))),
-        );
-        break;
-      }
-      chunks.push(value);
-    }
-    await reader.cancel();
-    const merged = new Uint8Array(
-      chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
-    );
-    let offset = 0;
-    for (const chunk of chunks) {
-      merged.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-    return new TextDecoder().decode(merged);
+    const { chunks } = await readLimitedChunks(reader, maxBytes);
+    // Release the stream, but never let a cancel failure discard chunks
+    // already read — the 4xx detail collected so far is still useful.
+    await reader.cancel().catch(() => {});
+    return decodeChunks(chunks);
   } catch {
     // Unreadable body (e.g. aborted mid-read); status still informs.
     return "";
@@ -244,12 +261,31 @@ export class HttpSystemOneProvider implements SystemOneProvider {
           },
         );
       }
-      const text = await res.text();
-      if (text.length > this.opts.maxResponseBytes)
-        throw new SystemOneHttpError("response too large", {
-          status: 200,
-          provider: this.id,
-        });
+      // Stream with the byte bound enforced during the read: a
+      // misconfigured backend returning megabytes on 200 must be cut off
+      // mid-stream, never fully buffered before the size check.
+      const reader = res.body?.getReader();
+      let text: string;
+      if (!reader) {
+        text = await res.text();
+        if (text.length > this.opts.maxResponseBytes)
+          throw new SystemOneHttpError("response too large", {
+            status: 200,
+            provider: this.id,
+          });
+      } else {
+        const { chunks, truncated } = await readLimitedChunks(
+          reader,
+          this.opts.maxResponseBytes,
+        );
+        await reader.cancel().catch(() => {});
+        if (truncated)
+          throw new SystemOneHttpError("response too large", {
+            status: 200,
+            provider: this.id,
+          });
+        text = decodeChunks(chunks);
+      }
       let json: unknown;
       try {
         json = JSON.parse(text);

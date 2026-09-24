@@ -487,6 +487,32 @@ describe("system_one tool", () => {
       });
       assert.equal((res.details.answers.t as { choice: string }).choice, "a");
     });
+
+    it("execute rejects non-object args with an actionable error, not a TypeError", async () => {
+      let calls = 0;
+      const tool = buildSystemOneTool({
+        provider: {
+          id: "stub",
+          async evaluate() {
+            calls += 1;
+            return { answers: {}, metadata: { provider: "stub" } };
+          },
+        } as never,
+      });
+      for (const raw of [null, "just a string", [{ state: "hi" }]]) {
+        await assert.rejects(
+          tool.execute(
+            "id-nonobject",
+            raw as never,
+            undefined,
+            undefined,
+            {} as never,
+          ),
+          /request must be an object with "state" and "questions"/,
+        );
+      }
+      assert.equal(calls, 0);
+    });
   });
 
   describe("pre-validation compatibility (older Pi without prepareArguments)", () => {

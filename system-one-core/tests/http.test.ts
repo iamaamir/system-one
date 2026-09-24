@@ -160,6 +160,31 @@ describe("http provider", () => {
       assert.equal(e.message, "provider error 500");
     }
   });
+  it("cuts off oversized success bodies mid-stream without full buffering", async () => {
+    let pulls = 0;
+    const chunk = new TextEncoder().encode("x".repeat(1024));
+    const fakeFetch = async () =>
+      new Response(
+        new ReadableStream({
+          pull(controller) {
+            pulls += 1;
+            controller.enqueue(chunk);
+          },
+        }),
+        { status: 200 },
+      );
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      maxResponseBytes: 2048,
+      fetch: fakeFetch as any,
+    });
+    await assert.rejects(
+      p.evaluate({ state: "x", questions: { c: choice("W?", { a: null }) } }),
+      /response too large/,
+    );
+    // 100+ chunks available; the read must stop once the bound is hit.
+    assert.ok(pulls < 10, `buffered the whole body (${pulls} pulls)`);
+  });
   it("reports timeout when the error body stalls after error headers", async () => {
     const fakeFetch = async (_u: any, init: any) =>
       new Response(
