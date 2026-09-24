@@ -6,6 +6,22 @@ System One decisions for Pi. Plug in TypeSafe Jev, Reflex, or your own provider.
 pi install npm:pi-system-one
 ```
 
+For Oh My Pi (OMP), install the published package with:
+
+```bash
+omp install npm:pi-system-one
+```
+
+For a local checkout, install or load the package directory directly:
+
+```bash
+omp install /path/to/pi-system-one
+# or
+omp --extension /path/to/pi-system-one
+```
+
+Set `SYSTEM_ONE_BASE_URL` before launch, or run `/so config`; the `system_one` tool is registered after the endpoint is configured.
+
 <img src="./demo.gif" alt="Description" width="640" >   
 
 ---

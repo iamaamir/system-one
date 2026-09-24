@@ -27,13 +27,18 @@
     "coding-agent"
   ],
   "dependencies": {
-    "system-one-core": "^0.2.0"
+    "system-one-core": "^0.2.1"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*",
     "typebox": "*"
   },
   "pi": {
+    "extensions": [
+      "./src/extension.ts"
+    ]
+  },
+  "omp": {
     "extensions": [
       "./src/extension.ts"
     ]
