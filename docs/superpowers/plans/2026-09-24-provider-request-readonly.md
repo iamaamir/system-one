@@ -374,7 +374,7 @@ Completed: the build exits successfully and leaves ignored declarations in `syst
 
 ### Task 5: Run final validation
 
-- [ ] **Step 1: Run the exact requested commands**
+- [x] **Step 1: Run the exact requested commands**
 
 ```bash
 npm test
@@ -385,7 +385,7 @@ npm run build --workspace system-one-core
 
 Expected: all commands exit 0. `biome check .` must not rewrite files; run it without `--write`.
 
-- [ ] **Step 2: Re-run the mutation audit and inspect repository status**
+- [x] **Step 2: Re-run the mutation audit and inspect repository status**
 
 ```bash
 rg -n 'request\.(state|questions|model)\s*=|request\.questions\.[A-Za-z_$][\w$]*\s*=|\.criteria\.(push|pop|splice|shift|unshift)|delete\s+request\.' system-one-core pi-system-one bench
@@ -394,16 +394,9 @@ rtk git status --short
 
 Expected: no request mutations and no unrelated files changed.
 
-- [ ] **Step 3: Commit any validation-only formatting correction separately**
+- [x] **Step 3: No formatting correction was required**
 
-If Biome reports a formatting issue, run Biome only on the affected source/test files, review the diff, and commit:
-
-```bash
-git add system-one-core/src/questions.ts system-one-core/src/provider.ts system-one-core/src/validation.ts system-one-core/tests/questions.test.ts
-git commit -m "style(core): format readonly request contracts"
-```
-
-Do not include generated `dist`, fixtures, dependency, or Pi files.
+Biome reported no fixes; no generated `dist`, fixtures, dependency, or Pi files were changed.
 
 ### Task 6: Open the PR
 
