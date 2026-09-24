@@ -1,6 +1,6 @@
 # Provider Request Immutability Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]` / `- [x]`) syntax for tracking.
 
 **Goal:** Make `system-one-core` provider request contracts readonly at the compile-time ownership boundary without runtime changes or a `JsonValue` redesign.
 
@@ -12,60 +12,73 @@
 
 ## File Structure
 
-Modify only these source/test files:
+The completed change set contains exactly these files:
 
+- `.gitignore:12` — ignore local worktree setup metadata.
+- `docs/superpowers/plans/2026-09-24-provider-request-readonly.md` — this implementation record.
+- `docs/superpowers/specs/2026-09-24-provider-request-readonly-design.md` — the ownership and compatibility design.
 - `system-one-core/src/questions.ts` — readonly question contracts, builder bounds, broad `Question` union, conditional `ReadonlyQuestion<T>`, and mapped request view.
 - `system-one-core/src/provider.ts` — readonly `SystemOneRequest` fields using `ReadonlyQuestionMap<Q>`.
-- `system-one-core/src/validation.ts` — one type-only union signature for ordinary and readonly mapped question maps; implementation body remains unchanged.
-- `system-one-core/src/providers/http.ts` — remove the explicit validation type argument; the ordinary call must infer normally.
-- `system-one-core/tests/validation.test.ts` — ordinary and external generic-wrapper inference regression coverage.
-- `system-one-core/tests/questions.test.ts` — compile-only positive and negative readonly assertions using the existing `@ts-expect-error` style.
+- `system-one-core/src/validation.ts` — the public union signature for ordinary and readonly mapped question maps; the validation body remains unchanged.
+- `system-one-core/tests/questions.test.ts` — compile-only readonly checks plus positive builder, inference, and construction coverage.
+- `system-one-core/tests/validation.test.ts` — ordinary generic and external `SystemOneRequest<Q>` wrapper inference regressions.
 
-Do not modify `src/types.ts`, `src/client.ts`, `src/providers/mock.ts`, `src/responses.ts`, or `pi-system-one/`.
+No HTTP runtime file changed. `system-one-core/src/providers/http.ts:330` already calls `validateResponse(request.questions, json, this.id)` without an explicit type argument. `src/types.ts`, `src/client.ts`, `src/providers/mock.ts`, `src/responses.ts`, `pi-system-one/`, fixtures, and benchmarks are also unchanged.
 
 ### Task 1: Add failing readonly contract checks
 
 **Files:**
-- Modify: `system-one-core/tests/questions.test.ts:1-33`
+- Modify: `system-one-core/tests/questions.test.ts:1-138`
 
-- [ ] **Step 1: Add compile-only type fixtures**
+- [x] **Step 1: Add compile-only type fixtures**
 
-Use the existing import block and add:
+The committed fixture uses a mutable widened `ScoreQuestion<string[]>` criteria type, includes Choice, Score, and Noul request checks, and retains positive inline response-inference and mutable-construction checks:
 
 ```ts
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
 import type { SystemOne } from "../src/client.ts";
 import type { SystemOneRequest } from "../src/provider.ts";
 import {
-  choice,
   type ChoiceQuestion,
+  choice,
+  type NoulQuestion,
+  noul,
   type ScoreQuestion,
   score,
 } from "../src/questions.ts";
-```
 
-Define these functions after the imports and before `describe`:
-
-```ts
 type ReadonlyRequestQuestions = {
   choice: ChoiceQuestion<{ a: null; b: "b" }>;
-  score: ScoreQuestion<readonly ["low", "high"]>;
+  score: ScoreQuestion<string[]>;
+  noul: NoulQuestion;
 };
 
 function checkRequestReadonlyContract(): void {
   const choiceQuestion = choice("Which?", { a: null, b: "b" });
-  const scoreQuestion = score("How?", ["low", "high"] as const);
+  const scoreCriteria: string[] = ["low", "high"];
+  const scoreQuestion = score("How?", scoreCriteria);
+  const noulQuestion = noul("Is it hard?", {
+    coding: "impl",
+    research: null,
+  });
   const request: SystemOneRequest<ReadonlyRequestQuestions> = {
     state: "state",
     questions: {
       choice: choiceQuestion,
       score: scoreQuestion,
+      noul: noulQuestion,
     },
   };
 
   // @ts-expect-error - request slots are readonly
   request.state = "changed";
   // @ts-expect-error - request slots are readonly
-  request.questions = {};
+  request.questions = {
+    choice: choiceQuestion,
+    score: scoreQuestion,
+    noul: noulQuestion,
+  };
   // @ts-expect-error - request slots are readonly
   request.model = "changed";
   // @ts-expect-error - question map entries are readonly
@@ -73,13 +86,21 @@ function checkRequestReadonlyContract(): void {
   // @ts-expect-error - question fields are readonly
   request.questions.choice.instructions = "changed";
   // @ts-expect-error - question criteria are readonly
-  request.questions.choice.criteria = {};
+  request.questions.choice.criteria = choiceQuestion.criteria;
   // @ts-expect-error - choice criteria entries are readonly
   request.questions.choice.criteria.a = null;
   // @ts-expect-error - score criteria arrays are readonly
   request.questions.score.criteria.push("new");
   // @ts-expect-error - score criteria entries are readonly
   request.questions.score.criteria[0] = "new";
+  // @ts-expect-error - noul question fields are readonly
+  request.questions.noul.instructions = "changed";
+  // @ts-expect-error - noul criteria are readonly
+  request.questions.noul.criteria = noulQuestion.criteria;
+  if (request.questions.noul.criteria) {
+    // @ts-expect-error - noul criteria entries are readonly
+    request.questions.noul.criteria.coding = "changed";
+  }
   void request;
 }
 
@@ -124,7 +145,9 @@ void checkInlineResponseInference;
 void checkMutableConstruction;
 ```
 
-- [ ] **Step 2: Run typecheck to confirm the checks fail before implementation**
+Coverage includes readonly request slots, question-map entries, Choice and Noul fields/criteria, Choice criteria entries, Score array methods and indexed assignment, positive inline response-key/number inference, and positive mutable request construction.
+
+- [x] **Step 2: Run typecheck to confirm the checks fail before implementation**
 
 Run:
 
@@ -132,23 +155,20 @@ Run:
 npm --workspace system-one-core run typecheck
 ```
 
-Expected: FAIL because the current request and question types still allow the marked mutations.
+Completed: the red fixture exposed the mutable contracts before implementation; the final typecheck passes with every `@ts-expect-error` directive consumed.
 
-- [ ] **Step 3: Commit the red test fixture**
+- [x] **Step 3: Commit the red test fixture**
 
-```bash
-git add system-one-core/tests/questions.test.ts
-git commit -m "test(core): specify readonly provider request contract"
-```
+Completed in commits `4f5bd7a` and `a9f89ed` with message `test(core): specify readonly provider request contract` and its strengthening follow-up.
 
 ### Task 2: Make question and builder contracts readonly
 
 **Files:**
-- Modify: `system-one-core/src/questions.ts:1-43`
+- Modify: `system-one-core/src/questions.ts:1-63`
 
-- [ ] **Step 1: Replace the question type and builder declarations**
+- [x] **Step 1: Replace the question type and builder declarations**
 
-Keep the existing file-level JSON-boundary suppression only if a remaining `any` requires it. The resulting declarations must be:
+The committed implementation is:
 
 ```ts
 import type { JsonValue } from "./types.ts";
@@ -160,8 +180,9 @@ export interface NoulQuestion {
 }
 
 export interface ChoiceQuestion<
-  T extends Readonly<Record<string, JsonValue | null>> =
-    Readonly<Record<string, JsonValue | null>>,
+  T extends Readonly<Record<string, JsonValue | null>> = Readonly<
+    Record<string, JsonValue | null>
+  >,
 > {
   readonly type: "choice";
   readonly instructions: JsonValue;
@@ -201,10 +222,9 @@ export function noul(
     : { type: "noul", instructions };
 }
 
-export function choice<const T extends Readonly<Record<string, JsonValue | null>>>(
-  instructions: JsonValue,
-  criteria: T,
-): ChoiceQuestion<T> {
+export function choice<
+  const T extends Readonly<Record<string, JsonValue | null>>,
+>(instructions: JsonValue, criteria: T): ChoiceQuestion<T> {
   return { type: "choice", instructions, criteria };
 }
 
@@ -216,9 +236,9 @@ export function score<const T extends readonly JsonValue[]>(
 }
 ```
 
-Mutable object and array inputs remain assignable to the readonly builder bounds. The broad `Question` union must use the default parameters above; do not use `any` there.
+Mutable object and array inputs remain assignable to the readonly builder bounds, and the broad `Question` union uses readonly-compatible defaults without `any`.
 
-- [ ] **Step 2: Run the focused typecheck**
+- [x] **Step 2: Run the focused typecheck**
 
 Run:
 
@@ -226,26 +246,22 @@ Run:
 npm --workspace system-one-core run typecheck
 ```
 
-Expected: remaining request-level mutation checks should still fail until Task 3, while builder inference and criteria checks pass.
+Completed successfully: builder inference and criteria checks pass, with the request-level directives now consumed by the readonly contracts.
 
-- [ ] **Step 3: Commit the question contract change**
+- [x] **Step 3: Commit the question contract change**
 
-```bash
-git add system-one-core/src/questions.ts
-git commit -m "refactor(core): make question inputs readonly"
-```
+Completed in commits `28ea821` and `973c035`.
 
 ### Task 3: Apply the mapped readonly request boundary
 
 **Files:**
 - Modify: `system-one-core/src/provider.ts:1-8`
-- Modify: `system-one-core/src/validation.ts:1-3,51-58`
-- Modify: `system-one-core/src/providers/http.ts:330`
-- Modify: `system-one-core/tests/validation.test.ts:1-22`
+- Modify: `system-one-core/src/validation.ts:3-7,51-60`
+- Modify: `system-one-core/tests/validation.test.ts:1-24`
 
-- [ ] **Step 1: Update `SystemOneRequest`**
+- [x] **Step 1: Update `SystemOneRequest`**
 
-Import `ReadonlyQuestionMap` and use it for the questions slot:
+The committed request boundary is:
 
 ```ts
 import type { QuestionMap, ReadonlyQuestionMap } from "./questions.ts";
@@ -257,11 +273,11 @@ export interface SystemOneRequest<Q extends QuestionMap = QuestionMap> {
 }
 ```
 
-Do not alter the provider method signature or response generic.
+The provider method signature and `SystemOneResponse<Q>` generic remain unchanged.
 
-- [ ] **Step 2: Add the union `validateResponse` signature**
+- [x] **Step 2: Add the union `validateResponse` signature and wrapper regression**
 
-Import `Question` and `ReadonlyQuestionMap` in `validation.ts`, then place this declaration immediately before the existing implementation signature:
+The public signature accepts either an ordinary map or its readonly request view while preserving the concrete response generic:
 
 ```ts
 export function validateResponse<Q extends QuestionMap>(
@@ -277,9 +293,27 @@ export function validateResponse(
 ): SystemOneResponse<QuestionMap> {
 ```
 
-Keep the existing function body byte-for-byte apart from the signature boundary. The union preserves `Q` for both ordinary generic calls and external `SystemOneRequest<Q>` wrappers; remove the explicit type argument from the existing HTTP call so it infers normally. Add compile-only ordinary and request-wrapper regression checks to `tests/validation.test.ts`.
+The implementation signature stays broad and the validation body is unchanged. `system-one-core/tests/validation.test.ts:9-24` adds compile-only regressions for both paths:
 
-- [ ] **Step 3: Run typecheck and focused tests**
+```ts
+function checkGenericValidationInference<Q extends QuestionMap>(
+  questions: Q,
+  raw: unknown,
+): SystemOneResponse<Q> {
+  return validateResponse(questions, raw, "p");
+}
+
+function checkRequestValidationInference<Q extends QuestionMap>(
+  request: SystemOneRequest<Q>,
+  raw: unknown,
+): SystemOneResponse<Q> {
+  return validateResponse(request.questions, raw, "p");
+}
+```
+
+`system-one-core/src/providers/http.ts:330` is unchanged and already calls `validateResponse(request.questions, json, this.id)` without an explicit type argument; no HTTP runtime change was required.
+
+- [x] **Step 3: Run typecheck and focused tests**
 
 Run:
 
@@ -288,37 +322,37 @@ npm --workspace system-one-core run typecheck
 npm --workspace system-one-core run test
 ```
 
-Expected: all type-level directives are consumed, builder/runtime tests pass, and no provider or client casts are needed.
+Completed successfully: all type-level directives are consumed and the core test suite passes.
 
-- [ ] **Step 4: Commit the request boundary change**
+- [x] **Step 4: Commit the request boundary change**
 
-```bash
-git add system-one-core/src/provider.ts system-one-core/src/validation.ts system-one-core/src/providers/http.ts system-one-core/tests/validation.test.ts docs/superpowers/specs/2026-09-24-provider-request-readonly-design.md docs/superpowers/plans/2026-09-24-provider-request-readonly.md
-git commit -m "fix(core): preserve validation request inference"
-```
+Completed in commits `85460e5`, `90e89e8`, and `0d6ac65`; no HTTP source file was changed.
 
 ### Task 4: Review the diff and audit scope
 
 **Files:**
+- Review: `.gitignore:12`
+- Review: `docs/superpowers/plans/2026-09-24-provider-request-readonly.md`
+- Review: `docs/superpowers/specs/2026-09-24-provider-request-readonly-design.md`
 - Review: `system-one-core/src/questions.ts`
 - Review: `system-one-core/src/provider.ts`
 - Review: `system-one-core/src/validation.ts`
-- Review: `system-one-core/src/providers/http.ts`
 - Review: `system-one-core/tests/questions.test.ts`
 - Review: `system-one-core/tests/validation.test.ts`
+- Read-only verification: `system-one-core/src/providers/http.ts:330` (unchanged)
 
-- [ ] **Step 1: Inspect the complete diff**
+- [x] **Step 1: Inspect the complete diff**
 
 Run:
 
 ```bash
 rtk git status --short
-rtk git diff origin/main...HEAD -- system-one-core .gitignore docs/superpowers/specs/2026-09-24-provider-request-readonly-design.md
+rtk git diff origin/main...HEAD -- .gitignore docs/superpowers/plans/2026-09-24-provider-request-readonly.md docs/superpowers/specs/2026-09-24-provider-request-readonly-design.md system-one-core/src/questions.ts system-one-core/src/provider.ts system-one-core/src/validation.ts system-one-core/tests/questions.test.ts system-one-core/tests/validation.test.ts
 ```
 
-Expected: only the design/setup commits, question/provider/validation types, the union validation signature, the removal of the HTTP explicit type argument, and focused type tests are present. No `Object.freeze`, clone, normalization, Mock, Pi, or fixture changes.
+Completed: the final change set is limited to the eight listed paths. HTTP, Mock, client, `JsonValue`, Pi, fixtures, and benchmark paths are unchanged.
 
-- [ ] **Step 2: Search for request mutations**
+- [x] **Step 2: Search for request mutations**
 
 Run:
 
@@ -326,9 +360,9 @@ Run:
 rg -n 'request\.(state|questions|model)\s*=|request\.questions\.[A-Za-z_$][\w$]*\s*=|\.criteria\.(push|pop|splice|shift|unshift)|delete\s+request\.' system-one-core pi-system-one bench
 ```
 
-Expected: no request mutations. Existing writes to fresh response/header/normalization objects may appear and must be documented, not changed.
+Completed: there are no production request mutations. The compile-only expected-error writes in `system-one-core/tests/questions.test.ts:38-65` and the plan examples are not runtime behavior. Writes to fresh HTTP header/body/response objects, Mock/validation answer objects, and Pi normalization outputs are distinct and do not mutate requests.
 
-- [ ] **Step 3: Review generated declarations after the core build**
+- [x] **Step 3: Review generated declarations after the core build**
 
 Run:
 
@@ -336,7 +370,7 @@ Run:
 npm run build --workspace system-one-core
 ```
 
-Inspect `system-one-core/dist/*.d.ts` for readonly request, question, map, and criteria declarations; do not commit generated `dist` files.
+Completed: the build exits successfully and leaves ignored declarations in `system-one-core/dist/`. Readonly question/map/criteria declarations are in `dist/questions.d.ts:2-28`, request slots are in `dist/provider.d.ts:4-8`, and the union validation signature is in `dist/validation.d.ts:3`; `dist/types.d.ts:1-5` confirms `JsonValue` remains mutable and unchanged.
 
 ### Task 5: Run final validation
 
