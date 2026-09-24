@@ -355,6 +355,66 @@ describe("validation", () => {
       0.4,
     );
   });
+  it("rejects array containers for score probabilities and legend", () => {
+    const questions = { risk: score("Risk?", ["low", "high"]) };
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 0.6,
+                confidence: 0.8,
+                probabilities: [0.4, 0.6],
+                legend: { "0": "low", "1": "high" },
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" probabilities must be an object map/,
+    );
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 0.6,
+                confidence: 0.8,
+                probabilities: { "0": 0.4, "1": 0.6 },
+                legend: ["low", "high"],
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" legend must be an object map/,
+    );
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 0.6,
+                confidence: 0.8,
+                probabilities: [0.4, 0.6],
+                legend: ["low", "high"],
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" (probabilities|legend) must be an object map/,
+    );
+  });
   it("keeps prototype-like score keys on own-property semantics", () => {
     const questions = JSON.parse(
       JSON.stringify({ s: score("Risk?", ["__proto__", "safe"]) }),

@@ -6,6 +6,9 @@ import type { SystemOneResponse } from "./responses.ts";
 function isFiniteNum(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
 function assertProb(n: unknown, what: string): void {
   if (!isFiniteNum(n) || n < 0 || n > 1)
     throw new SystemOneProtocolError(`invalid probability for ${what}`);
@@ -96,10 +99,14 @@ export function validateResponse<Q extends QuestionMap>(
         throw new SystemOneProtocolError(`invalid score for ${id}`);
       if (!isFiniteNum(a.confidence) || a.confidence < 0 || a.confidence > 1)
         throw new SystemOneProtocolError(`invalid confidence for ${id}`);
-      if (!a.legend || typeof a.legend !== "object")
-        throw new SystemOneProtocolError(`missing legend for ${id}`);
-      if (!a.probabilities || typeof a.probabilities !== "object")
-        throw new SystemOneProtocolError(`missing probabilities for ${id}`);
+      if (!isRecord(a.legend))
+        throw new SystemOneProtocolError(
+          `score answer "${id}" legend must be an object map`,
+        );
+      if (!isRecord(a.probabilities))
+        throw new SystemOneProtocolError(
+          `score answer "${id}" probabilities must be an object map`,
+        );
       const probKeys = Object.keys(a.probabilities as object);
       const probs = a.probabilities as Record<string, unknown>;
       const slotsComplete = slots.every((s) => Object.hasOwn(probs, s));
