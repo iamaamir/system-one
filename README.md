@@ -219,23 +219,7 @@ Install the Pi extension:
 pi install npm:pi-system-one
 ```
 
-Point it at a local compatible provider:
-
-```bash
-export SYSTEM_ONE_BASE_URL=http://localhost:8008
-```
-
-Or configure TypeSafe Jev:
-
-```bash
-export SYSTEM_ONE_BASE_URL=https://api.typesafe.ai
-export SYSTEM_ONE_API_KEY=YOUR_KEY
-export SYSTEM_ONE_MODEL=jev-latest
-```
-
-`pi-system-one` registers one `system_one` tool and exposes the same bounded decision surface to the agent.
-
-Source: [`pi-system-one`](./pi-system-one)
+Read full documentation [`here`](./pi-system-one)
 
 ---
 
