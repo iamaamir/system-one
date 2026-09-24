@@ -9,6 +9,7 @@ dist/
 /pi-bifrost
 
 # misc
+.worktrees/
 .DS_Store
 *.tgz
 *.cast
