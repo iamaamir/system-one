@@ -1050,6 +1050,29 @@ describe("system_one tool", () => {
       assert.match(tool.description, /instead of answering directly/);
       assert.match(tool.description, /calibrated probabilities/);
     });
+
+    it("keeps discovery and type selection mechanical in one layer", () => {
+      const tool = buildSystemOneTool({
+        provider: new MockSystemOneProvider({ answers: {} }),
+      });
+      // Concept-level assertions only: the exact prose may evolve, but
+      // promptGuidelines must remain the authoritative layer teaching the
+      // router when to call and which type to pick.
+      const guidelines = (tool.promptGuidelines ?? []).join("\n");
+      assert.match(guidelines, /bounded judgment.*system_one/i);
+      assert.match(guidelines, /unordered alternatives.*choice/i);
+      assert.match(guidelines, /yes\/no.*noul/i);
+      assert.match(guidelines, /ordered scale.*score/i);
+      assert.match(guidelines, /never use choice for an ordered scale/i);
+      assert.match(guidelines, /batch.*one call/i);
+      assert.match(guidelines, /retrieve.*first/i);
+      // The snippet advertises the capability; it must not duplicate the
+      // full decision algorithm.
+      assert.ok(
+        (tool.promptSnippet ?? "").length < guidelines.length / 4,
+        "promptSnippet should stay a short advertisement, not a second copy of the rules",
+      );
+    });
   });
 
   describe("backend minima guardrails", () => {

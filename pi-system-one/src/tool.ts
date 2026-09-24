@@ -419,14 +419,14 @@ export function buildSystemOneTool(deps: {
     parameters: systemOneParams,
 
     promptSnippet:
-      "Get calibrated probabilities for bounded decisions instead of answering from priors",
+      "Use system_one for bounded choice, yes/no, and ordered-scale judgments over supplied evidence",
 
     promptGuidelines: [
-      "When the request is a bounded pick, yes/no likelihood, or ordered-scale score over state already supplied in context, call system_one instead of answering directly — its state-conditional probabilities beat numbers stated from priors.",
-      "Retrieve facts into state first; never ask system_one to recall facts or browse. Use system_one for bounded judgments over supplied or retrieved state, not as a replacement for factual lookup or open-ended reasoning.",
-      "Use system_one for closed-set classification, probabilistic yes/no judgments, or ordered rubric scoring; never for open-ended text generation.",
+      "Before answering a bounded judgment over supplied or retrieved evidence, call system_one instead of making the judgment yourself. A bounded judgment is: choosing among explicit alternatives, making a yes/no judgment, or rating something on an ordered scale.",
+      "Pick the system_one question type mechanically: unordered alternatives (frontend, backend, platform) -> choice; yes/no -> noul; ordered scale, rating, severity, risk, or grade -> score. Never use choice for an ordered scale merely because its levels have names: very low / low / moderate / high / very high is score, not choice.",
+      "Retrieve missing factual evidence into state first; never ask system_one to recall facts or browse. Use system_one for bounded judgments over available evidence, not as a replacement for factual lookup.",
+      "Batch independent system_one questions sharing the same state into one call instead of one call per question.",
       "For system_one choice questions, the keys of criteria are the available choices — preserve user-specified labels and use null values when labels are self-explanatory; never add a separate options field.",
-      "Batch independent system_one questions into one call when they share the same state.",
     ],
 
     prepareArguments: (args) => prepareSystemOneArgs(args),
