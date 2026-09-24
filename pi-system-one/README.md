@@ -45,11 +45,11 @@ The current configuration can be inspected with `/so status`.
 
 ---
 
-## Example Prompts
+## `/judge`
 
-For short, unstructured asks, use the `/judge` shortcut — it expands
-into instructions that call `system_one` explicitly, so routing doesn't
-depend on inferring intent:
+The fastest way to use System One. A prompt shortcut that expands into
+instructions calling the `system_one` tool explicitly, so routing
+doesn't depend on inferring intent. For short, unstructured asks:
 
 ```
 /judge should I ship this? <paste diff plus test summary>
@@ -59,19 +59,28 @@ depend on inferring intent:
 /judge which team should take this ticket? <paste ticket>
 ```
 
-Without the shortcut, ask for quantified answers over material already
-in context — probabilities and confidence are the words that route to
-the tool. Retrieve facts first; the judge weighs supplied state, it
-cannot recall facts.
+---
 
+## `system_one` skill
+
+For everything else, the bundled skill teaches the agent when to call
+`system_one`, which question type to use (`choice` / `noul` / `score`),
+and how to read answers. It loads automatically — just ask for
+quantified answers over material already in context. Probabilities and
+confidence are the words that route to the tool. Retrieve facts first;
+the judge weighs supplied state, it cannot recall facts.
+
+See [SKILL.md](./skills/system-one/SKILL.md) for the full reference
+and [use cases](./skills/system-one/references/use-cases.md) for
+copy-pasteable recipes.
+
+Examples — same decisions, quantified wording:
 
 ```
 Pick one: fix forward with a minimal patch, or revert and re-land
 later. Give me the probability of each and your confidence.
 <paste context>
 ```
-
-Candidates under test — same decisions, quantified wording:
 
 ```
 This just landed in our support queue — which team is the most likely
@@ -95,3 +104,4 @@ call, and answers should come back as calibrated, state-conditional
 probabilities — with confidence for choice/score only (noul has no
 confidence) — not prose guesses, and never as recalled facts.
 
+Running your own backend? See the [system one core package](../system-one-core/README.md)
