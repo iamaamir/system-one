@@ -31,7 +31,7 @@ The existing `SystemOneRequest` remains the only request type. No duplicate requ
 ### Requests and providers
 
 - Mark `SystemOneRequest.state`, `.questions`, and `.model` readonly.
-- Add an exported mapped `ReadonlyQuestionMap<Q>` request view. It preserves concrete question types, exposes readonly question properties, and intersects broad question values with the readonly `Question` union.
+- Add an exported mapped `ReadonlyQuestionMap<Q>` request view. Its `ReadonlyQuestion<T>` helper conditionally preserves concrete Choice, Score, and Noul shapes while making fields and criteria readonly; it does not intersect values with a broad question union.
 - Use that view for `SystemOneRequest.questions`; retain `Q` for `SystemOneResponse<Q>` so inline request response inference is unchanged.
 - Keep the existing generic `SystemOneProvider.evaluate` signature.
 
@@ -64,7 +64,7 @@ Add compile-only assertions using the existing `@ts-expect-error` style for:
 - assigning Choice criteria entries;
 - mutating or indexing Score criteria arrays.
 
-Add compile-only checks that ordinary `validateResponse(q: Q, ...)` calls return `SystemOneResponse<Q>` and that an external `SystemOneRequest<Q>` wrapper calling `validateResponse(request.questions, ...)` preserves `Q`, alongside positive checks for ordinary mutable construction, builder outputs, and inline response-key inference. Existing runtime tests should remain behaviorally unchanged.
+Add compile-only checks in `system-one-core/tests/validation.test.ts` that ordinary `validateResponse(q: Q, ...)` calls return `SystemOneResponse<Q>` and that an external `SystemOneRequest<Q>` wrapper calling `validateResponse(request.questions, ...)` preserves `Q`, alongside positive checks for ordinary mutable construction, builder outputs, and inline response-key inference. Existing runtime tests should remain behaviorally unchanged.
 
 ## Mutation audit
 

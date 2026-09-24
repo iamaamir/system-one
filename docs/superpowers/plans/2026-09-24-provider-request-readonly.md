@@ -4,7 +4,7 @@
 
 **Goal:** Make `system-one-core` provider request contracts readonly at the compile-time ownership boundary without runtime changes or a `JsonValue` redesign.
 
-**Architecture:** Keep the existing generic `SystemOneRequest<Q>` as the sole request type. Make question interfaces, criteria containers, and request map fields readonly; add a mapped `ReadonlyQuestionMap<Q>` so inline object literals retain concrete question and response inference. Give `validateResponse` one union parameter (`Q | ReadonlyQuestionMap<Q>`) so ordinary maps and provider request views both return `SystemOneResponse<Q>`.
+**Architecture:** Keep the existing generic `SystemOneRequest<Q>` as the sole request type. Make question interfaces, criteria containers, and request map fields readonly; add a conditional `ReadonlyQuestion<T>` helper and mapped `ReadonlyQuestionMap<Q>` so inline object literals retain concrete question and response inference. Give `validateResponse` one union parameter (`Q | ReadonlyQuestionMap<Q>`) so ordinary maps and provider request views both return `SystemOneResponse<Q>`.
 
 **Tech Stack:** TypeScript 5.9 strict ESM, `node --test --experimental-strip-types`, Biome 2.5, npm workspaces. No new dependencies or runtime mechanisms.
 
@@ -14,7 +14,7 @@
 
 Modify only these source/test files:
 
-- `system-one-core/src/questions.ts` — readonly question contracts, builder bounds, broad `Question` union, and mapped request view.
+- `system-one-core/src/questions.ts` — readonly question contracts, builder bounds, broad `Question` union, conditional `ReadonlyQuestion<T>`, and mapped request view.
 - `system-one-core/src/provider.ts` — readonly `SystemOneRequest` fields using `ReadonlyQuestionMap<Q>`.
 - `system-one-core/src/validation.ts` — one type-only union signature for ordinary and readonly mapped question maps; implementation body remains unchanged.
 - `system-one-core/src/providers/http.ts` — remove the explicit validation type argument; the ordinary call must infer normally.
@@ -178,9 +178,18 @@ export interface ScoreQuestion<
 
 export type Question = NoulQuestion | ChoiceQuestion | ScoreQuestion;
 export type QuestionMap = Readonly<Record<string, Question>>;
-export type ReadonlyQuestion = Question;
+type ReadonlyQuestionFields<T extends Question> = {
+  readonly [P in keyof T]: P extends "criteria" ? Readonly<T[P]> : T[P];
+};
+export type ReadonlyQuestion<T extends Question = Question> =
+  ReadonlyQuestionFields<T> &
+    (T extends ChoiceQuestion<infer C>
+      ? ChoiceQuestion<C>
+      : T extends ScoreQuestion<infer C>
+        ? ScoreQuestion<C>
+        : NoulQuestion);
 export type ReadonlyQuestionMap<Q extends QuestionMap = QuestionMap> = {
-  readonly [K in keyof Q]: Readonly<Q[K]> & ReadonlyQuestion;
+  readonly [K in keyof Q]: ReadonlyQuestion<Q[K]>;
 };
 
 export function noul(
