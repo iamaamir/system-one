@@ -22,9 +22,12 @@ omp --extension /path/to/pi-system-one
 
 Set `SYSTEM_ONE_BASE_URL` before launch, or run `/so config`; the `system_one` tool is registered after the endpoint is configured.
 
-<img src="./demo.gif" alt="Description" width="640" >   
+<!-- <img src="./demo.gif" alt="Description" width="640" >    -->
 
 ---
+
+<img width="1836" height="1092" alt="demo" src="https://github.com/user-attachments/assets/341c0e4a-d0e5-4df0-85d2-74ca2f316db5" />
+
 
 Setup Provider:
 ##### locally hosted model e.g Reflex, von, laya etc, any model that supports `POST /v1/systemone`
