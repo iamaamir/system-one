@@ -37,7 +37,7 @@ The existing `SystemOneRequest` remains the only request type. No duplicate requ
 
 ### Validation
 
-Add ordered overloads for `validateResponse`: first a readonly mapped question-map overload that preserves `Q`, then the existing ordinary-map overload. This keeps HTTP and direct fixture/test calls source-compatible without casts.
+Add ordered overloads for `validateResponse`: first the existing ordinary-map overload, then the readonly mapped question-map overload. HTTP explicitly supplies its existing `Q` type argument at the validation call so the deep readonly view returns the original response generic; this preserves ordinary generic wrappers and direct fixture/test calls without casts.
 
 ## Compatibility
 
@@ -64,7 +64,7 @@ Add compile-only assertions using the existing `@ts-expect-error` style for:
 - assigning Choice criteria entries;
 - mutating or indexing Score criteria arrays.
 
-Add positive checks for ordinary mutable construction, builder outputs, and inline response-key inference. Existing runtime tests should remain behaviorally unchanged.
+Add a generic-wrapper compile check that `validateResponse(q: Q, ...)` returns `SystemOneResponse<Q>`, alongside positive checks for ordinary mutable construction, builder outputs, and inline response-key inference. Existing runtime tests should remain behaviorally unchanged.
 
 ## Mutation audit
 

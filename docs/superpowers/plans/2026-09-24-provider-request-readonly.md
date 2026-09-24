@@ -16,10 +16,12 @@ Modify only these source/test files:
 
 - `system-one-core/src/questions.ts` — readonly question contracts, builder bounds, broad `Question` union, and mapped request view.
 - `system-one-core/src/provider.ts` — readonly `SystemOneRequest` fields using `ReadonlyQuestionMap<Q>`.
-- `system-one-core/src/validation.ts` — type-only overloads for readonly mapped and ordinary question maps; implementation body remains unchanged.
+- `system-one-core/src/validation.ts` — type-only overloads for ordinary and readonly mapped question maps; implementation body remains unchanged.
+- `system-one-core/src/providers/http.ts` — explicit `Q` type argument at the existing validation call.
+- `system-one-core/tests/validation.test.ts` — generic-wrapper inference regression coverage.
 - `system-one-core/tests/questions.test.ts` — compile-only positive and negative readonly assertions using the existing `@ts-expect-error` style.
 
-Do not modify `src/types.ts`, `src/client.ts`, `src/providers/http.ts`, `src/providers/mock.ts`, `src/responses.ts`, or `pi-system-one/`.
+Do not modify `src/types.ts`, `src/client.ts`, `src/providers/mock.ts`, `src/responses.ts`, or `pi-system-one/`.
 
 ### Task 1: Add failing readonly contract checks
 
@@ -228,7 +230,9 @@ git commit -m "refactor(core): make question inputs readonly"
 
 **Files:**
 - Modify: `system-one-core/src/provider.ts:1-8`
-- Modify: `system-one-core/src/validation.ts:1-3,47-51`
+- Modify: `system-one-core/src/validation.ts:1-3,47-61`
+- Modify: `system-one-core/src/providers/http.ts:330`
+- Modify: `system-one-core/tests/validation.test.ts:1-16`
 
 - [ ] **Step 1: Update `SystemOneRequest`**
 
@@ -252,13 +256,13 @@ Import `Question` and `ReadonlyQuestionMap` in `validation.ts`, then place these
 
 ```ts
 export function validateResponse<Q extends QuestionMap>(
-  questions: ReadonlyQuestionMap<Q>,
+  questions: Q,
   raw: unknown,
   providerId: string,
 ): SystemOneResponse<Q>;
 
 export function validateResponse<Q extends QuestionMap>(
-  questions: Q,
+  questions: ReadonlyQuestionMap<Q>,
   raw: unknown,
   providerId: string,
 ): SystemOneResponse<Q>;
@@ -270,7 +274,7 @@ export function validateResponse(
 ): SystemOneResponse<QuestionMap> {
 ```
 
-Keep the existing function body byte-for-byte apart from the overload boundary. The ordered mapped overload is required so `HttpSystemOneProvider` returns `SystemOneResponse<Q>` rather than a response keyed by the mapped view.
+Keep the existing function body byte-for-byte apart from the overload boundary. The ordinary-map overload must remain first so generic wrappers preserve `Q`; at the existing HTTP call, use the explicit type argument `validateResponse<Q>(request.questions, ...)` so the deep readonly view returns `SystemOneResponse<Q>`. Add a compile-only generic-wrapper regression check to `tests/validation.test.ts`.
 
 - [ ] **Step 3: Run typecheck and focused tests**
 
@@ -286,8 +290,8 @@ Expected: all type-level directives are consumed, builder/runtime tests pass, an
 - [ ] **Step 4: Commit the request boundary change**
 
 ```bash
-git add system-one-core/src/provider.ts system-one-core/src/validation.ts
-git commit -m "refactor(core): enforce readonly provider requests"
+git add system-one-core/src/provider.ts system-one-core/src/validation.ts system-one-core/src/providers/http.ts system-one-core/tests/validation.test.ts docs/superpowers/specs/2026-09-24-provider-request-readonly-design.md docs/superpowers/plans/2026-09-24-provider-request-readonly.md
+git commit -m "fix(core): preserve validation generic inference"
 ```
 
 ### Task 4: Review the diff and audit scope
@@ -296,7 +300,9 @@ git commit -m "refactor(core): enforce readonly provider requests"
 - Review: `system-one-core/src/questions.ts`
 - Review: `system-one-core/src/provider.ts`
 - Review: `system-one-core/src/validation.ts`
+- Review: `system-one-core/src/providers/http.ts`
 - Review: `system-one-core/tests/questions.test.ts`
+- Review: `system-one-core/tests/validation.test.ts`
 
 - [ ] **Step 1: Inspect the complete diff**
 
@@ -307,7 +313,7 @@ rtk git status --short
 rtk git diff origin/main...HEAD -- system-one-core .gitignore docs/superpowers/specs/2026-09-24-provider-request-readonly-design.md
 ```
 
-Expected: only the design/setup commit, question/provider/validation types, and the focused test file are present. No `Object.freeze`, clone, normalization, HTTP, Mock, Pi, or fixture changes.
+Expected: only the design/setup commits, question/provider/validation types, the explicit HTTP type argument, and focused type tests are present. No `Object.freeze`, clone, normalization, Mock, Pi, or fixture changes.
 
 - [ ] **Step 2: Search for request mutations**
 

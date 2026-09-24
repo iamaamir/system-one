@@ -52,12 +52,12 @@ function normalizeUsage(
   };
 }
 export function validateResponse<Q extends QuestionMap>(
-  questions: ReadonlyQuestionMap<Q>,
+  questions: Q,
   raw: unknown,
   providerId: string,
 ): SystemOneResponse<Q>;
 export function validateResponse<Q extends QuestionMap>(
-  questions: Q,
+  questions: ReadonlyQuestionMap<Q>,
   raw: unknown,
   providerId: string,
 ): SystemOneResponse<Q>;
