@@ -6,6 +6,9 @@ import type { SystemOneResponse } from "./responses.ts";
 function isFiniteNum(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
 function assertProb(n: unknown, what: string): void {
   if (!isFiniteNum(n) || n < 0 || n > 1)
     throw new SystemOneProtocolError(`invalid probability for ${what}`);
@@ -84,33 +87,79 @@ export function validateResponse<Q extends QuestionMap>(
         confidence: a.confidence,
       });
     } else {
-      // Score keys come in two conventions (both seen live): index slots
-      // ("0".."n-1") or criteria values. Accept either, reject anything else.
+      // Score is a location on the ordered rubric, expressed in one full
+      // convention: index slots ("0".."n-1") or criteria values (both seen
+      // live). The distribution must cover every level exactly once, the
+      // legend must label exactly the distributed keys, and the score must
+      // sit on the rubric. Rubrics are small; clarity over cleverness.
       const criteria = (q as any).criteria as readonly unknown[];
       const slots = criteria.map((_, i) => String(i));
       const values = criteria.map((c) => String(c));
-      const keyOk = (k: string) => slots.includes(k) || values.includes(k);
       if (!isFiniteNum(a.score))
         throw new SystemOneProtocolError(`invalid score for ${id}`);
       if (!isFiniteNum(a.confidence) || a.confidence < 0 || a.confidence > 1)
         throw new SystemOneProtocolError(`invalid confidence for ${id}`);
-      if (!a.legend || typeof a.legend !== "object")
-        throw new SystemOneProtocolError(`missing legend for ${id}`);
-      const legendKeys = Object.keys(a.legend as object);
-      const legendOk =
-        slots.every((s) => legendKeys.includes(s)) ||
-        values.every((v) => legendKeys.includes(v));
-      if (!legendOk)
-        throw new SystemOneProtocolError(`incomplete legend for ${id}`);
-      if (!a.probabilities || typeof a.probabilities !== "object")
-        throw new SystemOneProtocolError(`missing probabilities for ${id}`);
-      for (const k of Object.keys(a.probabilities)) {
-        if (!keyOk(k))
-          throw new SystemOneProtocolError(
-            `unknown probability key for ${id}.${k}`,
+      if (!isRecord(a.legend))
+        throw new SystemOneProtocolError(
+          `score answer "${id}" legend must be an object map`,
+        );
+      if (!isRecord(a.probabilities))
+        throw new SystemOneProtocolError(
+          `score answer "${id}" probabilities must be an object map`,
+        );
+      const probKeys = Object.keys(a.probabilities as object);
+      const probs = a.probabilities as Record<string, unknown>;
+      const slotsComplete = slots.every((s) => Object.hasOwn(probs, s));
+      const valuesComplete = values.every((v) => Object.hasOwn(probs, v));
+      // Exact cover: every level present, nothing extra. Length plus
+      // per-key presence implies the key set equals one convention.
+      const complete =
+        probKeys.length === criteria.length &&
+        (slotsComplete || valuesComplete);
+      if (!complete) {
+        const inSlots = probKeys.every((k) => slots.includes(k));
+        const inValues = probKeys.every((k) => values.includes(k));
+        if (!inSlots && !inValues) {
+          const unknown = probKeys.find(
+            (k) => !slots.includes(k) && !values.includes(k),
           );
-        assertProb((a.probabilities as any)[k], `${id}.${k}`);
+          if (unknown !== undefined)
+            throw new SystemOneProtocolError(
+              `score answer "${id}" contains unexpected probability key "${unknown}"`,
+            );
+          throw new SystemOneProtocolError(
+            `score answer "${id}" mixes rubric index and label probability keys`,
+          );
+        }
+        const expected = inSlots ? slots : values;
+        const missing = expected.find((k) => !Object.hasOwn(probs, k));
+        if (missing === undefined)
+          throw new SystemOneProtocolError(
+            `score answer "${id}" mixes rubric index and label probability keys`,
+          );
+        throw new SystemOneProtocolError(
+          `score answer "${id}" is missing probability for rubric level "${missing}"`,
+        );
       }
+      for (const k of probKeys) assertProb(probs[k], `${id}.${k}`);
+      const legendKeys = Object.keys(a.legend as object);
+      for (const k of probKeys) {
+        if (!Object.hasOwn(a.legend, k))
+          throw new SystemOneProtocolError(
+            `score answer "${id}" is missing legend entry for rubric level "${k}"`,
+          );
+      }
+      for (const k of legendKeys) {
+        if (!Object.hasOwn(probs, k))
+          throw new SystemOneProtocolError(
+            `score answer "${id}" contains unexpected legend key "${k}"`,
+          );
+      }
+      const max = criteria.length - 1;
+      if (a.score < 0 || a.score > max)
+        throw new SystemOneProtocolError(
+          `score answer "${id}" has score ${a.score} outside valid rubric range 0..${max}`,
+        );
       setOwnAnswer(answers, id, {
         type: "score",
         score: a.score,

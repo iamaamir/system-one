@@ -67,7 +67,7 @@ describe("validation", () => {
       answers: {
         s: {
           type: "score",
-          score: 1.7,
+          score: 0.7,
           probabilities: { easy: 0.3, hard: 0.7 },
           legend: { easy: 0, hard: 1 },
           confidence: 0.8,
@@ -75,7 +75,7 @@ describe("validation", () => {
       },
     };
     const out = validateResponse(questions, raw, "p");
-    assert.equal((out.answers.s as any).score, 1.7);
+    assert.equal((out.answers.s as any).score, 0.7);
     assert.throws(
       () =>
         validateResponse(
@@ -162,6 +162,296 @@ describe("validation", () => {
     assert.throws(
       () => validateResponse(questions, { answers: {} }, "p"),
       /missing answer for toString/,
+    );
+  });
+  it("rejects empty score probabilities with a complete legend", () => {
+    const questions = { risk: score("Risk?", ["low", "high"]) };
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 1,
+                confidence: 0.8,
+                legend: { "0": "low", "1": "high" },
+                probabilities: {},
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" is missing probability for rubric level "0"/,
+    );
+  });
+  it("rejects a missing rubric level in score probabilities", () => {
+    const questions = { risk: score("Risk?", ["low", "med", "high"]) };
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 1,
+                confidence: 0.8,
+                legend: { "0": "low", "1": "med", "2": "high" },
+                probabilities: { "0": 0.4, "1": 0.6 },
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" is missing probability for rubric level "2"/,
+    );
+  });
+  it("rejects an unexpected score probability key", () => {
+    const questions = { risk: score("Risk?", ["low", "med", "high"]) };
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 1,
+                confidence: 0.8,
+                legend: { "0": "low", "1": "med", "2": "high" },
+                probabilities: { "0": 0.3, "1": 0.4, "2": 0.2, "99": 0.1 },
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" contains unexpected probability key "99"/,
+    );
+  });
+  it("rejects scores outside the rubric range", () => {
+    const questions = { risk: score("Risk?", ["low", "med", "high"]) };
+    for (const badScore of [-0.1, 2.1, 92.7]) {
+      assert.throws(
+        () =>
+          validateResponse(
+            questions,
+            {
+              answers: {
+                risk: {
+                  type: "score",
+                  score: badScore,
+                  confidence: 0.8,
+                  legend: { "0": "low", "1": "med", "2": "high" },
+                  probabilities: { "0": 0.3, "1": 0.4, "2": 0.3 },
+                },
+              },
+            },
+            "p",
+          ),
+        new RegExp(
+          `score answer "risk" has score ${badScore} outside valid rubric range 0\\.\\.2`,
+        ),
+      );
+    }
+  });
+  it("rejects invalid score probabilities", () => {
+    const questions = { risk: score("Risk?", ["low", "high"]) };
+    for (const badProb of [NaN, Infinity, -0.1, 1.1, "0.5", null]) {
+      assert.throws(
+        () =>
+          validateResponse(
+            questions,
+            {
+              answers: {
+                risk: {
+                  type: "score",
+                  score: 1,
+                  confidence: 0.8,
+                  legend: { "0": "low", "1": "high" },
+                  probabilities: { "0": badProb, "1": 0.5 },
+                },
+              },
+            },
+            "p",
+          ),
+        /protocol/i,
+      );
+    }
+  });
+  it("rejects mismatched score legend entries", () => {
+    const questions = { risk: score("Risk?", ["low", "med", "high"]) };
+    const probs = { "0": 0.3, "1": 0.4, "2": 0.3 };
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 1,
+                confidence: 0.8,
+                legend: { "0": "low", "1": "med" },
+                probabilities: probs,
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" is missing legend entry for rubric level "2"/,
+    );
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 1,
+                confidence: 0.8,
+                legend: { "0": "low", "1": "med", "2": "high", "9": "?" },
+                probabilities: probs,
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" contains unexpected legend key "9"/,
+    );
+  });
+  it("accepts complete score distributions in either convention", () => {
+    const questions = { risk: score("Risk?", ["low", "med", "high"]) };
+    const indexRaw = {
+      answers: {
+        risk: {
+          type: "score",
+          score: 1.7,
+          confidence: 0.8,
+          legend: { "0": "low", "1": "med", "2": "high" },
+          probabilities: { "0": 0.1, "1": 0.2, "2": 0.7 },
+        },
+      },
+    };
+    assert.equal(
+      (validateResponse(questions, indexRaw, "p").answers.risk as any).score,
+      1.7,
+    );
+    const labelRaw = {
+      answers: {
+        risk: {
+          type: "score",
+          score: 0.4,
+          confidence: 0.8,
+          legend: { low: 0, med: 1, high: 2 },
+          probabilities: { low: 0.7, med: 0.2, high: 0.1 },
+        },
+      },
+    };
+    assert.equal(
+      (validateResponse(questions, labelRaw, "p").answers.risk as any).score,
+      0.4,
+    );
+  });
+  it("rejects array containers for score probabilities and legend", () => {
+    const questions = { risk: score("Risk?", ["low", "high"]) };
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 0.6,
+                confidence: 0.8,
+                probabilities: [0.4, 0.6],
+                legend: { "0": "low", "1": "high" },
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" probabilities must be an object map/,
+    );
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 0.6,
+                confidence: 0.8,
+                probabilities: { "0": 0.4, "1": 0.6 },
+                legend: ["low", "high"],
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" legend must be an object map/,
+    );
+    assert.throws(
+      () =>
+        validateResponse(
+          questions,
+          {
+            answers: {
+              risk: {
+                type: "score",
+                score: 0.6,
+                confidence: 0.8,
+                probabilities: [0.4, 0.6],
+                legend: ["low", "high"],
+              },
+            },
+          },
+          "p",
+        ),
+      /score answer "risk" (probabilities|legend) must be an object map/,
+    );
+  });
+  it("keeps prototype-like score keys on own-property semantics", () => {
+    const questions = JSON.parse(
+      JSON.stringify({ s: score("Risk?", ["__proto__", "safe"]) }),
+    );
+    const raw = JSON.parse(
+      JSON.stringify({
+        answers: {
+          s: {
+            type: "score",
+            score: 0,
+            confidence: 0.8,
+            legend: { ["__proto__"]: "weird", safe: "ok" },
+            probabilities: { ["__proto__"]: 0.6, safe: 0.4 },
+          },
+        },
+      }),
+    );
+    const out = validateResponse(questions, raw, "p");
+    assert.equal((out.answers.s as any).score, 0);
+    assert.equal(Object.getPrototypeOf(out.answers), Object.prototype);
+    // A prototype-named key outside the rubric still fails closed.
+    const evil = JSON.parse(
+      JSON.stringify({
+        answers: {
+          s: {
+            type: "score",
+            score: 0,
+            confidence: 0.8,
+            legend: { "0": "weird", "1": "ok" },
+            probabilities: { "0": 0.6, "1": 0.3, constructor: 0.1 },
+          },
+        },
+      }),
+    );
+    assert.throws(
+      () => validateResponse(questions, evil, "p"),
+      /contains unexpected probability key "constructor"/,
     );
   });
 });
