@@ -19,9 +19,9 @@ Ask in Pi:
   /system_one or natural language — batched choice/noul/score questions, human-readable results with full distributions.
 
 Principles:
-- Decisions, not strings: choice, noul (0..1), score (0..5). Answers are typed; probabilities sum to 1.
-- Calibrated confidence: every answer carries confidence. Act above your threshold, escalate below it.
-- Provider-neutral: HttpSystemOneProvider speaks /v1/systemone to any backend. Fail-closed validation. Deterministic MockSystemOneProvider for tests.
+- Decisions, not strings: choice, noul, and score. Choice selects from a bounded set; noul returns a 0..1 yes probability; score evaluates against the supplied ordered rubric.
+- Probabilistic answers: choice and score expose distributions over their allowed outcomes. Noul exposes the yes probability directly and has no separate confidence field.
+- Provider-neutral: HttpSystemOneProvider speaks the System One protocol to compatible backends. Core validation remains fail-closed, with MockSystemOneProvider available for deterministic tests.
 
 FAQ:
 - Is this TypeSafe? No. Independent open source by @iamaamir. Works with Jev and Reflex today, any System One backend tomorrow.
