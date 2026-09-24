@@ -1,6 +1,10 @@
 // biome-ignore-all lint/suspicious/noExplicitAny: intentional dynamic boundary over JSON protocol values
 import { SystemOneProtocolError } from "./errors.ts";
-import type { QuestionMap } from "./questions.ts";
+import type {
+  Question,
+  QuestionMap,
+  ReadonlyQuestionMap,
+} from "./questions.ts";
 import type { SystemOneResponse } from "./responses.ts";
 
 function isFiniteNum(n: unknown): n is number {
@@ -48,10 +52,20 @@ function normalizeUsage(
   };
 }
 export function validateResponse<Q extends QuestionMap>(
+  questions: ReadonlyQuestionMap<Q>,
+  raw: unknown,
+  providerId: string,
+): SystemOneResponse<Q>;
+export function validateResponse<Q extends QuestionMap>(
   questions: Q,
   raw: unknown,
   providerId: string,
-): SystemOneResponse<Q> {
+): SystemOneResponse<Q>;
+export function validateResponse(
+  questions: Readonly<Record<string, Question>>,
+  raw: unknown,
+  providerId: string,
+): SystemOneResponse<QuestionMap> {
   if (!raw || typeof raw !== "object")
     throw new SystemOneProtocolError("response is not an object");
   const r = raw as Record<string, any>;
