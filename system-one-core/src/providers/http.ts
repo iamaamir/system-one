@@ -327,7 +327,7 @@ export class HttpSystemOneProvider implements SystemOneProvider {
           provider: this.id,
         });
       }
-      const out = validateResponse<Q>(request.questions, json, this.id);
+      const out = validateResponse(request.questions, json, this.id);
       out.requestId ??=
         res.headers.get("x-request-id") ??
         res.headers.get("x-typesafe-request-id") ??
