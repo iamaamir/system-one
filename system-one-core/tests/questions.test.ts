@@ -7,9 +7,11 @@ import {
   choice,
   type NoulQuestion,
   noul,
+  type QuestionMap,
   type ScoreQuestion,
   score,
 } from "../src/questions.ts";
+import type { SystemOneResponse } from "../src/responses.ts";
 
 type ReadonlyRequestQuestions = {
   choice: ChoiceQuestion<{ a: null; b: "b" }>;
@@ -46,6 +48,8 @@ function checkRequestReadonlyContract(): void {
   request.model = "changed";
   // @ts-expect-error - question map entries are readonly
   request.questions.choice = choiceQuestion;
+  // @ts-expect-error - question map entries cannot be deleted
+  delete request.questions.choice;
   // @ts-expect-error - question fields are readonly
   request.questions.choice.instructions = "changed";
   // @ts-expect-error - question criteria are readonly
@@ -103,9 +107,53 @@ function checkMutableConstruction() {
   void request;
 }
 
+function checkCallerQuestionMutation(): void {
+  const choiceQuestion = choice("Which?", { a: null, b: null });
+  choiceQuestion.instructions = "Changed?";
+  choiceQuestion.criteria = { a: null, b: null };
+
+  const scoreQuestion = score("Risk?", ["low", "medium", "high"]);
+  scoreQuestion.instructions = "Changed?";
+  scoreQuestion.criteria = ["low", "medium", "high"];
+
+  const noulQuestion = noul("Is it hard?", { coding: "impl" });
+  noulQuestion.instructions = "Changed?";
+  if (noulQuestion.criteria) noulQuestion.criteria.coding = "research";
+
+  const questionMap: QuestionMap = {};
+  questionMap.decision = choiceQuestion;
+  delete questionMap.decision;
+
+  const request: SystemOneRequest = {
+    state: { foo: "bar" },
+    questions: { decision: choiceQuestion },
+  };
+  void request;
+}
+
+function checkResponseMutability(): void {
+  const response: SystemOneResponse<{
+    decision: ChoiceQuestion<{ a: null; b: null }>;
+  }> = {
+    answers: {
+      decision: {
+        type: "choice",
+        choice: "a",
+        probabilities: { a: 0.5, b: 0.5 },
+        confidence: 0.5,
+      },
+    },
+    metadata: { provider: "test" },
+  };
+  response.answers.decision.choice = "b";
+  response.answers.decision.probabilities.a = 1;
+}
+
 void checkRequestReadonlyContract;
 void checkInlineResponseInference;
 void checkMutableConstruction;
+void checkCallerQuestionMutation;
+void checkResponseMutability;
 
 describe("builders", () => {
   it("builds typed choice/noul/score questions", () => {

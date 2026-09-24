@@ -3,6 +3,7 @@ import { SystemOneProtocolError } from "./errors.ts";
 import type {
   Question,
   QuestionMap,
+  ReadonlyQuestion,
   ReadonlyQuestionMap,
 } from "./questions.ts";
 import type { SystemOneResponse } from "./responses.ts";
@@ -57,7 +58,7 @@ export function validateResponse<Q extends QuestionMap>(
   providerId: string,
 ): SystemOneResponse<Q>;
 export function validateResponse(
-  questions: Readonly<Record<string, Question>>,
+  questions: Readonly<Record<string, Question | ReadonlyQuestion>>,
   raw: unknown,
   providerId: string,
 ): SystemOneResponse<QuestionMap> {
