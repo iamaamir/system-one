@@ -89,3 +89,4 @@ the test coverage — none, partial, or full — with probabilities.
 Independent judgments over the same context should be batched into one
 call, and answers should come back as calibrated probabilities with
 confidence — not prose guesses.
+
