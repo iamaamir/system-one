@@ -1075,6 +1075,245 @@ describe("system_one tool", () => {
     });
   });
 
+  describe("copy-on-write normalization", () => {
+    const canonicalRequest = () => ({
+      state: { incident: "latency" },
+      questions: {
+        rollback: { type: "noul", instructions: "Roll back?" },
+        owner: {
+          type: "choice",
+          instructions: "Which team?",
+          criteria: { frontend: null, backend: null },
+        },
+      },
+    });
+
+    it("returns canonical requests, maps, and questions by reference", () => {
+      const args = canonicalRequest();
+      const out = prepareSystemOneArgs(args) as typeof args;
+      assert.equal(out, args);
+      assert.equal(out.questions, args.questions);
+      assert.equal(out.questions.rollback, args.questions.rollback);
+      assert.equal(out.questions.owner, args.questions.owner);
+      // Key order is not canonicalized: identity means "already final".
+      const reordered = {
+        state: "s",
+        questions: {
+          q: { criteria: { a: null }, instructions: "I?", type: "choice" },
+        },
+      };
+      assert.equal(prepareSystemOneArgs(reordered), reordered);
+    });
+
+    it("structurally shares unaffected siblings on partial repair", () => {
+      const args = {
+        state: "s",
+        questions: {
+          fine: { type: "noul", instructions: "OK?" },
+          sloppy: { type: "Choice", prompt: "Pick?", options: ["a", "b"] },
+        },
+      };
+      const out = prepareSystemOneArgs(args) as typeof args;
+      assert.notEqual(out, args);
+      assert.notEqual(out.questions, args.questions);
+      assert.notEqual(out.questions.sloppy, args.questions.sloppy);
+      assert.equal(out.questions.fine, args.questions.fine);
+      assert.deepEqual(out.questions.sloppy, {
+        type: "choice",
+        instructions: "Pick?",
+        criteria: { a: null, b: null },
+      });
+    });
+
+    it("is idempotent and allocates nothing new on the second pass", () => {
+      const once = prepareSystemOneArgs(canonicalRequest()) as Record<
+        string,
+        unknown
+      >;
+      const twice = prepareSystemOneArgs(once);
+      assert.deepEqual(twice, once);
+      assert.equal(twice, once);
+      // Repair once, then the repaired output is itself canonical.
+      const repairedOnce = prepareSystemOneArgs({
+        state: "s",
+        questions: [{ name: "q", type: "boolean", prompt: "Y?" }],
+      });
+      assert.equal(prepareSystemOneArgs(repairedOnce), repairedOnce);
+    });
+
+    it("never mutates its input", () => {
+      const deepFreeze = (v: unknown): void => {
+        if (typeof v === "object" && v !== null && !Object.isFrozen(v)) {
+          Object.freeze(v);
+          for (const k of Object.keys(v)) {
+            deepFreeze((v as Record<string, unknown>)[k]);
+          }
+        }
+      };
+      const sloppy = {
+        context: { incident: "latency" },
+        question: [
+          { name: "a", type: "Rating", prompt: "Rate?", levels: ["1", "5"] },
+          { id: "b", type: "noul", instructions: "OK?", extra: 1 },
+        ],
+      };
+      deepFreeze(sloppy);
+      const out = prepareSystemOneArgs(sloppy);
+      assert.deepEqual(out, {
+        state: { incident: "latency" },
+        questions: {
+          a: {
+            type: "score",
+            instructions: "Rate?",
+            criteria: ["1", "5"],
+          },
+          b: { type: "noul", instructions: "OK?", extra: 1 },
+        },
+      });
+    });
+
+    it("repairs every non-canonical shape exactly (no false sharing)", () => {
+      // [input, expected output, sharesInputRef]: the last two entries are
+      // already builder fixed points, so sharing them is correct.
+      const cases: Array<[unknown, unknown, boolean]> = [
+        // Alias type spelling.
+        [
+          {
+            state: "s",
+            questions: { q: { type: "Yes/No", instructions: "Y?" } },
+          },
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: "Y?" } },
+          },
+          false,
+        ],
+        // Alias field names.
+        [
+          {
+            state: "s",
+            questions: { q: { type: "choice", prompt: "P?", choices: ["a"] } },
+          },
+          {
+            state: "s",
+            questions: {
+              q: { type: "choice", instructions: "P?", criteria: { a: null } },
+            },
+          },
+          false,
+        ],
+        // Junk keys dropped.
+        [
+          {
+            state: "s",
+            questions: {
+              q: {
+                type: "noul",
+                instructions: "Y?",
+                description: "d",
+                title: "t",
+              },
+            },
+          },
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: "Y?" } },
+          },
+          false,
+        ],
+        // Undefined-valued lingering alias key is still dropped.
+        [
+          {
+            state: "s",
+            questions: {
+              q: { type: "noul", instructions: "Y?", prompt: undefined },
+            },
+          },
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: "Y?" } },
+          },
+          false,
+        ],
+        // Own undefined instructions key is preserved (builder copies it).
+        [
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: undefined } },
+          },
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: undefined } },
+          },
+          true,
+        ],
+        // noul null criteria reads as omitted.
+        [
+          {
+            state: "s",
+            questions: {
+              q: { type: "noul", instructions: "Y?", criteria: null },
+            },
+          },
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: "Y?" } },
+          },
+          false,
+        ],
+        // Singular question alias + array form + naming metadata.
+        [
+          { context: "s", question: { type: "boolean", prompt: "Y?" } },
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: "Y?" } },
+          },
+          false,
+        ],
+        // Unknown top-level keys dropped; missing state preserved as-is.
+        [
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: "Y?" } },
+            extra: 1,
+          },
+          {
+            state: "s",
+            questions: { q: { type: "noul", instructions: "Y?" } },
+          },
+          false,
+        ],
+        // Empty choice array still folds (every() on [] is true).
+        [
+          {
+            state: "s",
+            questions: {
+              q: { type: "choice", instructions: "P?", criteria: [] },
+            },
+          },
+          {
+            state: "s",
+            questions: {
+              q: { type: "choice", instructions: "P?", criteria: {} },
+            },
+          },
+          false,
+        ],
+        // Non-string type passes through untouched (fixed point).
+        [
+          { state: "s", questions: { q: { type: 5, instructions: "Y?" } } },
+          { state: "s", questions: { q: { type: 5, instructions: "Y?" } } },
+          true,
+        ],
+      ];
+      for (const [input, expected, sharesRef] of cases) {
+        const out = prepareSystemOneArgs(input);
+        assert.deepEqual(out, expected);
+        assert.equal(out === input, sharesRef);
+      }
+    });
+  });
+
   describe("backend minima guardrails", () => {
     function stubTool() {
       let calls = 0;

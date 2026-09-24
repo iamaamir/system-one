@@ -127,7 +127,16 @@ async function readLimitedChunks(
   }
 }
 
+/**
+ * Decode buffered chunks. A single chunk decodes directly, skipping the
+ * merged copy (the common small-response case). Multi-chunk bodies keep
+ * the one merged copy: decoding incrementally into a rope was measured
+ * worse (+1MB heap transient and +10% time on a 1MB/16-chunk body from
+ * the intermediate strings plus the flatten pass), so the merged buffer
+ * stays until a genuinely better design shows up with numbers.
+ */
 function decodeChunks(chunks: Uint8Array[]): string {
+  if (chunks.length === 1) return new TextDecoder().decode(chunks[0]);
   const merged = new Uint8Array(
     chunks.reduce((total, chunk) => total + chunk.byteLength, 0),
   );
@@ -163,36 +172,41 @@ async function readBoundedBody(
 }
 export class HttpSystemOneProvider implements SystemOneProvider {
   readonly id: string;
-  private readonly opts: Required<
-    Pick<
-      HttpSystemOneProviderOptions,
-      "baseUrl" | "path" | "timeoutMs" | "maxResponseBytes"
-    >
-  > &
-    HttpSystemOneProviderOptions;
+  // Invariants resolved once in the constructor so per-request work is
+  // limited to the genuinely varying parts (model override, body, signal).
+  private readonly endpoint: string;
+  private readonly baseHeaders: Readonly<Record<string, string>>;
+  private readonly authHeader: string | undefined;
+  private readonly fetchImpl: typeof fetch | undefined;
+  private readonly timeoutMs: number;
+  private readonly maxResponseBytes: number;
+  private readonly defaultModel: string | undefined;
   constructor(options: HttpSystemOneProviderOptions) {
     if (!options?.baseUrl) throw new Error("baseUrl is required");
     this.id = options.id ?? "http";
-    this.opts = {
-      ...options,
-      baseUrl: options.baseUrl.replace(/\/$/, ""),
-      path: options.path ?? DEFAULT_PATH,
-      timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      maxResponseBytes: options.maxResponseBytes ?? DEFAULT_MAX_BYTES,
-    };
+    this.endpoint = `${options.baseUrl.replace(/\/$/, "")}${options.path ?? DEFAULT_PATH}`;
+    // Defensive copy: never retain the caller's mutable headers object.
+    this.baseHeaders = { ...options.headers };
+    this.authHeader = options.apiKey ? `Bearer ${options.apiKey}` : undefined;
+    this.fetchImpl = options.fetch;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_BYTES;
+    this.defaultModel = options.defaultModel;
   }
   async evaluate<Q extends QuestionMap>(
     request: SystemOneRequest<Q>,
     options?: SystemOneCallOptions,
   ): Promise<SystemOneResponse<Q>> {
     const started = Date.now();
-    const fetchFn = this.opts.fetch ?? globalThis.fetch;
+    // An explicit fetch wins; otherwise resolve the global per request so
+    // late global mocking keeps working exactly as before.
+    const fetchFn = this.fetchImpl ?? globalThis.fetch;
     const controller = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, this.opts.timeoutMs);
+    }, this.timeoutMs);
     (timer as any)?.unref?.();
     const onExternalAbort = () => controller.abort();
     if (options?.signal) {
@@ -202,15 +216,14 @@ export class HttpSystemOneProvider implements SystemOneProvider {
     try {
       const headers: Record<string, string> = {
         "content-type": "application/json",
-        ...this.opts.headers,
+        ...this.baseHeaders,
       };
-      // Explicit apiKey wins over an Authorization entry in opts.headers.
-      if (this.opts.apiKey)
-        headers.Authorization = `Bearer ${this.opts.apiKey}`;
-      const model = options?.model ?? request.model ?? this.opts.defaultModel;
+      // Explicit apiKey wins over an Authorization entry in baseHeaders.
+      if (this.authHeader) headers.Authorization = this.authHeader;
+      const model = options?.model ?? request.model ?? this.defaultModel;
       let res: Response;
       try {
-        res = await fetchFn(`${this.opts.baseUrl}${this.opts.path}`, {
+        res = await fetchFn(this.endpoint, {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -224,7 +237,7 @@ export class HttpSystemOneProvider implements SystemOneProvider {
         if (e?.name === "AbortError") {
           if (timedOut)
             throw new SystemOneTimeoutError(
-              `request timed out after ${this.opts.timeoutMs}ms`,
+              `request timed out after ${this.timeoutMs}ms`,
             );
           throw new SystemOneTransportError("request aborted", { cause: e });
         }
@@ -246,7 +259,7 @@ export class HttpSystemOneProvider implements SystemOneProvider {
         const body = await readBoundedBody(res, MAX_ERROR_BODY_BYTES);
         if (timedOut) {
           throw new SystemOneTimeoutError(
-            `request timed out after ${this.opts.timeoutMs}ms`,
+            `request timed out after ${this.timeoutMs}ms`,
           );
         }
         if (controller.signal.aborted) {
@@ -268,7 +281,7 @@ export class HttpSystemOneProvider implements SystemOneProvider {
       let text: string;
       if (!reader) {
         text = await res.text();
-        if (text.length > this.opts.maxResponseBytes)
+        if (text.length > this.maxResponseBytes)
           throw new SystemOneHttpError("response too large", {
             status: 200,
             provider: this.id,
@@ -282,12 +295,12 @@ export class HttpSystemOneProvider implements SystemOneProvider {
         try {
           ({ chunks, truncated } = await readLimitedChunks(
             reader,
-            this.opts.maxResponseBytes,
+            this.maxResponseBytes,
           ));
         } catch (e: unknown) {
           if (timedOut)
             throw new SystemOneTimeoutError(
-              `request timed out after ${this.opts.timeoutMs}ms`,
+              `request timed out after ${this.timeoutMs}ms`,
               { cause: e },
             );
           if (controller.signal.aborted)

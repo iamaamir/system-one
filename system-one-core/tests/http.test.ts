@@ -38,6 +38,71 @@ describe("http provider", () => {
     assert.equal((res.answers.c as any).choice, "a");
     assert.equal(res.metadata.provider, "t");
   });
+  it("decodes multi-byte characters split across stream chunks", async () => {
+    // One-byte chunks split every multi-byte sequence; the decode must
+    // reassemble them exactly (locks decode behavior across chunk splits).
+    // The padding rides in an ignored field so the JSON stays valid.
+    const text = JSON.stringify({
+      note: "é€🎉".repeat(5),
+      answers: { c: { type: "noul", noul: 0.5 } },
+    });
+    const bytes = new TextEncoder().encode(text);
+    let i = 0;
+    const stream = new ReadableStream({
+      pull(controller) {
+        if (i >= bytes.length) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(bytes.slice(i, i + 1));
+        i += 1;
+      },
+    });
+    const fakeFetch = async () => new Response(stream, { status: 200 });
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://x.example",
+      fetch: fakeFetch as any,
+    });
+    const res = await p.evaluate({
+      state: "x",
+      questions: { c: { type: "noul", instructions: "Y?" } },
+    } as never);
+    assert.equal((res.answers as any).c.noul, 0.5);
+  });
+  it("freezes request invariants at construction (no caller-ref retention)", async () => {
+    const seen: any[] = [];
+    const fakeFetch = async (_url: any, init: any) => {
+      seen.push(init.headers);
+      return new Response(
+        JSON.stringify({
+          answers: { c: { type: "noul", noul: 0.5 } },
+        }),
+        { status: 200 },
+      );
+    };
+    const headers = { "x-tenant": "one" };
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://api.example.com/",
+      path: "/custom",
+      headers,
+      apiKey: "k1",
+      fetch: fakeFetch as any,
+    });
+    // Mutating the caller's objects after construction must not leak in.
+    headers["x-tenant"] = "TWO";
+    const request = {
+      state: "hi",
+      questions: { c: { type: "noul", instructions: "Y?" } },
+    } as never;
+    await p.evaluate(request);
+    await p.evaluate(request, { model: "override" });
+    assert.equal(seen[0]["x-tenant"], "one");
+    assert.equal(seen[0].Authorization, "Bearer k1");
+    assert.equal(seen[0]["content-type"], "application/json");
+    // Header maps are per-request objects, not shared state.
+    assert.notEqual(seen[0], seen[1]);
+    assert.deepEqual({ ...seen[0] }, { ...seen[1] });
+  });
   it("maps 401 to HttpError without leaking key", async () => {
     const fakeFetch = async () => new Response("nope", { status: 401 });
     const p = new HttpSystemOneProvider({

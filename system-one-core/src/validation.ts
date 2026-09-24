@@ -69,8 +69,8 @@ export function validateResponse<Q extends QuestionMap>(
       setOwnAnswer(answers, id, { type: "noul", noul: a.noul });
     } else if (q.type === "choice") {
       const criteria = (q as any).criteria as Record<string, unknown>;
-      const keys = Object.keys(criteria);
-      if (!keys.includes(a.choice))
+      const keys = new Set(Object.keys(criteria));
+      if (keys.size === 0 || !keys.has(a.choice))
         throw new SystemOneProtocolError(`unknown choice for ${id}`);
       if (!a.probabilities || typeof a.probabilities !== "object")
         throw new SystemOneProtocolError(`missing probabilities for ${id}`);
@@ -86,21 +86,33 @@ export function validateResponse<Q extends QuestionMap>(
     } else {
       // Score keys come in two conventions (both seen live): index slots
       // ("0".."n-1") or criteria values. Accept either, reject anything else.
+      // Sets, not arrays: probability-key membership is checked per key.
       const criteria = (q as any).criteria as readonly unknown[];
-      const slots = criteria.map((_, i) => String(i));
-      const values = criteria.map((c) => String(c));
-      const keyOk = (k: string) => slots.includes(k) || values.includes(k);
+      const slots = new Set(criteria.map((_, i) => String(i)));
+      const values = new Set(criteria.map((c) => String(c)));
+      const keyOk = (k: string) => slots.has(k) || values.has(k);
       if (!isFiniteNum(a.score))
         throw new SystemOneProtocolError(`invalid score for ${id}`);
       if (!isFiniteNum(a.confidence) || a.confidence < 0 || a.confidence > 1)
         throw new SystemOneProtocolError(`invalid confidence for ${id}`);
       if (!a.legend || typeof a.legend !== "object")
         throw new SystemOneProtocolError(`missing legend for ${id}`);
-      const legendKeys = Object.keys(a.legend as object);
-      const legendOk =
-        slots.every((s) => legendKeys.includes(s)) ||
-        values.every((v) => legendKeys.includes(v));
-      if (!legendOk)
+      const legendKeys = new Set(Object.keys(a.legend as object));
+      let allSlots = true;
+      for (const s of slots) {
+        if (!legendKeys.has(s)) {
+          allSlots = false;
+          break;
+        }
+      }
+      let allValues = true;
+      for (const v of values) {
+        if (!legendKeys.has(v)) {
+          allValues = false;
+          break;
+        }
+      }
+      if (!allSlots && !allValues)
         throw new SystemOneProtocolError(`incomplete legend for ${id}`);
       if (!a.probabilities || typeof a.probabilities !== "object")
         throw new SystemOneProtocolError(`missing probabilities for ${id}`);
