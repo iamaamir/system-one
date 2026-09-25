@@ -54,12 +54,24 @@ describe("System One configuration", () => {
     }
   });
 
-  it("accepts a path-prefixed base URL", () => {
-    const config = loadSystemOneConfig({
-      SYSTEM_ONE_BASE_URL: "https://example.com/systemone",
-    });
+  it("rejects base URLs with empty userinfo markers", () => {
+    for (const baseUrl of ["https://@example.com", "https://:@example.com"]) {
+      assert.throws(
+        () => loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl }),
+        /SYSTEM_ONE_BASE_URL must not include credentials, query strings, or fragments/,
+      );
+    }
+  });
 
-    assert.equal(config.baseUrl, "https://example.com/systemone");
+  it("accepts a path-prefixed base URL", () => {
+    for (const baseUrl of [
+      "https://example.com/systemone",
+      "https://example.com/systemone@branch",
+    ]) {
+      const config = loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl });
+
+      assert.equal(config.baseUrl, baseUrl);
+    }
   });
 
   it("requires a base URL", () => {

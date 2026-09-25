@@ -37,7 +37,11 @@ export function loadSystemOneConfig(
   ) {
     throw new Error("SYSTEM_ONE_BASE_URL must be a valid http(s) URL");
   }
+  const authority = baseUrl
+    .slice(baseUrl.indexOf("://") + 3)
+    .split(/[/?#\\]/, 1)[0];
   if (
+    authority.includes("@") ||
     baseUrl.includes("?") ||
     baseUrl.includes("#") ||
     parsedBaseUrl.username ||
