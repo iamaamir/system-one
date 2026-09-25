@@ -37,6 +37,16 @@ export function loadSystemOneConfig(
   ) {
     throw new Error("SYSTEM_ONE_BASE_URL must be a valid http(s) URL");
   }
+  if (
+    parsedBaseUrl.username ||
+    parsedBaseUrl.password ||
+    parsedBaseUrl.search ||
+    parsedBaseUrl.hash
+  ) {
+    throw new Error(
+      "SYSTEM_ONE_BASE_URL must not include credentials, query strings, or fragments",
+    );
+  }
 
   const timeoutMs =
     env.SYSTEM_ONE_TIMEOUT_MS === undefined
