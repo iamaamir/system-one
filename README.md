@@ -243,6 +243,8 @@ Add `opencode-system-one` to the `plugin` array in `opencode.json`:
 
 Configure `SYSTEM_ONE_BASE_URL` before starting OpenCode. `SYSTEM_ONE_API_KEY`, `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` are optional.
 
+Read full documentation [`here`](./opencode-system-one).
+
 ---
 
 ## Why not just use a provider SDK directly?
