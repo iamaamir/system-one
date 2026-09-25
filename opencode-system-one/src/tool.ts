@@ -5,6 +5,7 @@ import {
   type SystemOneProvider,
   type SystemOneState,
 } from "system-one-core";
+import type { z } from "zod";
 import { renderSystemOneResult } from "./render.ts";
 
 const questionInstructions = tool.schema
@@ -64,15 +65,30 @@ export const systemOneParams = tool.schema
   .strict()
   .describe("Evaluate bounded decisions against supplied state.");
 
+export type SystemOneParams = z.output<typeof systemOneParams>;
+
+export function parseSystemOneArgs(args: unknown): SystemOneParams {
+  return systemOneParams.parse(args);
+}
+
+const toolDescription = [
+  "Evaluate bounded choice, noul, and score decisions over supplied state using a dedicated System One provider.",
+  "Each named question must be one of three types.",
+  "choice takes criteria as an object mapping every exact answer label to an optional description.",
+  'noul is a yes/no question and takes criteria as an optional object mapping the "1" (true) and "0" (false) outcomes to optional descriptions.',
+  "score is an ordered scale and takes criteria as an array of at least two rubric levels ordered from lowest to highest.",
+  "Batch independent questions that share state.",
+  "Do not use this tool for factual lookup, browsing, or open-ended text generation.",
+].join(" ");
+
 export function buildSystemOneTool(provider: SystemOneProvider) {
   const systemOne = new SystemOne({ provider });
 
   return tool({
-    description:
-      "Evaluate bounded choice, yes/no, and ordered-scale decisions over supplied state using a dedicated System One provider. Batch independent questions that share state. Do not use this tool for factual lookup, browsing, or open-ended text generation.",
+    description: toolDescription,
     args: systemOneParams.shape,
     async execute(args, context) {
-      const parsedArgs = systemOneParams.parse(args);
+      const parsedArgs = parseSystemOneArgs(args);
       const response = await systemOne.evaluate(
         {
           state: parsedArgs.state as SystemOneState,
