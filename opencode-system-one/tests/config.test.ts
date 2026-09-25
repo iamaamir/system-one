@@ -77,6 +77,31 @@ describe("System One configuration", () => {
     });
   }
 
+  for (const baseUrl of [
+    "https:\\\\example.com",
+    "https:\\\\@example.com",
+    "https://example.com\\\\path",
+  ]) {
+    it(`rejects a base URL containing a raw backslash: ${baseUrl}`, () => {
+      assert.throws(
+        () => loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl }),
+        /SYSTEM_ONE_BASE_URL must not contain backslashes, whitespace, or control characters/,
+      );
+    });
+  }
+
+  for (const baseUrl of [
+    "https://exam\tple.com",
+    "https://example.com\n/path",
+  ]) {
+    it(`rejects a base URL containing embedded whitespace: ${baseUrl}`, () => {
+      assert.throws(
+        () => loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl }),
+        /SYSTEM_ONE_BASE_URL must not contain backslashes, whitespace, or control characters/,
+      );
+    });
+  }
+
   it("accepts a path-prefixed base URL", () => {
     for (const baseUrl of [
       "https://example.com/systemone",
