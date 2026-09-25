@@ -1,0 +1,67 @@
+# pi-system-one
+
+> A Pi and OMP extension that exposes one provider-neutral `system_one` tool for bounded AI decisions.
+
+Canonical: https://iamaamir.github.io/system-one/pi-system-one/
+Source: https://github.com/iamaamir/system-one/tree/main/pi-system-one
+npm: https://www.npmjs.com/package/pi-system-one
+
+## What it does
+
+`pi-system-one` adds one `system_one` tool to Pi and OMP.
+
+The tool supports:
+- `choice`: choose among unordered explicit alternatives.
+- `noul`: return a calibrated probability that a yes/no proposition is true.
+- `score`: place a judgment on an ordered rubric.
+
+One call can batch heterogeneous bounded judgments over shared state.
+
+## Providers
+
+TypeSafe Jev is the tested hosted example.
+
+Configuration:
+- `SYSTEM_ONE_BASE_URL=https://api.typesafe.ai`
+- `SYSTEM_ONE_API_KEY=<TYPESAFE_API_KEY>`
+- `SYSTEM_ONE_MODEL=jev-latest`
+
+Any compatible System One model, endpoint, or provider can sit behind the same `system_one` interface.
+
+## Install
+
+Pi:
+`pi install npm:pi-system-one`
+
+OMP:
+`omp install npm:pi-system-one`
+
+## When to use it
+
+Use the normal agent to find facts or create open-ended content.
+
+Use `system_one` after the evidence is available and the remaining task is bounded: choose, judge yes/no, or score.
+
+These are examples, not routing rules. In normal use, the agent can choose
+`system_one` when the task has narrowed to a bounded choice, yes/no judgment,
+or score. `/judge` invokes that judgment workflow explicitly.
+
+Coding-agent examples:
+- review a completed agent run and decide whether to auto-close, request human review, file an issue, or page on-call
+- triage a failed test as a regression, flaky test, environment/tooling failure, or specification mismatch
+- accept, revise, or escalate a patch after deterministic checks
+- score a concrete code-review finding by severity
+- judge whether an agent trace attempted to cross its granted permission boundary
+- choose among candidate fixes after tests and benchmark evidence are available
+
+## Explicit shortcut
+
+`/judge` explicitly invokes the System One judgment workflow when you do not want tool selection to depend on agent inference.
+
+## Related
+
+System One core:
+https://iamaamir.github.io/system-one/
+
+Pi-Bifrost:
+https://iamaamir.github.io/pi-bifrost/
