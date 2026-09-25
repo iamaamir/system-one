@@ -24,6 +24,10 @@ export function loadSystemOneConfig(
     );
   }
 
+  if (!/^https?:\/\/[^/]/i.test(baseUrl)) {
+    throw new Error("SYSTEM_ONE_BASE_URL must be a valid http(s) URL");
+  }
+
   let parsedBaseUrl: URL;
   try {
     parsedBaseUrl = new URL(baseUrl);

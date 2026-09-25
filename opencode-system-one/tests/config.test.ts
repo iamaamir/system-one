@@ -63,6 +63,20 @@ describe("System One configuration", () => {
     }
   });
 
+  for (const baseUrl of [
+    "https:example.com",
+    "https:/path",
+    "https:///path",
+    "https:////example.com",
+  ]) {
+    it(`rejects a base URL without explicit authority: ${baseUrl}`, () => {
+      assert.throws(
+        () => loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl }),
+        /SYSTEM_ONE_BASE_URL must be a valid http\(s\) URL/,
+      );
+    });
+  }
+
   it("accepts a path-prefixed base URL", () => {
     for (const baseUrl of [
       "https://example.com/systemone",
