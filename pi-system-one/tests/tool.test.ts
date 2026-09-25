@@ -322,6 +322,45 @@ describe("system_one tool", () => {
       });
     }
 
+    it("decodes questions serialized as a JSON string (provider quirk)", () => {
+      const raw = {
+        state: "hi",
+        questions: JSON.stringify({
+          t: { type: "choice", instructions: "W?", criteria: { a: null } },
+        }),
+      };
+      const prepared = prepareSystemOneArgs(raw);
+      assert.deepEqual(prepared, {
+        state: "hi",
+        questions: {
+          t: { type: "choice", instructions: "W?", criteria: { a: null } },
+        },
+      });
+    });
+
+    it("still rejects strings that are not JSON objects or arrays", async () => {
+      const tool = buildSystemOneTool({
+        provider: {
+          id: "stub",
+          async evaluate() {
+            return { answers: {}, metadata: { provider: "stub" } };
+          },
+        } as never,
+      });
+      for (const questions of ["foo", "{not json"]) {
+        await assert.rejects(
+          tool.execute(
+            "id-rej-string",
+            { state: "hi", questions } as never,
+            undefined,
+            undefined,
+            {} as never,
+          ),
+          /"questions" must resolve to a question map/,
+        );
+      }
+    });
+
     it("folds options array to null-valued criteria record", () => {
       assert.deepEqual(
         prepareSystemOneArgs({

@@ -423,7 +423,24 @@ function mergeSpilledChoiceLabels(
  * Pure, idempotent, non-mutating, with structural sharing: canonical input
  * is returned by reference; only repaired questions allocate.
  */
+/**
+ * Some model providers serialize nested tool arguments as JSON-encoded
+ * strings (e.g. `questions: "{\"q1\": {...}}"`). If the string looks like
+ * a JSON object or array, decode it so it can be normalized; anything else
+ * passes through untouched and still reports a clear validation error.
+ */
+function decodeJsonString(input: string): unknown {
+  const trimmed = input.trim();
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) return input;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return input;
+  }
+}
+
 function normalizeQuestion(input: unknown): unknown {
+  if (typeof input === "string") input = decodeJsonString(input);
   if (!isRecord(input)) return input;
   if (isCanonicalQuestion(input)) return input;
   const out: Record<string, unknown> = {};
@@ -689,6 +706,7 @@ function flattenQuestionMap(
 }
 
 function normalizeQuestions(input: unknown, drops?: string[]): unknown {
+  if (typeof input === "string") input = decodeJsonString(input);
   if (isRecord(input)) {
     // An array of questions wrapped in one key (`{"item": [...]}`) is the
     // list the contract already accepts, one level too deep. Unwrap it and
