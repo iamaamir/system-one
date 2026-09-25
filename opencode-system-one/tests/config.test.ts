@@ -19,6 +19,17 @@ describe("System One configuration", () => {
     });
   });
 
+  it("accepts trimmed absolute HTTP and HTTPS base URLs", () => {
+    for (const baseUrl of [
+      " http://localhost:8008 ",
+      " https://api.typesafe.ai/v1 ",
+    ]) {
+      const config = loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl });
+
+      assert.equal(config.baseUrl, baseUrl.trim());
+    }
+  });
+
   it("uses the default timeout when no timeout is provided", () => {
     const config = loadSystemOneConfig({
       SYSTEM_ONE_BASE_URL: "https://api.typesafe.ai",
@@ -31,6 +42,41 @@ describe("System One configuration", () => {
     assert.throws(
       () => loadSystemOneConfig({}),
       /SYSTEM_ONE_BASE_URL is required/,
+    );
+  });
+
+  it("rejects malformed, unsupported-protocol, and missing-protocol base URLs", () => {
+    for (const baseUrl of [
+      "not-a-url",
+      "ftp://example.com",
+      "http://",
+      "api.typesafe.ai",
+    ]) {
+      assert.throws(
+        () => loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl }),
+        /SYSTEM_ONE_BASE_URL must be a valid http\(s\) URL/,
+      );
+    }
+  });
+
+  it("does not include secrets or the malformed base URL in configuration errors", () => {
+    const apiKey = "super-secret-key";
+    const malformedBaseUrl = "not-a-url?token=secret-bearing-value";
+
+    assert.throws(
+      () =>
+        loadSystemOneConfig({
+          SYSTEM_ONE_BASE_URL: malformedBaseUrl,
+          SYSTEM_ONE_API_KEY: apiKey,
+        }),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, /SYSTEM_ONE_BASE_URL/);
+        assert.match(error.message, /must be a valid http\(s\) URL/);
+        assert.doesNotMatch(error.message, new RegExp(apiKey));
+        assert.doesNotMatch(error.message, new RegExp(malformedBaseUrl));
+        return true;
+      },
     );
   });
 

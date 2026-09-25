@@ -110,6 +110,28 @@ describe("System One plugin registration", () => {
     assert.match(logs[0]?.message ?? "", /SYSTEM_ONE_BASE_URL/);
   });
 
+  it("returns no tools and warns without secrets for an invalid base URL", async () => {
+    const { input, logs } = createPluginContext();
+    const apiKey = "super-secret-key";
+    const malformedBaseUrl = "not-a-url?token=secret-bearing-value";
+
+    const hooks = await withEnv(
+      {
+        ...validEnv,
+        SYSTEM_ONE_BASE_URL: malformedBaseUrl,
+        SYSTEM_ONE_API_KEY: apiKey,
+      },
+      () => SystemOnePlugin(input),
+    );
+
+    assert.deepEqual(hooks.tool, {});
+    assert.equal(logs.length, 1);
+    assert.equal(logs[0]?.level, "warn");
+    assert.match(logs[0]?.message ?? "", /SYSTEM_ONE_BASE_URL/);
+    assert.doesNotMatch(logs[0]?.message ?? "", new RegExp(apiKey));
+    assert.doesNotMatch(logs[0]?.message ?? "", new RegExp(malformedBaseUrl));
+  });
+
   it("returns no tools and never logs the API key for an invalid timeout", async () => {
     const { input, logs } = createPluginContext();
     const secret = "super-secret-key";

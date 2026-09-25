@@ -24,6 +24,20 @@ export function loadSystemOneConfig(
     );
   }
 
+  let parsedBaseUrl: URL;
+  try {
+    parsedBaseUrl = new URL(baseUrl);
+  } catch {
+    throw new Error("SYSTEM_ONE_BASE_URL must be a valid http(s) URL");
+  }
+  if (
+    (parsedBaseUrl.protocol !== "http:" &&
+      parsedBaseUrl.protocol !== "https:") ||
+    !parsedBaseUrl.hostname
+  ) {
+    throw new Error("SYSTEM_ONE_BASE_URL must be a valid http(s) URL");
+  }
+
   const timeoutMs =
     env.SYSTEM_ONE_TIMEOUT_MS === undefined
       ? DEFAULT_TIMEOUT_MS
