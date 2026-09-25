@@ -8,14 +8,14 @@ import {
 } from "system-one-core";
 import { buildSystemOneTool, systemOneParams } from "../src/tool.ts";
 
-function createContext(): ToolContext {
+function createContext(abort = new AbortController().signal): ToolContext {
   return {
     sessionID: "session",
     messageID: "message",
     agent: "build",
     directory: "/tmp",
     worktree: "/tmp",
-    abort: new AbortController().signal,
+    abort,
     metadata() {},
     async ask() {},
   };
@@ -152,6 +152,74 @@ describe("System One tool description", () => {
 });
 
 describe("System One tool execution", () => {
+  it("rejects unknown top-level fields through the built tool path", async () => {
+    const definition = buildSystemOneTool(
+      new MockSystemOneProvider({
+        answers: {
+          color: {
+            type: "choice",
+            choice: "blue",
+            confidence: 0.8,
+            probabilities: { red: 0.2, blue: 0.8 },
+          },
+          blocked: { type: "noul", noul: 0.1 },
+          quality: {
+            type: "score",
+            score: 0.7,
+            confidence: 0.7,
+            probabilities: { low: 0.3, high: 0.7 },
+          },
+        },
+      }),
+    );
+
+    await assert.rejects(() =>
+      definition.execute(
+        { ...canonicalArgs, model: "private-model" } as SystemOneArgs,
+        createContext(),
+      ),
+    );
+  });
+
+  it("passes the tool context abort signal to the provider", async () => {
+    const abort = new AbortController().signal;
+    let receivedSignal: AbortSignal | undefined;
+    const provider = new MockSystemOneProvider({
+      answers: {
+        color: {
+          type: "choice",
+          choice: "blue",
+          confidence: 0.8,
+          probabilities: { red: 0.2, blue: 0.8 },
+        },
+      },
+    });
+    const instrumentedProvider: SystemOneProvider = {
+      id: provider.id,
+      async evaluate(request, options) {
+        receivedSignal = options?.signal;
+        return provider.evaluate(request, options);
+      },
+    };
+    const definition = buildSystemOneTool(instrumentedProvider);
+
+    await definition.execute(
+      {
+        state: {},
+        questions: {
+          color: {
+            type: "choice",
+            instructions: "Pick the color.",
+            criteria: { red: "Stop.", blue: "Go." },
+          },
+        },
+      },
+      createContext(abort),
+    );
+
+    assert.equal(receivedSignal, abort);
+  });
+
   it("delegates a mixed batch and renders every answer", async () => {
     const definition = buildSystemOneTool(
       new MockSystemOneProvider({

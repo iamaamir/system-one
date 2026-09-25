@@ -71,11 +71,15 @@ export function buildSystemOneTool(provider: SystemOneProvider) {
     description:
       "Evaluate bounded choice, yes/no, and ordered-scale decisions over supplied state using a dedicated System One provider. Batch independent questions that share state. Do not use this tool for factual lookup, browsing, or open-ended text generation.",
     args: systemOneParams.shape,
-    async execute(args) {
-      const response = await systemOne.evaluate({
-        state: args.state as SystemOneState,
-        questions: args.questions as QuestionMap,
-      });
+    async execute(args, context) {
+      const parsedArgs = systemOneParams.parse(args);
+      const response = await systemOne.evaluate(
+        {
+          state: parsedArgs.state as SystemOneState,
+          questions: parsedArgs.questions as QuestionMap,
+        },
+        { signal: context.abort },
+      );
       return renderSystemOneResult(response);
     },
   });
