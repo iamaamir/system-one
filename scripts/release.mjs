@@ -26,6 +26,8 @@ const PKGS = [
   { name: "opencode-system-one", dir: "opencode-system-one" },
 ];
 
+const CORE_DEPENDENTS = ["pi-system-one", "opencode-system-one"];
+
 function usage() {
   console.log(`usage: release.mjs [--major|--minor|--patch] [pkg...] [--publish] [--dry-run]
   run bare for fully interactive: pick packages, bump type, then dry-run or publish.
@@ -234,15 +236,18 @@ async function main() {
   sh("npm run lint", { stdio: "inherit" });
   sh("npm test", { stdio: "inherit" });
 
-  // A core major exiles dependents: refuse unless pi rides along.
+  // A core major exiles dependents: refuse unless they ride along.
   const coreBump = plan.find((b) => b.name === "system-one-core");
-  if (
-    coreBump &&
-    bump === "major" &&
-    !plan.some((b) => b.name === "pi-system-one")
-  ) {
+  const missingCoreDependents = CORE_DEPENDENTS.filter(
+    (name) => !plan.some((b) => b.name === name),
+  );
+  if (coreBump && bump === "major" && missingCoreDependents.length > 0) {
+    const range =
+      missingCoreDependents.length === 1
+        ? "its dependency range"
+        : "their dependency ranges";
     console.error(
-      "core major bump requires pi-system-one in the same release (its dependency range would be orphaned)",
+      `core major bump requires ${missingCoreDependents.join(" and ")} in the same release (${range} would be orphaned)`,
     );
     process.exit(1);
   }
@@ -251,7 +256,7 @@ async function main() {
     const { path: pkgPath, json } = readPkg(b.dir);
     json.version = b.newVersion;
     // Keep dependent workspace ranges pointed at the bumped core.
-    if (b.name === "pi-system-one") {
+    if (CORE_DEPENDENTS.includes(b.name)) {
       const core = plan.find((x) => x.name === "system-one-core");
       if (core && json.dependencies?.["system-one-core"]) {
         json.dependencies["system-one-core"] = getDepRange(
