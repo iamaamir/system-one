@@ -38,6 +38,8 @@ export function loadSystemOneConfig(
     throw new Error("SYSTEM_ONE_BASE_URL must be a valid http(s) URL");
   }
   if (
+    baseUrl.includes("?") ||
+    baseUrl.includes("#") ||
     parsedBaseUrl.username ||
     parsedBaseUrl.password ||
     parsedBaseUrl.search ||
