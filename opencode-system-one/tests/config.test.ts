@@ -38,6 +38,27 @@ describe("System One configuration", () => {
     assert.equal(config.timeoutMs, DEFAULT_TIMEOUT_MS);
   });
 
+  it("rejects base URLs with credentials, query strings, or fragments", () => {
+    for (const baseUrl of [
+      "https://user:pass@example.com",
+      "https://example.com?token=secret",
+      "https://example.com#fragment",
+    ]) {
+      assert.throws(
+        () => loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl }),
+        /SYSTEM_ONE_BASE_URL must not include credentials, query strings, or fragments/,
+      );
+    }
+  });
+
+  it("accepts a path-prefixed base URL", () => {
+    const config = loadSystemOneConfig({
+      SYSTEM_ONE_BASE_URL: "https://example.com/systemone",
+    });
+
+    assert.equal(config.baseUrl, "https://example.com/systemone");
+  });
+
   it("requires a base URL", () => {
     assert.throws(
       () => loadSystemOneConfig({}),
