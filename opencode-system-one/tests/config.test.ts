@@ -43,6 +43,9 @@ describe("System One configuration", () => {
       "https://user:pass@example.com",
       "https://example.com?token=secret",
       "https://example.com#fragment",
+      "https://example.com?",
+      "https://example.com#",
+      "https://example.com?#",
     ]) {
       assert.throws(
         () => loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl }),
