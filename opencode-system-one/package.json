@@ -1,0 +1,50 @@
+{
+  "name": "opencode-system-one",
+  "version": "0.1.0",
+  "description": "System One decisions for OpenCode. Plug in TypeSafe Jev, Reflex, or your own provider.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamaamir/system-one.git",
+    "directory": "opencode-system-one"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test --experimental-strip-types \"tests/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "model-router",
+    "model-routing",
+    "developer-tools",
+    "llm",
+    "ai",
+    "coding-agent"
+  ],
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.18.32",
+    "system-one-core": "^0.2.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
