@@ -80,6 +80,7 @@ For example, [Pi-Bifrost](https://github.com/iamaamir/pi-bifrost) consumes `syst
 |---|---|---|
 | `system-one-core` | `system-one-core` | Provider-neutral runtime: `SystemOneProvider`, `SystemOne`, typed builders, compatible HTTP provider, strict validation, and deterministic test support |
 | `pi-system-one` | `pi-system-one` | Pi extension exposing one `system_one` tool for batched `choice`, `noul`, and `score` decisions |
+| opencode-system-one | opencode-system-one | OpenCode plugin exposing one system_one tool for batched choice, noul, and score decisions |
 
 Dependency direction stays one-way:
 
@@ -220,6 +221,27 @@ pi install npm:pi-system-one
 ```
 
 Read full documentation [`here`](./pi-system-one)
+
+---
+
+## OpenCode
+
+Install the OpenCode plugin:
+
+```bash
+npm install opencode-system-one
+```
+
+Add `opencode-system-one` to the `plugin` array in `opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["opencode-system-one"]
+}
+```
+
+Configure `SYSTEM_ONE_BASE_URL` before starting OpenCode. `SYSTEM_ONE_API_KEY`, `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` are optional.
 
 ---
 
