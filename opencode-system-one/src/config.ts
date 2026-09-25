@@ -24,6 +24,12 @@ export function loadSystemOneConfig(
     );
   }
 
+  if (/[\\\s\p{Cc}]/u.test(baseUrl)) {
+    throw new Error(
+      "SYSTEM_ONE_BASE_URL must not contain backslashes, whitespace, or control characters",
+    );
+  }
+
   if (!/^https?:\/\/[^/]/i.test(baseUrl)) {
     throw new Error("SYSTEM_ONE_BASE_URL must be a valid http(s) URL");
   }
