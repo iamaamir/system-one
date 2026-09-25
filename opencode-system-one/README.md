@@ -4,13 +4,7 @@
 
 ## Installation
 
-Install the plugin from npm:
-
-```bash
-npm install opencode-system-one
-```
-
-Add it to the `plugin` array in `opencode.json`:
+Add `opencode-system-one` to the `plugin` array in `opencode.json`:
 
 ```json
 {
@@ -18,6 +12,8 @@ Add it to the `plugin` array in `opencode.json`:
   "plugin": ["opencode-system-one"]
 }
 ```
+
+OpenCode uses Bun to install npm plugins and their dependencies automatically at startup, so a separate `npm install opencode-system-one` step is not required.
 
 Set `SYSTEM_ONE_BASE_URL` before starting OpenCode. `SYSTEM_ONE_API_KEY`, `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` are optional; the timeout defaults to 10 seconds.
 
