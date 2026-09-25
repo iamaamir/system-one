@@ -1,6 +1,7 @@
 # Release via npm trusted publishing (OIDC). No tokens.
 #
-# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one):
+# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one,
+# opencode-system-one):
 #   Settings -> Trusted publishing -> Add GitHub Actions publisher with
 #     user iamaamir, repo system-one, workflow filename release.yml,
 #   and allow direct `npm publish` (not stage-only).
@@ -15,7 +16,7 @@
 name: Release
 on:
   push:
-    tags: ["system-one-core@*", "pi-system-one@*"]
+    tags: ["system-one-core@*", "pi-system-one@*", "opencode-system-one@*"]
 permissions:
   contents: read
   id-token: write
