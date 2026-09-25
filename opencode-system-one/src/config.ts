@@ -24,9 +24,10 @@ export function loadSystemOneConfig(
     );
   }
 
-  const timeoutMs = env.SYSTEM_ONE_TIMEOUT_MS
-    ? Number(env.SYSTEM_ONE_TIMEOUT_MS)
-    : DEFAULT_TIMEOUT_MS;
+  const timeoutMs =
+    env.SYSTEM_ONE_TIMEOUT_MS === undefined
+      ? DEFAULT_TIMEOUT_MS
+      : Number(env.SYSTEM_ONE_TIMEOUT_MS);
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error("SYSTEM_ONE_TIMEOUT_MS must be a positive number");
   }

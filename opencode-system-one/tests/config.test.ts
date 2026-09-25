@@ -35,7 +35,7 @@ describe("System One configuration", () => {
   });
 
   it("rejects a non-positive or non-numeric timeout", () => {
-    for (const timeout of ["0", "-1", "not-a-number"]) {
+    for (const timeout of ["", "0", "-1", "not-a-number", "Infinity"]) {
       assert.throws(
         () =>
           loadSystemOneConfig({
