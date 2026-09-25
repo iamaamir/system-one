@@ -1,11 +1,10 @@
-import { tool } from "@opencode-ai/plugin";
+import { type ToolDefinition, tool } from "@opencode-ai/plugin";
 import {
   type QuestionMap,
   SystemOne,
   type SystemOneProvider,
   type SystemOneState,
 } from "system-one-core";
-import type { z } from "zod";
 import { renderSystemOneResult } from "./render.ts";
 
 const questionInstructions = tool.schema
@@ -50,7 +49,9 @@ const question = tool.schema.discriminatedUnion("type", [
   scoreQuestion,
 ]);
 
-export const systemOneParams = tool.schema
+type SystemOneSchema = ReturnType<typeof tool.schema.object>;
+
+export const systemOneParams: SystemOneSchema = tool.schema
   .object({
     state: tool.schema
       .json()
@@ -65,7 +66,7 @@ export const systemOneParams = tool.schema
   .strict()
   .describe("Evaluate bounded decisions against supplied state.");
 
-export type SystemOneParams = z.output<typeof systemOneParams>;
+export type SystemOneParams = ReturnType<typeof systemOneParams.parse>;
 
 export function parseSystemOneArgs(args: unknown): SystemOneParams {
   return systemOneParams.parse(args);
@@ -81,7 +82,9 @@ const toolDescription = [
   "Do not use this tool for factual lookup, browsing, or open-ended text generation.",
 ].join(" ");
 
-export function buildSystemOneTool(provider: SystemOneProvider) {
+export function buildSystemOneTool(
+  provider: SystemOneProvider,
+): ToolDefinition {
   const systemOne = new SystemOne({ provider });
 
   return tool({
