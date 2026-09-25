@@ -6,7 +6,11 @@ import {
   type SystemOneProvider,
   SystemOneTransportError,
 } from "system-one-core";
-import { buildSystemOneTool, systemOneParams } from "../src/tool.ts";
+import {
+  buildSystemOneTool,
+  parseSystemOneArgs,
+  systemOneParams,
+} from "../src/tool.ts";
 
 function createContext(abort = new AbortController().signal): ToolContext {
   return {
@@ -136,6 +140,35 @@ describe("System One tool schema", () => {
   });
 });
 
+describe("parseSystemOneArgs", () => {
+  it("returns the canonical arguments unchanged", () => {
+    const parsed = parseSystemOneArgs(canonicalArgs);
+
+    assert.deepEqual(parsed, canonicalArgs);
+  });
+
+  it("rejects an unknown top-level field", () => {
+    assert.throws(() =>
+      parseSystemOneArgs({ ...canonicalArgs, model: "private-model" }),
+    );
+  });
+
+  it("rejects an unknown question field", () => {
+    assert.throws(() =>
+      parseSystemOneArgs({
+        state: {},
+        questions: {
+          blocked: {
+            type: "noul",
+            instructions: "Is the task blocked?",
+            confidence: 0.9,
+          },
+        },
+      }),
+    );
+  });
+});
+
 describe("System One tool description", () => {
   it("states batching, scope, and non-use", () => {
     const { description } = buildSystemOneTool(
@@ -148,6 +181,19 @@ describe("System One tool description", () => {
     assert.match(description, /factual lookup/);
     assert.match(description, /browsing/);
     assert.match(description, /open-ended/);
+  });
+
+  it("names every question type and its criteria shape", () => {
+    const { description } = buildSystemOneTool(
+      new MockSystemOneProvider({ answers: {} }),
+    );
+
+    assert.match(description, /choice/);
+    assert.match(description, /noul/);
+    assert.match(description, /score/);
+    assert.match(description, /choice takes criteria as an object/);
+    assert.match(description, /noul .* criteria as an optional object/);
+    assert.match(description, /score .* criteria as an array of at least two/);
   });
 });
 
