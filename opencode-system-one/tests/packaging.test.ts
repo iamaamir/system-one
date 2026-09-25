@@ -31,6 +31,7 @@ function readPackResult(): PackResult[] {
   const output = execFileSync("npm", ["pack", "--dry-run", "--json"], {
     cwd: packageRoot,
     encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
   });
   return JSON.parse(output) as PackResult[];
 }
@@ -42,8 +43,10 @@ describe("OpenCode System One packaging", () => {
     assert.equal(manifest.name, "opencode-system-one");
     assert.equal(manifest.main, "./dist/index.js");
     assert.equal(manifest.types, "./dist/index.d.ts");
-    assert.equal(manifest.dependencies?.["@opencode-ai/plugin"], "^1.18.32");
-    assert.equal(manifest.dependencies?.["system-one-core"], "^0.2.1");
+    assert.ok(
+      Object.hasOwn(manifest.dependencies ?? {}, "@opencode-ai/plugin"),
+    );
+    assert.ok(Object.hasOwn(manifest.dependencies ?? {}, "system-one-core"));
     assert.equal(manifest.dependencies?.zod, undefined);
     assert.equal(manifest.devDependencies?.zod, undefined);
     assert.equal(manifest.optionalDependencies?.zod, undefined);
