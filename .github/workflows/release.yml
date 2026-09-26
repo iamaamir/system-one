@@ -1,6 +1,6 @@
 # Release via npm trusted publishing (OIDC). No tokens.
 #
-# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one):
+# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one, systemone-mcp):
 #   Settings -> Trusted publishing -> Add GitHub Actions publisher with
 #     user iamaamir, repo system-one, workflow filename release.yml,
 #   and allow direct `npm publish` (not stage-only).
@@ -10,14 +10,14 @@
 # NOTE: repository.url in each package.json must match this repo.
 #
 # Usage: push a tag like system-one-core@0.1.2, pi-system-one@1.2.0, or
-# system-one-mcp@0.1.0-rc.0. The tag version must match package.json. Any
+# systemone-mcp@0.1.0-rc.1. The tag version must match package.json. Any
 # prerelease version is published with the `next` dist-tag; stable versions use
 # `latest`.
 # Provenance attestations are generated automatically (public repo).
 name: Release
 on:
   push:
-    tags: ["system-one-core@*", "pi-system-one@*", "system-one-mcp@*"]
+    tags: ["system-one-core@*", "pi-system-one@*", "systemone-mcp@*"]
 permissions:
   contents: read
   id-token: write

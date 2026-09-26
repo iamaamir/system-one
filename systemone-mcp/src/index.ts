@@ -11,7 +11,7 @@ import {
 } from "./tool.ts";
 
 export function createSystemOneMcpServer(): McpServer {
-  const server = new McpServer({ name: "system-one-mcp", version: "0.1.0" });
+  const server = new McpServer({ name: "systemone-mcp", version: "0.1.0" });
   server.registerTool(
     "system_one",
     {

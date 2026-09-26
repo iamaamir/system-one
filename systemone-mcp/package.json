@@ -1,16 +1,16 @@
 {
-  "name": "system-one-mcp",
-  "version": "0.1.0-rc.0",
+  "name": "systemone-mcp",
+  "version": "0.1.0-rc.1",
   "description": "Provider-neutral System One tool for local MCP hosts",
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/iamaamir/system-one.git",
-    "directory": "system-one-mcp"
+    "directory": "systemone-mcp"
   },
   "bin": {
-    "system-one-mcp": "./dist/index.js"
+    "systemone-mcp": "./dist/index.js"
   },
   "main": "./dist/index.js",
   "exports": {

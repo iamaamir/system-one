@@ -1,4 +1,4 @@
-# system-one-mcp
+# systemone-mcp
 
 Local STDIO MCP adapter exposing one provider-neutral `system_one` read-only tool to Codex CLI, Claude Code, and ChatGPT desktop.
 
@@ -7,8 +7,8 @@ The adapter runs one local process and calls the configured `/v1/systemone` endp
 ## Install and register
 
 This prerelease is published under the `next` dist-tag, so use
-`system-one-mcp@next` in registration commands until the stable release. After
-the stable release, the unversioned `system-one-mcp` package command will apply.
+`systemone-mcp@next` in registration commands until the stable release. After
+the stable release, the unversioned `systemone-mcp` package command will apply.
 
 The examples below use shell variables so you do not type the API key literally
 into the registration command. Set the required base URL and key:
@@ -32,7 +32,7 @@ Register a server named `system-one`:
 codex mcp add \
   --env "SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}" \
   --env "SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}" \
-  system-one -- npx -y system-one-mcp@next
+  system-one -- npx -y systemone-mcp@next
 codex mcp list
 ```
 
@@ -45,7 +45,7 @@ The `--env` option can be repeated for each variable. The equivalent Codex
 ```toml
 [mcp_servers.system_one]
 command = "npx"
-args = ["-y", "system-one-mcp@next"]
+args = ["-y", "systemone-mcp@next"]
 env_vars = [
   "SYSTEM_ONE_BASE_URL",
   "SYSTEM_ONE_API_KEY",
@@ -68,7 +68,7 @@ By default, Claude Code registers the server for the current project. Add
 claude mcp add --scope user system-one \
   -e "SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}" \
   -e "SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}" \
-  -- npx -y system-one-mcp@next
+  -- npx -y systemone-mcp@next
 claude mcp list
 ```
 
@@ -83,7 +83,7 @@ MCP configuration files.
 ### ChatGPT desktop
 
 ChatGPT desktop still requires GUI setup: open Settings → MCP servers, add the
-server with command `npx`, arguments `-y system-one-mcp@next`, and
+server with command `npx`, arguments `-y systemone-mcp@next`, and
 `SYSTEM_ONE_BASE_URL` and `SYSTEM_ONE_API_KEY`. Add `SYSTEM_ONE_MODEL` and
 `SYSTEM_ONE_TIMEOUT_MS` when needed, then restart the app. There is no CLI
 registration command for the desktop app.
