@@ -28,6 +28,53 @@ describe("render", () => {
     assert.match(text, /probabilities:[\s\S]*coding: 0\.91/);
     assert.match(text, /complex:[\s\S]*noul: 0\.82/);
     assert.match(text, /difficulty:[\s\S]*score: 1\.7/);
+    // The legend is the whole point: on the index-slot convention a bare
+    // `0: 0.1` names no level, so it must render as `0 easy`.
+    assert.match(text, /0 easy: 0\.1/);
+    assert.match(text, /1 medium: 0\.2/);
+    assert.match(text, /2 hard: 0\.7/);
+    assert.match(text, /position on the 0\.\.2 rubric scale/);
+  });
+
+  it("does not duplicate a self-describing probability key", () => {
+    // The contract also allows keys to be the level values themselves, in
+    // which case the key already names the level and needs no legend.
+    const text = renderSystemOneResult({
+      answers: {
+        difficulty: {
+          type: "score",
+          score: 0.4,
+          probabilities: { easy: 0.6, hard: 0.4 },
+          legend: { easy: "easy", hard: "hard" },
+          confidence: 0.8,
+        },
+      },
+    } as any);
+    assert.match(text, /easy: 0\.6/);
+    assert.doesNotMatch(text, /easy easy/);
+  });
+
+  it("still renders a slot key when the legend has no entry for it", () => {
+    const text = renderSystemOneResult({
+      answers: {
+        difficulty: {
+          type: "score",
+          score: 1,
+          probabilities: { "0": 0.5, "1": 0.5 },
+          confidence: 0.5,
+        },
+      },
+    } as any);
+    assert.match(text, /0: 0\.5/);
+  });
+
+  it("states the reading rules once, for the whole result", () => {
+    const text = renderSystemOneResult({
+      answers: { a: { type: "noul", noul: 0.5 } },
+    } as any);
+    assert.match(text, /noul is P\(yes\)/);
+    assert.match(text, /choice always returns a winner/);
+    assert.match(text, /not permission to act/);
   });
   it("renders score probabilities and flags unknown types", () => {
     const text = renderSystemOneResult({
