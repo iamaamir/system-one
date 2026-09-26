@@ -1504,7 +1504,7 @@ describe("system_one tool", () => {
               criteria: {
                 low: "Bad: minor and reversible",
                 high: "",
-                "moderate": "moderate",
+                moderate: "moderate",
               },
             },
           },
@@ -1549,7 +1549,11 @@ describe("system_one tool", () => {
           {
             state: "hi",
             questions: {
-              s: { type: "score", instructions: "How?", criteria: { only: "meh" } },
+              s: {
+                type: "score",
+                instructions: "How?",
+                criteria: { only: "meh" },
+              },
             },
           } as never,
           undefined,
@@ -1720,7 +1724,12 @@ describe("system_one tool", () => {
           questions: {
             item: [
               { name: "plan_it", type: "noul", instructions: "Should we?" },
-              { name: "how_soon", type: "score", instructions: "How soon?", criteria: ["now", "later"] },
+              {
+                name: "how_soon",
+                type: "score",
+                instructions: "How soon?",
+                criteria: ["now", "later"],
+              },
             ],
           },
         } as never,
@@ -1728,7 +1737,10 @@ describe("system_one tool", () => {
         undefined,
         {} as never,
       );
-      assert.deepEqual(Object.keys(request().questions), ["plan_it", "how_soon"]);
+      assert.deepEqual(Object.keys(request().questions), [
+        "plan_it",
+        "how_soon",
+      ]);
     });
 
     it("drops string entries beside a real question", async () => {
@@ -1783,7 +1795,13 @@ describe("system_one tool", () => {
               { type: "noul", instructions: "Is it safe?" },
               { type: "noul", instructions: "Is it cheap?" },
             ],
-            risks: [{ type: "score", instructions: "How bad?", criteria: ["low", "high"] }],
+            risks: [
+              {
+                type: "score",
+                instructions: "How bad?",
+                criteria: ["low", "high"],
+              },
+            ],
           },
         } as never,
         undefined,
@@ -1829,7 +1847,9 @@ describe("system_one tool", () => {
             impact: {
               type: "score",
               instructions: "How bad?",
-              criteria: { item: { item: ["negligible", "moderate", "severe"] } },
+              criteria: {
+                item: { item: ["negligible", "moderate", "severe"] },
+              },
             },
           },
         } as never,
@@ -1877,12 +1897,12 @@ describe("system_one tool", () => {
           questions: {
             item: ["refund", "risk", "followup"],
             type: ["choice", "score", "noul"],
-            instructions: ["Which action?", "How risky?", "Will they follow up?"],
-            criteria: [
-              { refund: null, deny: null },
-              ["low", "high"],
-              null,
+            instructions: [
+              "Which action?",
+              "How risky?",
+              "Will they follow up?",
             ],
+            criteria: [{ refund: null, deny: null }, ["low", "high"], null],
           },
         } as never,
         undefined,
@@ -1962,7 +1982,9 @@ describe("system_one tool", () => {
         undefined,
         {} as never,
       );
-      assert.deepEqual(Object.keys(request().questions), ["which_date_library"]);
+      assert.deepEqual(Object.keys(request().questions), [
+        "which_date_library",
+      ]);
       assert.equal(request().questions.which_date_library.type, "choice");
     });
 
@@ -2276,7 +2298,10 @@ describe("system_one tool", () => {
       const input = { state: "S", questions: { q1: ["text", "text"] } };
       const once = prepareSystemOneArgs(input);
       assert.deepEqual(prepareSystemOneArgs(once), once);
-      assert.deepEqual(once, { state: "S", questions: { q1: ["text", "text"] } });
+      assert.deepEqual(once, {
+        state: "S",
+        questions: { q1: ["text", "text"] },
+      });
     });
 
     it("rejects score questions with a one-element array rubric", async () => {
@@ -2381,7 +2406,11 @@ describe("discarded question reporting", () => {
     const text = await renderOf({
       state: "an outage and a refund",
       questions: {
-        questions: { type: "choice", instructions: "Which?", criteria: { a: null } },
+        questions: {
+          type: "choice",
+          instructions: "Which?",
+          criteria: { a: null },
+        },
         risk: { type: "noul", instructions: "Is there a risk?" },
       },
     });

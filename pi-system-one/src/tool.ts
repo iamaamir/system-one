@@ -540,7 +540,10 @@ function liftNestedState(
     setOwn(rebuilt, name, changed ? kept : question);
   }
   if (!changed) return { questions, state: fallback };
-  return { questions: rebuilt, state: fallback !== undefined ? fallback : found };
+  return {
+    questions: rebuilt,
+    state: fallback !== undefined ? fallback : found,
+  };
 }
 
 /**
@@ -572,9 +575,14 @@ function looksLikeQuestion(value: unknown): boolean {
  * something that was quietly not judged, which is exactly the kind of mistake
  * a typed output cannot surface.
  */
-function noteDrop(drops: string[] | undefined, name: string, value: unknown): void {
+function noteDrop(
+  drops: string[] | undefined,
+  name: string,
+  value: unknown,
+): void {
   if (!drops) return;
-  const shown = typeof value === "string" ? value : value === null ? "null" : "";
+  const shown =
+    typeof value === "string" ? value : value === null ? "null" : "";
   drops.push(shown === "" ? name : `${name} (${truncateForNote(shown)})`);
 }
 
@@ -624,12 +632,11 @@ function transposeParallelQuestions(input: Record<string, unknown>): unknown {
       }
       setOwn(parts, key, (input[key] as unknown[])[i]);
     }
-    const nameKey = ["item", "name", "id", "key"].find(
-      (key) => Array.isArray(input[key]),
+    const nameKey = ["item", "name", "id", "key"].find((key) =>
+      Array.isArray(input[key]),
     );
     const raw = nameKey ? (input[nameKey] as unknown[])[i] : undefined;
-    let name =
-      typeof raw === "string" && raw.trim() !== "" ? raw : `q${i + 1}`;
+    let name = typeof raw === "string" && raw.trim() !== "" ? raw : `q${i + 1}`;
     for (let n = 2; used.has(name); n += 1) name = `${raw ?? `q${i + 1}`}_${n}`;
     used.add(name);
     setOwn(questions, name, normalizeQuestion(parts));
@@ -650,12 +657,13 @@ function isQuestionTree(value: unknown, depth = 0): boolean {
   if (looksLikeQuestion(value)) return true;
   if (!isRecord(value) || depth >= MAX_NESTED_MAP_DEPTH) return false;
   const keys = Object.keys(value);
-  return keys.length > 0 && keys.every((key) => isQuestionTree(value[key], depth + 1));
+  return (
+    keys.length > 0 &&
+    keys.every((key) => isQuestionTree(value[key], depth + 1))
+  );
 }
 
-function isNestedQuestionMap(
-  value: unknown,
-): value is Record<string, unknown> {
+function isNestedQuestionMap(value: unknown): value is Record<string, unknown> {
   return isRecord(value) && !looksLikeQuestion(value) && isQuestionTree(value);
 }
 
@@ -667,7 +675,11 @@ function flattenQuestionMap(
   const out: Array<[string, unknown]> = [];
   for (const name of Object.keys(value)) {
     const child = value[name];
-    if (isRecord(child) && !looksLikeQuestion(child) && depth < MAX_NESTED_MAP_DEPTH) {
+    if (
+      isRecord(child) &&
+      !looksLikeQuestion(child) &&
+      depth < MAX_NESTED_MAP_DEPTH
+    ) {
       out.push(...flattenQuestionMap(child, depth + 1));
     } else {
       out.push([name, child]);
@@ -764,7 +776,9 @@ function normalizeQuestions(input: unknown, drops?: string[]): unknown {
       // metadata and aliases in a single construction pass.
       const rawName = entry.name ?? entry.id ?? entry.key;
       const base =
-        typeof rawName === "string" && rawName.trim() !== "" ? rawName : `q${index + 1}`;
+        typeof rawName === "string" && rawName.trim() !== ""
+          ? rawName
+          : `q${index + 1}`;
       return [base, normalizeQuestion(entry)];
     });
     const hasQuestion = pairs.some(([, value]) => looksLikeQuestion(value));
