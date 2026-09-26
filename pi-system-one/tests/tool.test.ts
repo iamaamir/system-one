@@ -11,6 +11,25 @@ import {
 } from "../src/tool.ts";
 
 describe("system_one tool", () => {
+  /**
+   * A tool whose provider records the request it was handed, so a test can
+   * assert the exact shape that reached the wire after normalization.
+   */
+  function recordingTool() {
+    let captured: any = null;
+    const stub = {
+      id: "stub",
+      async evaluate(request: any) {
+        captured = request;
+        return { answers: {}, metadata: { provider: "stub" } };
+      },
+    };
+    return {
+      tool: buildSystemOneTool({ provider: stub as never }),
+      request: () => captured,
+    };
+  }
+
   it("delegates a mixed batch and preserves details", async () => {
     const tool = buildSystemOneTool({
       provider: new MockSystemOneProvider({
@@ -348,7 +367,7 @@ describe("system_one tool", () => {
       );
     });
 
-    it("unwraps single questions with extra fields so execute reports the field", async () => {
+    it("unwraps a single question and drops its extra fields", async () => {
       const prepared = prepareSystemOneArgs({
         state: "hi",
         questions: {
@@ -365,12 +384,12 @@ describe("system_one tool", () => {
             type: "choice",
             instructions: "W?",
             criteria: { a: null },
-            foo: "bar",
           },
         },
       });
       // The permissive boundary schema lets this through (older Pi must be
-      // able to reach execute); the semantic gate rejects it precisely.
+      // able to reach execute), and the extra field is dropped rather than
+      // turned into a retry the model has to learn from.
       assert.equal(Value.Check(systemOneParams, prepared), true);
       let calls = 0;
       const tool = buildSystemOneTool({
@@ -382,17 +401,14 @@ describe("system_one tool", () => {
           },
         } as never,
       });
-      await assert.rejects(
-        tool.execute(
-          "id-foo",
-          prepared as never,
-          undefined,
-          undefined,
-          {} as never,
-        ),
-        /question "q" has unknown field "foo"/,
+      await tool.execute(
+        "id-foo",
+        prepared as never,
+        undefined,
+        undefined,
+        {} as never,
       );
-      assert.equal(calls, 0);
+      assert.equal(calls, 1);
     });
 
     it("lets unknown types through the schema so execute rejects them clearly", async () => {
@@ -862,21 +878,6 @@ describe("system_one tool", () => {
         /questions is required/,
       ],
       [
-        "unknown field",
-        {
-          state: "hi",
-          questions: {
-            t: {
-              type: "choice",
-              instructions: "W?",
-              criteria: { a: null },
-              confidence: 0.9,
-            },
-          },
-        },
-        /question "t" has unknown field "confidence"/,
-      ],
-      [
         "noul criteria as array",
         {
           state: "hi",
@@ -1167,7 +1168,7 @@ describe("system_one tool", () => {
             instructions: "Rate?",
             criteria: ["1", "5"],
           },
-          b: { type: "noul", instructions: "OK?", extra: 1 },
+          b: { type: "noul", instructions: "OK?" },
         },
       });
     });
@@ -1466,7 +1467,844 @@ describe("system_one tool", () => {
       assert.equal(calls(), 0);
     });
 
-    it("rejects score questions with object criteria", async () => {
+    it("folds object score criteria into an ordered rubric", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-fold-score",
+        {
+          state: "hi",
+          questions: {
+            s: {
+              type: "score",
+              instructions: "How?",
+              criteria: { low: "bad", high: "good" },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.s.criteria, [
+        "low: bad",
+        "high: good",
+      ]);
+    });
+
+    it("keeps a score level's label and description without duplicating", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-level-self-describing",
+        {
+          state: "hi",
+          questions: {
+            s: {
+              type: "score",
+              instructions: "How bad?",
+              criteria: {
+                low: "Bad: minor and reversible",
+                high: "",
+                moderate: "moderate",
+              },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.s.criteria, [
+        "low: Bad: minor and reversible",
+        "high",
+        "moderate",
+      ]);
+    });
+
+    it("unwraps a single wrapper key holding the rubric", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-fold-score-wrapper",
+        {
+          state: "hi",
+          questions: {
+            s: {
+              type: "score",
+              instructions: "How?",
+              criteria: { item: ["low", "high"] },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.s.criteria, ["low", "high"]);
+    });
+
+    it("rejects a one-level object rubric rather than unwrapping it", async () => {
+      const { tool, calls } = stubTool();
+      await assert.rejects(
+        tool.execute(
+          "id-fold-score-single",
+          {
+            state: "hi",
+            questions: {
+              s: {
+                type: "score",
+                instructions: "How?",
+                criteria: { only: "meh" },
+              },
+            },
+          } as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /score question "s" needs criteria as an ordered array/,
+      );
+      assert.equal(calls(), 0);
+    });
+
+    it("lifts bare noul outcomes into criteria", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-lift-noul",
+        {
+          state: "hi",
+          questions: {
+            n: {
+              type: "noul",
+              instructions: "Is it?",
+              true: "it is",
+              false: "it is not",
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.n, {
+        type: "noul",
+        instructions: "Is it?",
+        criteria: { true: "it is", false: "it is not" },
+      });
+    });
+
+    it("merges choice labels spilled out of criteria", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-spilled-choice",
+        {
+          state: "hi",
+          questions: {
+            ownership: {
+              type: "choice",
+              instructions: "Who?",
+              criteria: { sre_oncall: "" },
+              account_team: "",
+              ingest_service_owner: "",
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions.ownership.criteria), [
+        "sre_oncall",
+        "account_team",
+        "ingest_service_owner",
+      ]);
+    });
+
+    it("uses spilled labels as criteria when criteria is absent", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-spilled-only",
+        {
+          state: "hi",
+          questions: {
+            pick: {
+              type: "choice",
+              instructions: "Which?",
+              billing: null,
+              onboarding: null,
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.pick.criteria, {
+        billing: null,
+        onboarding: null,
+      });
+    });
+
+    it("drops an empty sibling that is a noul question's own name", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-noul-selfname",
+        {
+          state: "hi",
+          questions: {
+            q: {
+              type: "noul",
+              instructions: "Is it?",
+              is_coordinated_credential_stuffing_run: "",
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.q, {
+        type: "noul",
+        instructions: "Is it?",
+      });
+    });
+
+    it("drops a NON-empty extra field rather than failing the call", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-nonempty-extra",
+        {
+          state: "hi",
+          questions: {
+            q: {
+              type: "noul",
+              instructions: "Is it?",
+              confidence: 0.9,
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.q, {
+        type: "noul",
+        instructions: "Is it?",
+      });
+    });
+
+    it("salvages the type from an extra key that names the kind", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-salvage-type",
+        {
+          state: "hi",
+          questions: {
+            q: {
+              approach: "yes_no",
+              name: "finishes_in_window",
+              instructions: "Will it fit?",
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.q, {
+        type: "noul",
+        instructions: "Will it fit?",
+      });
+    });
+
+    it("unwraps a single-key wrapper around an array of questions", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-wrapped-array",
+        {
+          state: "hi",
+          questions: {
+            item: [
+              { name: "plan_it", type: "noul", instructions: "Should we?" },
+              {
+                name: "how_soon",
+                type: "score",
+                instructions: "How soon?",
+                criteria: ["now", "later"],
+              },
+            ],
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), [
+        "plan_it",
+        "how_soon",
+      ]);
+    });
+
+    it("drops string entries beside a real question", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-string-entry",
+        {
+          state: "hi",
+          questions: {
+            refund_decision: {
+              type: "choice",
+              instructions: "Which?",
+              criteria: { deny: null },
+            },
+            deny: "refund it",
+            "PR #419 (feat: add metrics endpoint)": "merge it",
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), ["refund_decision"]);
+    });
+
+    it("still rejects a question map of nothing but strings", async () => {
+      const { tool, calls } = stubTool();
+      await assert.rejects(
+        tool.execute(
+          "id-all-strings",
+          {
+            state: "hi",
+            questions: { deny: "refund it", allow: "let it go" },
+          } as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /must be an object with "type"/,
+      );
+      assert.equal(calls(), 0);
+    });
+
+    it("merges a name-to-array question map", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-array-map",
+        {
+          state: "hi",
+          questions: {
+            fixes: [
+              { type: "noul", instructions: "Is it safe?" },
+              { type: "noul", instructions: "Is it cheap?" },
+            ],
+            risks: [
+              {
+                type: "score",
+                instructions: "How bad?",
+                criteria: ["low", "high"],
+              },
+            ],
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), [
+        "fixes",
+        "fixes_2",
+        "risks",
+      ]);
+    });
+
+    it("unwraps one question filed under the wrapper's own name", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-named-questions",
+        {
+          state: "hi",
+          questions: {
+            questions: {
+              type: "score",
+              instructions: "How clear?",
+              criteria: ["low", "high"],
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), ["q"]);
+      assert.equal(request().questions.q.type, "score");
+    });
+
+    it("peels a wrapper nested more than one level deep", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-nested-wrapper",
+        {
+          state: "hi",
+          questions: {
+            impact: {
+              type: "score",
+              instructions: "How bad?",
+              criteria: {
+                item: { item: ["negligible", "moderate", "severe"] },
+              },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.impact.criteria, [
+        "negligible",
+        "moderate",
+        "severe",
+      ]);
+    });
+
+    it("still rejects a one-level rubric nested in a wrapper", async () => {
+      const { tool, calls } = stubTool();
+      await assert.rejects(
+        tool.execute(
+          "id-nested-one-level",
+          {
+            state: "hi",
+            questions: {
+              impact: {
+                type: "score",
+                instructions: "How bad?",
+                criteria: { item: { only: "meh" } },
+              },
+            },
+          } as never,
+          undefined,
+          undefined,
+          {} as never,
+        ),
+        /score question "impact" needs criteria as an ordered array/,
+      );
+      assert.equal(calls(), 0);
+    });
+
+    it("transposes parallel arrays into named questions", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-parallel-arrays",
+        {
+          state: "hi",
+          questions: {
+            item: ["refund", "risk", "followup"],
+            type: ["choice", "score", "noul"],
+            instructions: [
+              "Which action?",
+              "How risky?",
+              "Will they follow up?",
+            ],
+            criteria: [{ refund: null, deny: null }, ["low", "high"], null],
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      const asked = request().questions;
+      assert.deepEqual(Object.keys(asked), ["refund", "risk", "followup"]);
+      assert.equal(asked.refund.type, "choice");
+      assert.deepEqual(asked.risk.criteria, ["low", "high"]);
+      assert.equal(asked.followup.type, "noul");
+    });
+
+    it("unwraps a question under the wrapper name beside other junk keys", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-alias-siblings",
+        {
+          state: "hi",
+          questions: {
+            policy: "",
+            questions: {
+              type: "choice",
+              instructions: "Which policy?",
+              criteria: { a: null, b: null },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), ["q"]);
+      assert.equal(request().questions.q.type, "choice");
+    });
+
+    it("drops a question FIELD that landed in the name slot", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-field-in-name-slot",
+        {
+          state: "hi",
+          questions: {
+            pick: {
+              type: "choice",
+              instructions: "Which library?",
+              criteria: { date_fns: null, dayjs: null },
+            },
+            criteria: { stray: true },
+            instructions: "stray",
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), ["pick"]);
+    });
+
+    it("splices a question map that landed in a name slot", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-nested-map",
+        {
+          state: "hi",
+          questions: {
+            "Which single library should this CLI adopt?": {
+              which_date_library: {
+                type: "choice",
+                instructions: "Which one?",
+                criteria: { date_fns: null, dayjs: null },
+              },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), [
+        "which_date_library",
+      ]);
+      assert.equal(request().questions.which_date_library.type, "choice");
+    });
+
+    it("does not mistake a question for a nested map", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-not-nested",
+        {
+          state: "hi",
+          questions: {
+            pick: {
+              type: "choice",
+              instructions: "Which one?",
+              criteria: { a: null, b: null },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), ["pick"]);
+    });
+
+    it("takes description as the instructions when there are none", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-description-instructions",
+        {
+          state: "hi",
+          questions: {
+            q: {
+              type: "score",
+              description: "Rate the documentation quality.",
+              criteria: ["low", "high"],
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.equal(
+        request().questions.q.instructions,
+        "Rate the documentation quality.",
+      );
+    });
+
+    it("keeps real instructions ahead of a description", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-description-loser",
+        {
+          state: "hi",
+          questions: {
+            q: {
+              type: "noul",
+              instructions: "Is it?",
+              description: "some metadata",
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.q, {
+        type: "noul",
+        instructions: "Is it?",
+      });
+    });
+
+    it("splices a question map nested more than one level deep", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-nested-two-deep",
+        {
+          state: "hi",
+          questions: {
+            no_audit: {
+              no_audit: {
+                q1: {
+                  type: "choice",
+                  instructions: "Which action?",
+                  criteria: { keep: null, replace: null },
+                },
+              },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions), ["q1"]);
+      assert.equal(request().questions.q1.type, "choice");
+    });
+
+    it("lifts a state nested inside a question to the top level", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-lift-state",
+        {
+          questions: [
+            {
+              type: "score",
+              instructions: "How clear?",
+              criteria: ["low", "high"],
+              state: { readme: "## Usage\nRun it." },
+            },
+          ],
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().state, { readme: "## Usage\nRun it." });
+      assert.equal(
+        Object.hasOwn(request().questions.q1, "state"),
+        false,
+        "the state must be removed from the question it was found in",
+      );
+    });
+
+    it("lifts context and evidence aliases too", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-lift-evidence",
+        {
+          questions: {
+            q: {
+              type: "noul",
+              instructions: "Is it?",
+              evidence: { signal: "weak" },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().state, { signal: "weak" });
+    });
+
+    it("keeps a top-level state ahead of a nested one", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-lift-state-priority",
+        {
+          state: "the real state",
+          questions: {
+            q: { type: "noul", instructions: "Is it?", state: "stray" },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.equal(request().state, "the real state");
+    });
+
+    it("leaves a criteria key named state alone — that is an option label", async () => {
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-criteria-state-label",
+        {
+          state: "s",
+          questions: {
+            q: {
+              type: "choice",
+              instructions: "Which level?",
+              criteria: { state: null, federal: null },
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(Object.keys(request().questions.q.criteria), [
+        "state",
+        "federal",
+      ]);
+    });
+
+    it("does not mutate its input when lifting", () => {
+      const deepFreeze = (v: unknown): void => {
+        if (typeof v === "object" && v !== null && !Object.isFrozen(v)) {
+          Object.freeze(v);
+          for (const k of Object.keys(v)) {
+            deepFreeze((v as Record<string, unknown>)[k]);
+          }
+        }
+      };
+      const input = {
+        questions: {
+          q: { type: "noul", instructions: "Is it?", state: "s" },
+        },
+      };
+      deepFreeze(input);
+      const out = prepareSystemOneArgs(input);
+      assert.deepEqual(out, {
+        state: "s",
+        questions: { q: { type: "noul", instructions: "Is it?" } },
+      });
+    });
+
+    it("strips a nested state even when a top-level one is supplied", async () => {
+      // Regression: the lift used to early-return when a real top-level state
+      // existed, leaving `state` inside the question where the provider could
+      // see it. A question must never carry what it is judged against.
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-lift-strip-always",
+        {
+          state: "the real state",
+          questions: {
+            q: { type: "noul", instructions: "Is it?", state: { stray: 1 } },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.equal(request().state, "the real state");
+      assert.deepEqual(request().questions.q, {
+        type: "noul",
+        instructions: "Is it?",
+      });
+    });
+
+    it("strips every state alias in one pass (idempotent)", async () => {
+      const freeze = (v: unknown): void => {
+        if (typeof v === "object" && v !== null && !Object.isFrozen(v)) {
+          Object.freeze(v);
+          for (const k of Object.keys(v)) {
+            freeze((v as Record<string, unknown>)[k]);
+          }
+        }
+      };
+      const input = {
+        questions: {
+          q: {
+            type: "noul",
+            instructions: "Is it?",
+            state: { a: 1 },
+            context: { b: 2 },
+            evidence: { c: 3 },
+          },
+        },
+      };
+      freeze(input);
+      const once = prepareSystemOneArgs(input);
+      const twice = prepareSystemOneArgs(once);
+      assert.deepEqual(twice, once);
+      assert.deepEqual(once, {
+        state: { a: 1 },
+        questions: { q: { type: "noul", instructions: "Is it?" } },
+      });
+    });
+
+    it("drops true/false from a question that is not a noul", async () => {
+      // Regression: they are lifted into `criteria` on a noul question and
+      // mean nothing elsewhere, but the copy-on-write fast path used to ship
+      // them to the provider on a choice.
+      const { tool, request } = recordingTool();
+      await tool.execute(
+        "id-true-false-choice",
+        {
+          state: "hi",
+          questions: {
+            q: {
+              type: "choice",
+              instructions: "Which?",
+              criteria: { a: null },
+              true: "yes",
+              false: "no",
+            },
+          },
+        } as never,
+        undefined,
+        undefined,
+        {} as never,
+      );
+      assert.deepEqual(request().questions.q, {
+        type: "choice",
+        instructions: "Which?",
+        criteria: { a: null },
+      });
+    });
+
+    it("stays idempotent when an array mixes junk with questions", () => {
+      // Regression: the array branch kept non-question entries while the
+      // record branch dropped them, so `["junk", {a question}]` normalized to
+      // different maps on the first and second pass.
+      const input = {
+        state: "S",
+        questions: ["junk", { type: "noul", instructions: "Is it?" }, "junk"],
+      };
+      assert.deepEqual(prepareSystemOneArgs(input), {
+        state: "S",
+        questions: { q2: { type: "noul", instructions: "Is it?" } },
+      });
+      const once = prepareSystemOneArgs(input);
+      assert.deepEqual(prepareSystemOneArgs(once), once);
+    });
+
+    it("does not unwrap an array of non-questions", () => {
+      // Regression: `{q1: [...]}` is a question map whose one entry is not a
+      // question. Unwrapping it renamed the junk on every pass.
+      const input = { state: "S", questions: { q1: ["text", "text"] } };
+      const once = prepareSystemOneArgs(input);
+      assert.deepEqual(prepareSystemOneArgs(once), once);
+      assert.deepEqual(once, {
+        state: "S",
+        questions: { q1: ["text", "text"] },
+      });
+    });
+
+    it("rejects score questions with a one-element array rubric", async () => {
       const { tool, calls } = stubTool();
       await assert.rejects(
         tool.execute(
@@ -1477,7 +2315,7 @@ describe("system_one tool", () => {
               s: {
                 type: "score",
                 instructions: "How?",
-                criteria: { low: "bad", high: "good" },
+                criteria: ["lonely"],
               },
             },
           } as never,
@@ -1532,5 +2370,74 @@ describe("system_one tool", () => {
       );
       assert.equal(calls(), 1);
     });
+  });
+});
+
+describe("discarded question reporting", () => {
+  function toolWithAnswers(answers: Record<string, unknown>) {
+    const stub = {
+      id: "stub",
+      async evaluate() {
+        return { answers, metadata: { provider: "stub" } };
+      },
+    };
+    return buildSystemOneTool({ provider: stub as never });
+  }
+
+  async function renderOf(args: unknown): Promise<string> {
+    const tool = toolWithAnswers({
+      kept: { type: "noul", noul: 0.7 },
+    });
+    const result = await tool.execute(
+      "id",
+      args as never,
+      undefined,
+      undefined,
+      {} as never,
+    );
+    return (result.content as Array<{ text: string }>)[0].text;
+  }
+
+  // A real defect the scenario suite could not see: the model sends a
+  // two-question batch, one of which is filed under the wrapper's own name.
+  // The unwrap returned that question and dropped its sibling silently, so
+  // the model received a confident answer to half of what it asked.
+  it("reports a question abandoned by the wrapper-alias unwrap", async () => {
+    const text = await renderOf({
+      state: "an outage and a refund",
+      questions: {
+        questions: {
+          type: "choice",
+          instructions: "Which?",
+          criteria: { a: null },
+        },
+        risk: { type: "noul", instructions: "Is there a risk?" },
+      },
+    });
+    assert.match(text, /NOTE:/);
+    assert.match(text, /discarded/);
+    assert.match(text, /risk/);
+    // The kept answer is still complete and still first.
+    assert.match(text, /kept:[\s\S]*noul: 0\.7/);
+  });
+
+  it("reports a name-slot entry dropped beside a real question", async () => {
+    const text = await renderOf({
+      state: "S",
+      questions: {
+        q1: { type: "noul", instructions: "Is it?" },
+        stray_label: "refund it",
+      },
+    });
+    assert.match(text, /NOTE:/);
+    assert.match(text, /stray_label/);
+  });
+
+  it("adds no note when nothing was discarded", async () => {
+    const text = await renderOf({
+      state: "S",
+      questions: { q1: { type: "noul", instructions: "Is it?" } },
+    });
+    assert.doesNotMatch(text, /NOTE:/);
   });
 });
