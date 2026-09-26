@@ -229,6 +229,8 @@ Install and register the local MCP adapter with `npx system-one-mcp`. Pass
 `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` environment variables. The
 adapter calls the configured provider's `/v1/systemone` endpoint through the
 same core runtime and ships a bundled [`system-one` skill](./system-one-mcp/skills/system-one/SKILL.md).
+See the [MCP README](./system-one-mcp/README.md) for copy-paste registration
+commands for Codex CLI and Claude Code, plus ChatGPT desktop setup.
 
 ---
 
