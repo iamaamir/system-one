@@ -1,3 +1,8 @@
+---
+name: system-one
+description: "Use the system_one MCP tool for bounded choice, yes/no likelihood, and ordered score judgments over evidence already in state. Retrieve facts first; do not use it for browsing, recall, open-ended generation, or action approval."
+---
+
 # System One
 
 Use the `system_one` tool for bounded judgments over evidence already supplied in `state`.

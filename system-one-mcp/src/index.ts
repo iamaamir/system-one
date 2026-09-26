@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -36,9 +38,16 @@ export function createSystemOneMcpServer(): McpServer {
   return server;
 }
 
-if (
-  process.argv[1] &&
-  new URL(`file://${process.argv[1]}`).href === import.meta.url
-) {
+function isMainModule(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    // npm and npx invoke bin entries through a symlink in node_modules/.bin.
+    return realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule()) {
   await createSystemOneMcpServer().connect(new StdioServerTransport());
 }

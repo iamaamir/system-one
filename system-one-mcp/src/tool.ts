@@ -8,10 +8,60 @@ import { z } from "zod";
 import { loadSystemOneConfig } from "./config.ts";
 import { renderSystemOneResult } from "./render.ts";
 
+const jsonValue: z.ZodType = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number().finite(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValue),
+    z.record(z.string(), jsonValue),
+  ]),
+);
+
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+function inspectUnsafeQuestionMap(
+  value: unknown,
+  onUnsafe: (message: string) => void,
+): void {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return;
+  for (const [questionId, questionValue] of Object.entries(value)) {
+    if (UNSAFE_KEYS.has(questionId)) {
+      onUnsafe(`question id "${questionId}" is not allowed`);
+    }
+    if (
+      typeof questionValue !== "object" ||
+      questionValue === null ||
+      Array.isArray(questionValue)
+    )
+      continue;
+    const criteria = (questionValue as Record<string, unknown>).criteria;
+    if (
+      typeof criteria !== "object" ||
+      criteria === null ||
+      Array.isArray(criteria)
+    )
+      continue;
+    for (const label of Object.keys(criteria)) {
+      if (UNSAFE_KEYS.has(label)) {
+        onUnsafe(`criteria label "${label}" is not allowed`);
+      }
+    }
+  }
+}
+
+function rejectUnsafeQuestionMap(value: unknown): void {
+  inspectUnsafeQuestionMap(value, (message) => {
+    throw new Error(message);
+  });
+}
+
 const question = z
   .object({
     type: z.enum(["choice", "noul", "score"]),
-    instructions: z.string().min(1),
+    instructions: jsonValue,
     criteria: z
       .union([z.record(z.string(), z.unknown()), z.array(z.unknown()).min(2)])
       .optional(),
@@ -20,12 +70,20 @@ const question = z
 
 export const systemOneInputSchema = {
   state: z.unknown(),
-  questions: z
-    .record(z.string(), question)
-    .refine(
-      (value) => Object.keys(value).length > 0,
-      "at least one question is required",
-    ),
+  questions: z.preprocess(
+    (value, ctx) => {
+      inspectUnsafeQuestionMap(value, (message) => {
+        ctx.addIssue({ code: "custom", message });
+      });
+      return value;
+    },
+    z
+      .record(z.string(), question)
+      .refine(
+        (value) => Object.keys(value).length > 0,
+        "at least one question is required",
+      ),
+  ),
 };
 
 export const systemOneDescription =
@@ -46,6 +104,11 @@ export const systemOneOutputSchema = {
     latencyMs: z.number().optional(),
   }),
 };
+
+function rejectUnsafeQuestionKeys(args: unknown): void {
+  if (typeof args !== "object" || args === null || Array.isArray(args)) return;
+  rejectUnsafeQuestionMap((args as Record<string, unknown>).questions);
+}
 
 function assertQuestions(
   questions: Record<string, z.infer<typeof question>>,
@@ -81,6 +144,7 @@ function assertQuestions(
 }
 
 export async function evaluateSystemOne(args: unknown, signal?: AbortSignal) {
+  rejectUnsafeQuestionKeys(args);
   const parsed = z.object(systemOneInputSchema).strict().safeParse(args);
   if (!parsed.success)
     throw new Error(`system_one input is invalid: ${parsed.error.message}`);

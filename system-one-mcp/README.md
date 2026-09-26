@@ -27,6 +27,12 @@ The same local MCP configuration works in ChatGPT desktop: open Settings →
 MCP servers, add the server with command `npx`, arguments `-y system-one-mcp`,
 and the four `SYSTEM_ONE_*` environment variables above, then restart the app.
 
+The package includes `skills/system-one/SKILL.md`. For Codex CLI discovery,
+copy that file into the project's `.agents/skills/system-one/SKILL.md` (or the
+user-level `$CODEX_HOME/skills/system-one/SKILL.md`). ChatGPT desktop discovers the tool from
+the MCP registration and its tool description; restart after changing either
+configuration.
+
 Once connected, a minimal call is:
 
 ```json

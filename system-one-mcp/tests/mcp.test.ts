@@ -19,6 +19,26 @@ it("advertises exactly one read-only system_one tool", async () => {
   );
   assert.equal(tools.tools[0]?.annotations?.readOnlyHint, true);
   assert.ok(tools.tools[0]?.outputSchema);
+  const inputSchema = tools.tools[0]?.inputSchema as {
+    properties?: {
+      questions?: {
+        type?: string;
+        additionalProperties?: { properties?: Record<string, unknown> };
+      };
+    };
+  };
+  assert.equal(inputSchema.properties?.questions?.type, "object");
+  assert.ok(
+    inputSchema.properties?.questions?.additionalProperties?.properties?.type,
+  );
+  assert.ok(
+    inputSchema.properties?.questions?.additionalProperties?.properties
+      ?.instructions,
+  );
+  assert.ok(
+    inputSchema.properties?.questions?.additionalProperties?.properties
+      ?.criteria,
+  );
   await client.close();
 });
 
@@ -88,5 +108,45 @@ it("executes one call through the core HTTP provider and returns structured outp
     else process.env.SYSTEM_ONE_BASE_URL = originalBaseUrl;
     if (originalModel === undefined) delete process.env.SYSTEM_ONE_MODEL;
     else process.env.SYSTEM_ONE_MODEL = originalModel;
+  }
+});
+
+it("rejects prototype-shaped JSON before invoking the provider", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return Response.json({});
+  };
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "test-client", version: "0.1.0" });
+  try {
+    await Promise.all([
+      client.connect(clientTransport),
+      createSystemOneMcpServer().connect(serverTransport),
+    ]);
+    const questionIdArgs = JSON.parse(
+      '{"state":"x","questions":{"__proto__":{"type":"noul","instructions":"is it?"}}}',
+    ) as Record<string, unknown>;
+    const labelArgs = JSON.parse(
+      '{"state":"x","questions":{"q":{"type":"choice","instructions":"which?","criteria":{"__proto__":null,"safe":null}}}}',
+    ) as Record<string, unknown>;
+    const questionIdResult = await client.callTool({
+      name: "system_one",
+      arguments: questionIdArgs,
+    });
+    const labelResult = await client.callTool({
+      name: "system_one",
+      arguments: labelArgs,
+    });
+    assert.equal(questionIdResult.isError, true);
+    assert.equal(labelResult.isError, true);
+    assert.match(JSON.stringify(questionIdResult), /__proto__/);
+    assert.match(JSON.stringify(labelResult), /__proto__/);
+    assert.equal(calls, 0);
+  } finally {
+    await client.close();
+    globalThis.fetch = originalFetch;
   }
 });
