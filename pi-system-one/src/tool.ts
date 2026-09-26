@@ -1049,10 +1049,10 @@ export function buildSystemOneTool(deps: {
     label: "System One",
 
     description:
-      "Judge bounded decisions over explicitly supplied state with a dedicated judge model — calibrated probabilities conditional on that state (confidence for choice/score only; noul has no confidence field, its probability is the uncertainty measure). " +
-      "Call system_one instead of answering directly when the request is a pick from named options, a yes/no likelihood, or a rubric score over state already in context — the judge's state-conditional probabilities beat guesses from priors. " +
+      "Judge bounded decisions over explicitly supplied state with a dedicated judge model - calibrated probabilities conditional on that state (confidence for choice/score only; noul has no confidence field, its probability is the uncertainty measure). " +
+      "Call system_one instead of making a bounded judgment directly when the decision is a pick from named options, a yes/no likelihood, or a rubric score over state already in context. This applies both to final answers and intermediate agent decisions such as classification, routing, or choosing among plausible tools, skills, strategies, implementations, models, or providers. " +
       "The judge only weighs the state you supply: it cannot recall facts or browse, so retrieve evidence first and never ask it to recall facts. " +
-      "Do not use it for open-ended text generation or factual lookup. " +
+      "Do not use it for open-ended generation itself or factual lookup. A generative task may still contain bounded intermediate judgments where system_one is useful. " +
       "Questions that share the same state can be evaluated together in one call. " +
       'Each question is {"type": "choice" | "noul" | "score", "instructions": "...", "criteria": ...}: ' +
       'choice criteria is an object keyed by choice label ({"a": null, "b": null}), ' +
@@ -1062,15 +1062,24 @@ export function buildSystemOneTool(deps: {
     parameters: systemOneParams,
 
     promptSnippet:
-      "Use system_one for bounded choice, yes/no, and ordered-scale judgments over supplied evidence",
+      "Use system_one for bounded judgments over supplied evidence, including classification, routing, and selecting among plausible tools, skills, strategies, implementations, models, or providers",
 
     promptGuidelines: [
-      "Before answering a bounded judgment over supplied or retrieved evidence, call system_one instead of making the judgment yourself. A bounded judgment is: choosing among explicit alternatives, making a yes/no judgment, or rating something on an ordered scale.",
+      "Whenever you encounter a bounded judgment over supplied or retrieved evidence, including as an intermediate step in a larger task, call system_one instead of making the judgment yourself. A bounded judgment is choosing among explicit alternatives, making a yes/no judgment, or rating something on an ordered scale.",
+
+      "Common bounded-choice patterns include classification into known labels, selecting among plausible candidate tools or skills, routing among models/providers, and choosing among plausible strategies or implementations. These are examples, not an exhaustive list; recognize other bounded decisions from their structure.",
+
       "Pick the system_one question type mechanically: unordered alternatives (frontend, backend, platform) -> choice; yes/no -> noul; ordered scale, rating, severity, risk, or grade -> score. Never use choice for an ordered scale merely because its levels have names: very low / low / moderate / high / very high is score, not choice.",
+
       "Retrieve missing factual evidence into state first; never ask system_one to recall facts or browse. Use system_one for bounded judgments over available evidence, not as a replacement for factual lookup.",
-      "Do not call system_one for a task that asks you to produce something — write, draft, compose, generate, code, explain. Producing is not judging, even when you can see two or three tones, formats or styles it could take; those are yours to choose, and spending a judge round trip on them wastes one.",
+
+      "Do not use system_one to perform open-ended generation itself - writing, drafting, composing, generating code, or explaining. However, a generative task may contain bounded intermediate judgments where system_one is appropriate, such as classification, routing, or choosing among plausible tools, skills, strategies, implementations, models, or providers.",
+
+      "Do not use system_one for trivial or mechanically obvious selections where there is no meaningful judgment to make. Use it when multiple candidates are genuinely plausible and the choice depends on supplied or retrieved evidence.",
+
       "Batch independent system_one questions sharing the same state into one call instead of one call per question.",
-      "For system_one choice questions, the keys of criteria are the available choices — preserve user-specified labels and use null values when labels are self-explanatory; never add a separate options field.",
+
+      "For system_one choice questions, the keys of criteria are the available choices - preserve user-specified labels and use null values when labels are self-explanatory; never add a separate options field.",
     ],
 
     prepareArguments: (args) => prepareSystemOneArgs(args),
@@ -1084,11 +1093,12 @@ export function buildSystemOneTool(deps: {
        * `prepareArguments` above is an optimization for newer Pi only: it
        * runs before schema validation there, but older Pi versions ignore
        * it and validate the raw model output against the permissive
-       * schema instead. Correctness never depends on it — re-normalize
+       * schema instead. Correctness never depends on it - re-normalize
        * here so every path (new Pi, old Pi, direct calls) converges on
        * the same canonical shape before semantic validation.
        */
       const normalized = prepareSystemOneArgs(params);
+
       // prepareSystemOneArgs passes non-objects through untouched; direct
       // calls bypassing Pi validation must get an actionable error, not a
       // TypeError from property access on null.
@@ -1097,12 +1107,15 @@ export function buildSystemOneTool(deps: {
           'system_one: request must be an object with "state" and "questions".',
         );
       }
+
       if (normalized.state === undefined) {
         throw new Error(
           'system_one: state is required. Put the material under judgment in "state" (string or object), e.g. {"state": "<evidence>", "questions": {...}}.',
         );
       }
+
       assertAnswerableQuestions(normalized.questions);
+
       const response = await systemOne.evaluate(
         {
           state: normalized.state as SystemOneState,
