@@ -10,7 +10,7 @@
 # NOTE: repository.url in each package.json must match this repo.
 #
 # Usage: push a tag like system-one-core@0.1.2, pi-system-one@1.2.0, or
-# @system_one/mcp@0.1.0-rc.2. The tag version must match package.json. Any
+# @system_one/mcp@0.1.0-rc.3. The tag version must match package.json. Any
 # prerelease version is published with the `next` dist-tag; stable versions use
 # `latest`.
 # Provenance attestations are generated automatically (public repo).
@@ -24,6 +24,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: MCP
     steps:
       - uses: actions/checkout@v6
       # NOTE: npm caching is disabled for releases (fresh resolve every time).
