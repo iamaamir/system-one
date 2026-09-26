@@ -338,6 +338,18 @@ describe("system_one tool", () => {
       });
     });
 
+    it("decodes a question serialized as a JSON string inside an array", () => {
+      const q = { type: "choice", instructions: "W?", criteria: { a: null } };
+      // Every entry stringified, and the whole argument stringified too:
+      // both layers decode before normalization.
+      for (const questions of [[JSON.stringify(q)], JSON.stringify([q])]) {
+        assert.deepEqual(prepareSystemOneArgs({ state: "hi", questions }), {
+          state: "hi",
+          questions: { q1: q },
+        });
+      }
+    });
+
     it("still rejects strings that are not JSON objects or arrays", async () => {
       const tool = buildSystemOneTool({
         provider: {

@@ -415,15 +415,6 @@ function mergeSpilledChoiceLabels(
 }
 
 /**
- * Coerce one question into the flat schema shape: canonical `type`,
- * `instructions` / `criteria` resolved through aliases, array-form choice
- * criteria (`["a", "b"]`) folded to `{"a": null, "b": null}`, and
- * naming/junk keys stripped.
- *
- * Pure, idempotent, non-mutating, with structural sharing: canonical input
- * is returned by reference; only repaired questions allocate.
- */
-/**
  * Some model providers serialize nested tool arguments as JSON-encoded
  * strings (e.g. `questions: "{\"q1\": {...}}"`). If the string looks like
  * a JSON object or array, decode it so it can be normalized; anything else
@@ -439,8 +430,21 @@ function decodeJsonString(input: string): unknown {
   }
 }
 
+/** Decode a JSON-encoded question value; any non-string passes through. */
+function decodeJsonInput(value: unknown): unknown {
+  return typeof value === "string" ? decodeJsonString(value) : value;
+}
+
+/**
+ * Coerce one question into the flat schema shape: canonical `type`,
+ * `instructions` / `criteria` resolved through aliases, array-form choice
+ * criteria (`["a", "b"]`) folded to `{"a": null, "b": null}`, and
+ * naming/junk keys stripped.
+ *
+ * Pure, idempotent, non-mutating, with structural sharing: canonical input
+ * is returned by reference; only repaired questions allocate.
+ */
 function normalizeQuestion(input: unknown): unknown {
-  if (typeof input === "string") input = decodeJsonString(input);
   if (!isRecord(input)) return input;
   if (isCanonicalQuestion(input)) return input;
   const out: Record<string, unknown> = {};
@@ -788,16 +792,20 @@ function normalizeQuestions(input: unknown, drops?: string[]): unknown {
     // entry like `{"description": "..."}` becomes a question only after
     // normalization, so judging it raw makes the two passes disagree.
     const pairs: Array<[string, unknown]> = input.map((entry, index) => {
-      if (!isRecord(entry)) return [`q${index + 1}`, entry];
+      // A question serialized as a JSON string (`["{\"type\":...}"]`) is the
+      // same provider quirk one level down; decode it so it can be normalized,
+      // and let a non-JSON string fall through as the junk it is.
+      const question = decodeJsonInput(entry);
+      if (!isRecord(question)) return [`q${index + 1}`, question];
       // No intermediate `{...rest}` copy: normalizeQuestion() already drops
       // name/id/key as junk, so passing the entry through repairs naming
       // metadata and aliases in a single construction pass.
-      const rawName = entry.name ?? entry.id ?? entry.key;
+      const rawName = question.name ?? question.id ?? question.key;
       const base =
         typeof rawName === "string" && rawName.trim() !== ""
           ? rawName
           : `q${index + 1}`;
-      return [base, normalizeQuestion(entry)];
+      return [base, normalizeQuestion(question)];
     });
     const hasQuestion = pairs.some(([, value]) => looksLikeQuestion(value));
     for (const [base, value] of pairs) {
@@ -867,7 +875,11 @@ function normalizeQuestions(input: unknown, drops?: string[]): unknown {
     // still count, or the two passes disagree about what to keep.
     const pairs: Array<[string, unknown]> = [];
     for (const [name, value] of entries) {
-      pairs.push([name, isRecord(value) ? normalizeQuestion(value) : value]);
+      const question = decodeJsonInput(value);
+      pairs.push([
+        name,
+        isRecord(question) ? normalizeQuestion(question) : question,
+      ]);
     }
     const hasQuestion = pairs.some(([, value]) => looksLikeQuestion(value));
     for (const [name, question] of pairs) {
