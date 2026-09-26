@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { it } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createSystemOneMcpServer } from "../src/index.ts";
 
 it("advertises exactly one read-only system_one tool", async () => {
+  const packageJson = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  ) as { version: string };
   const [clientTransport, serverTransport] =
     InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test-client", version: "0.1.0" });
@@ -12,6 +16,7 @@ it("advertises exactly one read-only system_one tool", async () => {
     client.connect(clientTransport),
     createSystemOneMcpServer().connect(serverTransport),
   ]);
+  assert.equal(client.getServerVersion()?.version, packageJson.version);
   const tools = await client.listTools();
   assert.deepEqual(
     tools.tools.map((tool) => tool.name),
