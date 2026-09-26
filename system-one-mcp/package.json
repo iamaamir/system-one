@@ -1,6 +1,6 @@
 {
   "name": "system-one-mcp",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.0",
   "description": "Provider-neutral System One tool for local MCP hosts",
   "type": "module",
   "license": "MIT",

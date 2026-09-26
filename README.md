@@ -224,7 +224,9 @@ Read full documentation [`here`](./pi-system-one)
 
 ## Codex and ChatGPT desktop
 
-Install and register the local MCP adapter with `npx system-one-mcp`. Pass
+During the prerelease, install and register the local MCP adapter with
+`npx -y system-one-mcp@next`; prereleases use the `next` dist-tag. After the
+stable release, the unversioned `system-one-mcp` package command will apply. Pass
 `SYSTEM_ONE_BASE_URL` and the optional `SYSTEM_ONE_API_KEY`,
 `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` environment variables. The
 adapter calls the configured provider's `/v1/systemone` endpoint through the

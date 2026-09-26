@@ -9,8 +9,10 @@
 #   then revoke old automation tokens.
 # NOTE: repository.url in each package.json must match this repo.
 #
-# Usage: push a tag like system-one-core@0.1.2 or pi-system-one@1.2.0.
-# The tag version must match the package.json version.
+# Usage: push a tag like system-one-core@0.1.2, pi-system-one@1.2.0, or
+# system-one-mcp@0.1.0-rc.0. The tag version must match package.json. Any
+# prerelease version is published with the `next` dist-tag; stable versions use
+# `latest`.
 # Provenance attestations are generated automatically (public repo).
 name: Release
 on:
@@ -39,8 +41,14 @@ jobs:
           TAG_DIR: ${{ github.ref_name }}
         run: |
           TAG="${TAG_DIR%@*}"
+          VERSION="${TAG_DIR#*@}"
+          DIST_TAG="latest"
+          case "$VERSION" in
+            *-*) DIST_TAG="next" ;;
+          esac
           echo "name=$TAG" >> "$GITHUB_OUTPUT"
-          test "$(TAG_DIR="$TAG" node -p "require('./' + process.env.TAG_DIR + '/package.json').version")" = "${TAG_DIR#*@}" \
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          test "$(TAG_DIR="$TAG" node -p "require('./' + process.env.TAG_DIR + '/package.json').version")" = "$VERSION" \
             || { echo "tag/version mismatch"; exit 1; }
       - run: npm test
-      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --access public
+      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --access public --tag "${{ steps.pkg.outputs.dist_tag }}"
