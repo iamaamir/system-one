@@ -24,7 +24,7 @@ export SYSTEM_ONE_MODEL="your-model"
 export SYSTEM_ONE_TIMEOUT_MS="10000"
 ```
 
-API-key requests require HTTPS for remote providers. Plain HTTP remains supported for local `localhost`, `127.0.0.1`, and `::1` development.
+API-key requests require HTTPS for remote providers. Plain HTTP remains supported for local `localhost`, `127.0.0.1`, and IPv6 loopback `[::1]` development.
 
 If required configuration is missing, the plugin logs a warning and skips registering the `system_one` tool.
 

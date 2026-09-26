@@ -102,4 +102,24 @@ describe("System One response renderer", () => {
       /private-model|private-request|private-provider|42/,
     );
   });
+
+  it("renders numeric score slots with their rubric legend", () => {
+    const output = renderSystemOneResult({
+      metadata: { provider: "test" },
+      answers: {
+        impact: {
+          type: "score",
+          score: 0.7,
+          confidence: 0.7,
+          probabilities: { "0": 0.1, "1": 0.7, "2": 0.2 },
+          legend: { "0": "minor", "1": "degraded", "2": "blocking" },
+        },
+      },
+    });
+
+    assert.match(
+      output,
+      /probabilities:\n {4}0: 0.1\n {4}1: 0.7\n {4}2: 0.2\n {2}legend:\n {4}0: "minor"\n {4}1: "degraded"\n {4}2: "blocking"/,
+    );
+  });
 });

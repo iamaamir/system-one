@@ -77,7 +77,7 @@ export function parseSystemOneArgs(args: unknown): SystemOneParams {
 
 const toolDescription = [
   "Evaluate bounded choice, noul, and score decisions over supplied state using a dedicated System One provider.",
-  "Use this tool instead of directly making a bounded judgment when needed evidence is already available.",
+  "Autonomously use this tool instead of directly making a bounded judgment when relevant evidence/state is already available.",
   "Use choice for explicit unordered alternatives, noul for yes/no likelihoods, and score for ordered scales, ratings, severity, risk, or grades.",
   "Retrieve missing factual evidence first: this tool cannot browse or recall missing facts.",
   'Minimal JSON call shape: {"state":{},"questions":{"decision":{"type":"choice","instructions":"Which option?","criteria":{"yes":"...","no":"..."}}}}.',

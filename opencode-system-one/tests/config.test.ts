@@ -22,7 +22,7 @@ describe("System One configuration", () => {
   it("accepts trimmed absolute HTTP and HTTPS base URLs", () => {
     for (const baseUrl of [
       " http://localhost:8008 ",
-      " https://api.typesafe.ai/systemone ",
+      " https://example.com/prefix ",
     ]) {
       const config = loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl });
 
@@ -30,23 +30,52 @@ describe("System One configuration", () => {
     }
   });
 
-  it("rejects API keys for remote plain HTTP", () => {
+  it("allows API keys for local plain HTTP loopback hosts", () => {
+    for (const baseUrl of [
+      "http://localhost:8008",
+      "http://127.0.0.1:8008",
+      "http://[::1]:8008",
+    ]) {
+      assert.doesNotThrow(() =>
+        loadSystemOneConfig({
+          SYSTEM_ONE_BASE_URL: baseUrl,
+          SYSTEM_ONE_API_KEY: "secret-value",
+        }),
+      );
+    }
+  });
+
+  it("requires HTTPS for API keys on remote hosts", () => {
     assert.throws(
       () =>
         loadSystemOneConfig({
-          SYSTEM_ONE_BASE_URL: "http://api.example.com",
+          SYSTEM_ONE_BASE_URL: "http://example.com",
           SYSTEM_ONE_API_KEY: "secret-value",
         }),
-      /SYSTEM_ONE_API_KEY requires HTTPS for non-local SYSTEM_ONE_BASE_URL/,
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(
+          error.message,
+          /SYSTEM_ONE_API_KEY requires HTTPS for non-local SYSTEM_ONE_BASE_URL/,
+        );
+        assert.doesNotMatch(error.message, /secret-value/);
+        return true;
+      },
     );
   });
 
-  it("allows API keys for local plain HTTP", () => {
+  it("allows remote HTTPS with an API key", () => {
     assert.doesNotThrow(() =>
       loadSystemOneConfig({
-        SYSTEM_ONE_BASE_URL: "http://localhost:8008",
+        SYSTEM_ONE_BASE_URL: "https://example.com",
         SYSTEM_ONE_API_KEY: "secret-value",
       }),
+    );
+  });
+
+  it("allows unauthenticated remote plain HTTP", () => {
+    assert.doesNotThrow(() =>
+      loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: "http://example.com" }),
     );
   });
 

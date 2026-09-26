@@ -66,7 +66,7 @@ export function loadSystemOneConfig(
 
   const isLocalHttp =
     parsedBaseUrl.protocol === "http:" &&
-    ["localhost", "127.0.0.1", "::1"].includes(parsedBaseUrl.hostname);
+    ["localhost", "127.0.0.1", "[::1]"].includes(parsedBaseUrl.hostname);
   if (
     parsedBaseUrl.protocol === "http:" &&
     env.SYSTEM_ONE_API_KEY &&
