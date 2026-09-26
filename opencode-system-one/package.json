@@ -1,6 +1,6 @@
 {
   "name": "opencode-system-one",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.0",
   "description": "System One decisions for OpenCode. Plug in TypeSafe Jev, Reflex, or your own provider.",
   "type": "module",
   "license": "MIT",
