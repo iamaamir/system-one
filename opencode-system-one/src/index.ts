@@ -34,7 +34,7 @@ export const SystemOnePlugin: Plugin = async ({ client }): Promise<Hooks> => {
     },
     "tool.execute.before": async (input, output) => {
       if (input.tool === "system_one") {
-        output.args = parseSystemOneArgs(output.args);
+        parseSystemOneArgs(output.args);
       }
     },
   };

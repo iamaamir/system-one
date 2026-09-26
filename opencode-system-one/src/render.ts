@@ -8,6 +8,15 @@ function renderDistribution(
   );
 }
 
+function renderLegend(
+  probabilities: Record<string, number> | undefined,
+  legend: Record<string, unknown>,
+): string[] {
+  return Object.keys(probabilities ?? {}).map(
+    (key) => `    ${key}: ${JSON.stringify(legend[key])}`,
+  );
+}
+
 export function renderSystemOneResult(response: SystemOneResponse): string {
   const lines = ["System One result", ""];
 
@@ -28,6 +37,8 @@ export function renderSystemOneResult(response: SystemOneResponse): string {
         `  confidence: ${answer.confidence}`,
         "  probabilities:",
         ...renderDistribution(answer.probabilities),
+        "  legend:",
+        ...renderLegend(answer.probabilities, answer.legend),
       );
     }
     lines.push("");
