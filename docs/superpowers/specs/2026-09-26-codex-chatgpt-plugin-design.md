@@ -51,8 +51,8 @@ credential service, public plugin listing, custom UI, or an extra network hop.
 
 - Codex CLI.
 - ChatGPT desktop app.
-- One local STDIO executable named by the eventual package, for example
-  `systemone-mcp`.
+- One local STDIO executable named `systemone-mcp`, published as
+  `@system_one/mcp`.
 - One tool named `system_one`.
 - Existing TypeSafe Jev, Reflex, and compatible `/v1/systemone` providers.
 - Existing environment-variable configuration.
@@ -76,7 +76,7 @@ surface boundaries](https://learn.chatgpt.com/docs/plugins)
 Add one workspace:
 
 ```text
-systemone-mcp/
+@system_one/mcp/
   src/index.ts       STDIO server startup and one system_one registration
   src/config.ts      safe environment parsing
   src/tool.ts        schema, normalization, core delegation
@@ -89,7 +89,7 @@ systemone-mcp/
 Dependency direction remains one-way:
 
 ```text
-system-one-core <- systemone-mcp
+system-one-core <- @system_one/mcp
 ```
 
 `system-one-core` remains unchanged unless implementation identifies a truly

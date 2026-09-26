@@ -23,7 +23,7 @@ const ROOT = path.resolve(__dirname, "..");
 const PKGS = [
   { name: "system-one-core", dir: "system-one-core" },
   { name: "pi-system-one", dir: "pi-system-one" },
-  { name: "systemone-mcp", dir: "systemone-mcp" },
+  { name: "@system_one/mcp", dir: "@system_one/mcp" },
 ];
 
 function usage() {
@@ -31,7 +31,7 @@ function usage() {
   run bare for fully interactive: pick packages, bump type, then dry-run or publish.
   flags preselect steps (useful non-interactively); omitted steps prompt.
   one bump type applies uniformly to all selected packages.
-  pkg: system-one-core, pi-system-one, systemone-mcp
+  pkg: system-one-core, pi-system-one, @system_one/mcp
   --publish: push main + created tags (triggers Release workflow)
   --dry-run: print plan, change nothing (mutually exclusive with --publish)`);
 }

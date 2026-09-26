@@ -80,7 +80,7 @@ For example, [Pi-Bifrost](https://github.com/iamaamir/pi-bifrost) consumes `syst
 |---|---|---|
 | `system-one-core` | `system-one-core` | Provider-neutral runtime: `SystemOneProvider`, `SystemOne`, typed builders, compatible HTTP provider, strict validation, and deterministic test support |
 | `pi-system-one` | `pi-system-one` | Pi extension exposing one `system_one` tool for batched `choice`, `noul`, and `score` decisions |
-| `systemone-mcp` | `systemone-mcp` | Local STDIO MCP adapter exposing the same provider-neutral `system_one` tool to Codex CLI and ChatGPT desktop |
+| `@system_one/mcp` | `systemone-mcp` | Local STDIO MCP adapter exposing the same provider-neutral `system_one` tool to Codex CLI and ChatGPT desktop |
 
 Dependency direction stays one-way:
 
@@ -225,14 +225,21 @@ Read full documentation [`here`](./pi-system-one)
 ## Codex and ChatGPT desktop
 
 During the prerelease, install and register the local MCP adapter with
-`npx -y systemone-mcp@next`; prereleases use the `next` dist-tag. After the
-stable release, the unversioned `systemone-mcp` package command will apply. Pass
+`npx -y @system_one/mcp@next`; prereleases use the `next` dist-tag. After the
+stable release, the unversioned `@system_one/mcp` package command will apply. Pass
 `SYSTEM_ONE_BASE_URL` and the optional `SYSTEM_ONE_API_KEY`,
 `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` environment variables. The
 adapter calls the configured provider's `/v1/systemone` endpoint through the
-same core runtime and ships a bundled [`system-one` skill](./systemone-mcp/skills/system-one/SKILL.md).
-See the [MCP README](./systemone-mcp/README.md) for copy-paste registration
+same core runtime and ships a bundled [`system-one` skill](./@system_one/mcp/skills/system-one/SKILL.md).
+See the [MCP README](./@system_one/mcp/README.md) for copy-paste registration
 commands for Codex CLI and Claude Code, plus ChatGPT desktop setup.
+
+For the first manual prerelease bootstrap, run this from the scoped workspace:
+
+```bash
+cd @system_one/mcp
+npm publish --access public --tag next
+```
 
 ---
 

@@ -1,6 +1,6 @@
 # Release via npm trusted publishing (OIDC). No tokens.
 #
-# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one, systemone-mcp):
+# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one, @system_one/mcp):
 #   Settings -> Trusted publishing -> Add GitHub Actions publisher with
 #     user iamaamir, repo system-one, workflow filename release.yml,
 #   and allow direct `npm publish` (not stage-only).
@@ -10,14 +10,14 @@
 # NOTE: repository.url in each package.json must match this repo.
 #
 # Usage: push a tag like system-one-core@0.1.2, pi-system-one@1.2.0, or
-# systemone-mcp@0.1.0-rc.2. The tag version must match package.json. Any
+# @system_one/mcp@0.1.0-rc.2. The tag version must match package.json. Any
 # prerelease version is published with the `next` dist-tag; stable versions use
 # `latest`.
 # Provenance attestations are generated automatically (public repo).
 name: Release
 on:
   push:
-    tags: ["system-one-core@*", "pi-system-one@*", "systemone-mcp@*"]
+    tags: ["system-one-core@*", "pi-system-one@*", "@system_one/mcp@*"]
 permissions:
   contents: read
   id-token: write
@@ -41,7 +41,9 @@ jobs:
           TAG_DIR: ${{ github.ref_name }}
         run: |
           TAG="${TAG_DIR%@*}"
-          VERSION="${TAG_DIR#*@}"
+          VERSION="${TAG_DIR##*@}"
+          test "$TAG" = "@system_one/mcp" || test "$TAG" = "system-one-core" || test "$TAG" = "pi-system-one" \
+            || { echo "unsupported package tag: $TAG_DIR"; exit 1; }
           DIST_TAG="latest"
           case "$VERSION" in
             *-*) DIST_TAG="next" ;;

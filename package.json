@@ -4,11 +4,11 @@
   "workspaces": [
     "system-one-core",
     "pi-system-one",
-    "systemone-mcp"
+    "@system_one/mcp"
   ],
   "scripts": {
-    "test": "npm --workspace system-one-core run test && npm --workspace pi-system-one run test && npm --workspace systemone-mcp run test",
-    "typecheck": "npm --workspace system-one-core run typecheck && npm --workspace pi-system-one run typecheck && npm --workspace systemone-mcp run typecheck",
+    "test": "npm --workspace system-one-core run test && npm --workspace pi-system-one run test && npm --workspace @system_one/mcp run test",
+    "typecheck": "npm --workspace system-one-core run typecheck && npm --workspace pi-system-one run typecheck && npm --workspace @system_one/mcp run typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
     "ci:local": "act --container-architecture linux/amd64 -P ubuntu-latest=catthehacker/ubuntu:act-24.04 -j check",
