@@ -64,6 +64,19 @@ export function loadSystemOneConfig(
     );
   }
 
+  const isLocalHttp =
+    parsedBaseUrl.protocol === "http:" &&
+    ["localhost", "127.0.0.1", "::1"].includes(parsedBaseUrl.hostname);
+  if (
+    parsedBaseUrl.protocol === "http:" &&
+    env.SYSTEM_ONE_API_KEY &&
+    !isLocalHttp
+  ) {
+    throw new Error(
+      "SYSTEM_ONE_API_KEY requires HTTPS for non-local SYSTEM_ONE_BASE_URL",
+    );
+  }
+
   const timeoutMs =
     env.SYSTEM_ONE_TIMEOUT_MS === undefined
       ? DEFAULT_TIMEOUT_MS

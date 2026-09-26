@@ -15,7 +15,7 @@ Add `opencode-system-one` to the `plugin` array in `opencode.json`:
 
 OpenCode uses Bun to install npm plugins and their dependencies automatically at startup, so a separate `npm install opencode-system-one` step is not required.
 
-Set `SYSTEM_ONE_BASE_URL` before starting OpenCode. `SYSTEM_ONE_API_KEY`, `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` are optional; the timeout defaults to 10 seconds.
+Set `SYSTEM_ONE_BASE_URL` before starting OpenCode. This is the base URL/prefix before the standard `/v1/systemone` path: `https://api.typesafe.ai` sends to `https://api.typesafe.ai/v1/systemone`. Do not include `/v1` unless provider specifically expects the resulting `/v1/v1/systemone`. `SYSTEM_ONE_API_KEY`, `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` are optional; timeout defaults to 10 seconds.
 
 ```bash
 export SYSTEM_ONE_BASE_URL="http://localhost:8008"
@@ -24,7 +24,9 @@ export SYSTEM_ONE_MODEL="your-model"
 export SYSTEM_ONE_TIMEOUT_MS="10000"
 ```
 
-If the required configuration is missing, the plugin logs a warning and skips registering the `system_one` tool.
+API-key requests require HTTPS for remote providers. Plain HTTP remains supported for local `localhost`, `127.0.0.1`, and `::1` development.
+
+If required configuration is missing, the plugin logs a warning and skips registering the `system_one` tool.
 
 ## Tool usage
 

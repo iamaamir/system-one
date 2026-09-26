@@ -17,6 +17,9 @@ const choiceQuestion = tool.schema
     instructions: questionInstructions,
     criteria: tool.schema
       .record(tool.schema.string(), tool.schema.json().nullable())
+      .refine((value) => Object.keys(value).length > 0, {
+        message: "At least one choice is required.",
+      })
       .describe("Available choices keyed by their exact labels."),
   })
   .strict();
@@ -74,6 +77,12 @@ export function parseSystemOneArgs(args: unknown): SystemOneParams {
 
 const toolDescription = [
   "Evaluate bounded choice, noul, and score decisions over supplied state using a dedicated System One provider.",
+  "Use this tool instead of directly making a bounded judgment when needed evidence is already available.",
+  "Use choice for explicit unordered alternatives, noul for yes/no likelihoods, and score for ordered scales, ratings, severity, risk, or grades.",
+  "Retrieve missing factual evidence first: this tool cannot browse or recall missing facts.",
+  'Minimal JSON call shape: {"state":{},"questions":{"decision":{"type":"choice","instructions":"Which option?","criteria":{"yes":"...","no":"..."}}}}.',
+  "Question text belongs in `questions.<name>.instructions`, not in `state`.",
+  "Use a named object for `questions`; do not use an array or a singular top-level `question` field.",
   "Each named question must be one of three types.",
   "choice takes criteria as an object mapping every exact answer label to an optional description.",
   'noul is a yes/no question and takes criteria as an optional object mapping the "1" (true) and "0" (false) outcomes to optional descriptions.',

@@ -39,6 +39,21 @@ describe("System One response renderer", () => {
             high: "High quality",
           },
         },
+        impact: {
+          type: "score",
+          score: 0.7,
+          confidence: 0.7,
+          probabilities: {
+            "0": 0.1,
+            "1": 0.7,
+            "2": 0.2,
+          },
+          legend: {
+            "0": "minor",
+            "1": { label: "degraded" },
+            "2": "blocking",
+          },
+        },
       },
     };
 
@@ -65,6 +80,21 @@ describe("System One response renderer", () => {
         "  probabilities:",
         "    low: 0.2",
         "    high: 0.8",
+        "  legend:",
+        '    low: "Low quality"',
+        '    high: "High quality"',
+        "",
+        "impact:",
+        "  score: 0.7",
+        "  confidence: 0.7",
+        "  probabilities:",
+        "    0: 0.1",
+        "    1: 0.7",
+        "    2: 0.2",
+        "  legend:",
+        '    0: "minor"',
+        '    1: {"label":"degraded"}',
+        '    2: "blocking"',
       ].join("\n"),
     );
     assert.doesNotMatch(

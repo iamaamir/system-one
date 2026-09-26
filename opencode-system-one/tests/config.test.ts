@@ -22,12 +22,32 @@ describe("System One configuration", () => {
   it("accepts trimmed absolute HTTP and HTTPS base URLs", () => {
     for (const baseUrl of [
       " http://localhost:8008 ",
-      " https://api.typesafe.ai/v1 ",
+      " https://api.typesafe.ai/systemone ",
     ]) {
       const config = loadSystemOneConfig({ SYSTEM_ONE_BASE_URL: baseUrl });
 
       assert.equal(config.baseUrl, baseUrl.trim());
     }
+  });
+
+  it("rejects API keys for remote plain HTTP", () => {
+    assert.throws(
+      () =>
+        loadSystemOneConfig({
+          SYSTEM_ONE_BASE_URL: "http://api.example.com",
+          SYSTEM_ONE_API_KEY: "secret-value",
+        }),
+      /SYSTEM_ONE_API_KEY requires HTTPS for non-local SYSTEM_ONE_BASE_URL/,
+    );
+  });
+
+  it("allows API keys for local plain HTTP", () => {
+    assert.doesNotThrow(() =>
+      loadSystemOneConfig({
+        SYSTEM_ONE_BASE_URL: "http://localhost:8008",
+        SYSTEM_ONE_API_KEY: "secret-value",
+      }),
+    );
   });
 
   it("uses the default timeout when no timeout is provided", () => {

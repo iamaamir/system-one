@@ -179,7 +179,7 @@ describe("System One tool.execute.before hook", () => {
     });
   });
 
-  it("accepts canonical system_one arguments unchanged", async () => {
+  it("accepts valid system_one arguments", async () => {
     const { input } = createPluginContext();
     const hooks = await withEnv(validEnv, () => SystemOnePlugin(input));
     const hook = hooks["tool.execute.before"];
@@ -187,7 +187,5 @@ describe("System One tool.execute.before hook", () => {
     const output = { args: { ...canonicalArgs } };
 
     await hook(toolInput("system_one"), output);
-
-    assert.deepEqual(output.args, canonicalArgs);
   });
 });

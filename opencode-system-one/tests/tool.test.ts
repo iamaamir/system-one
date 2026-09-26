@@ -104,6 +104,37 @@ describe("System One tool schema", () => {
     assert.equal(parsed.success, false);
   });
 
+  it("rejects a choice with empty criteria", () => {
+    const parsed = systemOneParams.safeParse({
+      state: {},
+      questions: {
+        color: {
+          type: "choice",
+          instructions: "Pick one.",
+          criteria: {},
+        },
+      },
+    });
+
+    assert.equal(parsed.success, false);
+  });
+
+  it("accepts choices with one or multiple labels", () => {
+    for (const criteria of [{ only: null }, { red: null, blue: null }]) {
+      const parsed = systemOneParams.safeParse({
+        state: {},
+        questions: {
+          color: {
+            type: "choice",
+            instructions: "Pick one.",
+            criteria,
+          },
+        },
+      });
+      assert.equal(parsed.success, true);
+    }
+  });
+
   it("rejects an unknown top-level field", () => {
     const parsed = systemOneParams.safeParse({
       ...canonicalArgs,
@@ -181,6 +212,9 @@ describe("System One tool description", () => {
     assert.match(description, /factual lookup/);
     assert.match(description, /browsing/);
     assert.match(description, /open-ended/);
+    assert.match(description, /instead of directly making a bounded judgment/);
+    assert.match(description, /already available/);
+    assert.match(description, /cannot browse or recall missing facts/);
   });
 
   it("names every question type and its criteria shape", () => {
@@ -194,6 +228,25 @@ describe("System One tool description", () => {
     assert.match(description, /choice takes criteria as an object/);
     assert.match(description, /noul .* criteria as an optional object/);
     assert.match(description, /score .* criteria as an array of at least two/);
+  });
+
+  it("shows the complete call shape and directs question text to instructions", () => {
+    const { description } = buildSystemOneTool(
+      new MockSystemOneProvider({ answers: {} }),
+    );
+
+    assert.match(
+      description,
+      /\{"state":\s*\{\},\s*"questions":\s*\{"[^"]+":\s*\{"type":"choice","instructions":"[^"]+","criteria":\{"[^"]+":"[^"]+","[^"]+":"[^"]+"\}\}\}\}/,
+    );
+    assert.match(
+      description,
+      /Question text belongs in `questions\.<name>\.instructions`, not in `state`\./,
+    );
+    assert.match(
+      description,
+      /Use a named object for `questions`; do not use an array or a singular top-level `question` field\./,
+    );
   });
 });
 
@@ -312,6 +365,9 @@ describe("System One tool execution", () => {
         "  probabilities:",
         "    low: 0.3",
         "    high: 0.7",
+        "  legend:",
+        '    low: "Low quality"',
+        '    high: "High quality"',
       ].join("\n"),
     );
   });
