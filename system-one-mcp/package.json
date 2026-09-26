@@ -1,0 +1,36 @@
+{
+  "name": "system-one-mcp",
+  "version": "0.1.0",
+  "description": "Provider-neutral System One tool for local MCP hosts",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamaamir/system-one.git",
+    "directory": "system-one-mcp"
+  },
+  "bin": {
+    "system-one-mcp": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "npm run build",
+    "test": "node --test --experimental-strip-types \"tests/*.test.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "system-one-core": "^0.2.1",
+    "zod": "^4.1.12"
+  }
+}

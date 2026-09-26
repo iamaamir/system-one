@@ -15,7 +15,7 @@
 name: Release
 on:
   push:
-    tags: ["system-one-core@*", "pi-system-one@*"]
+    tags: ["system-one-core@*", "pi-system-one@*", "system-one-mcp@*"]
 permissions:
   contents: read
   id-token: write

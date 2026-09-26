@@ -80,6 +80,7 @@ For example, [Pi-Bifrost](https://github.com/iamaamir/pi-bifrost) consumes `syst
 |---|---|---|
 | `system-one-core` | `system-one-core` | Provider-neutral runtime: `SystemOneProvider`, `SystemOne`, typed builders, compatible HTTP provider, strict validation, and deterministic test support |
 | `pi-system-one` | `pi-system-one` | Pi extension exposing one `system_one` tool for batched `choice`, `noul`, and `score` decisions |
+| `system-one-mcp` | `system-one-mcp` | Local STDIO MCP adapter exposing the same provider-neutral `system_one` tool to Codex CLI and ChatGPT desktop |
 
 Dependency direction stays one-way:
 
@@ -220,6 +221,14 @@ pi install npm:pi-system-one
 ```
 
 Read full documentation [`here`](./pi-system-one)
+
+## Codex and ChatGPT desktop
+
+Install and register the local MCP adapter with `npx system-one-mcp`. Pass
+`SYSTEM_ONE_BASE_URL` and the optional `SYSTEM_ONE_API_KEY`,
+`SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` environment variables. The
+adapter calls the configured provider's `/v1/systemone` endpoint through the
+same core runtime and ships a bundled [`system-one` skill](./system-one-mcp/skills/system-one/SKILL.md).
 
 ---
 
