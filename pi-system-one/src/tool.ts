@@ -908,8 +908,19 @@ function normalizeArgs(args: unknown, drops?: string[]): SystemOneParams {
   const topState = lifted.state;
   const finalQuestions = lifted.questions;
   // Copy-on-write fast path: canonical state/questions slots, no alias keys
-  // to rename, no unknown keys to drop — return the input by reference so
-  // the defensive re-normalization in execute() allocates ~nothing.
+  // to rename, no unknown keys to drop — return the input by reference, so
+  // the defensive re-normalization in execute() never copies the question
+  // map or any question object, and retains nothing.
+  //
+  // The path is cheap to *copy* but no longer cheap to *decide*: the
+  // canonicality checks below now have to rule out all 13 repair rules
+  // before they can conclude "nothing to do". Measured on the canonical
+  // fixture in bench/normalize.bench.ts, against 8cf6ba1 on the same
+  // machine: 620 -> 1329 ns/op and 290 -> 1939 B/op generated, with
+  // retained memory ~0 on both sides. The cost is transient garbage from
+  // the analysis, not copies, and it is negligible against the network
+  // round trip to the judge. The repair path itself is unchanged
+  // (sloppy fixture: 1571 -> 1563 B/op generated).
   const questionsCanonical =
     finalQuestions === questions &&
     (questions === undefined
