@@ -32,6 +32,37 @@ reasoning.
 One user message can hold several such judgments; batch them over the
 same state in a single call.
 
+## Atomic questions
+
+Ask the most explicit, narrow, specific, atomic questions you can. This is
+the single most important habit in the official guidance, because broad
+questions hide several judgments behind one answer and you can neither
+inspect nor tune what you cannot see.
+
+"Is `message` spam?" is one broad question. It is really several:
+
+- Does `message.body` ask the recipient to provide a password or other
+  login credential?
+- Does `message.body` claim the recipient received an unexpected prize,
+  payment, or reward?
+- Does `message.links[0].url` belong to a domain related to the sender?
+
+Same call, same `state`, three answers you can weight, gate and log
+separately. A broad question gives you one number you must trust and
+cannot decompose.
+
+Two habits follow from this:
+
+- **State the exact condition.** The judge answers the question you
+  wrote, not the one you meant, and reads scoping words, negations and
+  implied conditions at face value. When you catch yourself explaining
+  what you really meant after a wrong answer, that explanation is the
+  missing half of the question. If interpretation is genuinely
+  unavoidable, ask two literal questions and combine them in code.
+- **Reduce hops.** Questions about a property of a property lose
+  accuracy. Point at the state field by name rather than describing how
+  to find it.
+
 ## Which question type
 
 Decide by the shape of the answer, not the difficulty of the judgment:
@@ -60,6 +91,36 @@ Decide by the shape of the answer, not the difficulty of the judgment:
   1 and **no confidence field**: the probability already is the
   uncertainty measure (0.5 = maximally uncertain). Optional
   `true`/`false` criteria spell out what yes/no mean. Ideal for gates.
+
+A `choice` and a `noul` are not two views of the same quantity, and the
+judge is deliberately *not* self-consistent between them. A choice over
+options is **relative** — it settles which option, and its numbers move
+when you add or remove an option. A noul is **absolute** — it can be low
+for every option at once. So a noul of 0.2 and a choice of
+`{"yes": 0.01, "no": 0.99}` are not contradictory, and
+`P(noul) + P(not noul) != 1`. Never carry a threshold tuned on a noul
+over to a choice, and don't expect the same question asked both ways to
+return the same number.
+
+If you want a safety net against a forced pick, ask a choice **and** a
+noul existence check in the same call over the same shortlist, and read
+the noul first.
+
+### Describing levels and options with structure
+
+`instructions` and the level/option descriptions may be a **string, an
+object, an array, or null** — not just a string. Start with strings; they
+are usually enough. When the judge keeps landing between two neighbouring
+levels, give each level an object instead: one field for what it covers
+and a field with a few example situations, using the **same field names
+on every level** so the levels compare like with like.
+
+The examples have to look like your real inputs to be worth anything. In
+one measured case a level description with an on-topic example moved the
+score from 1.43 to 1.03 and confidence from 0.35 to 0.96, while the same
+level with an example unrelated to the input scored 1.43 at 0.35 —
+identical to no example at all. Pick examples with known expected levels,
+then test the revised descriptions on separate inputs before keeping them.
 
 Yes/no with two named sides is a `noul`, not a two-option `choice`.
 
@@ -93,7 +154,19 @@ application assembles the result:
 
 - Batch every independent question over the same state into **one**
   `system_one` call — one request reduces round-trips and lets the
-  provider batch or parallelize evaluation where supported.
+  provider batch or parallelize evaluation where supported. Adding
+  questions barely changes response time because they are evaluated in
+  parallel within the request.
+- **Include the speculative ones.** Questions that only matter for some
+  inputs still belong in the batch: if the turn is a bug report you want
+  `bug_severity`, if it is a billing turn you want `refund_requested`.
+  An irrelevant answer costs almost nothing and is simply ignored by your
+  branch; a missing question costs a whole extra round trip. Coding
+  agents drift badly here — they fall into a one-question-per-call habit
+  much more than people writing this code by hand.
+- Keep questions narrow enough that their answers can be recombined.
+  Batching only pays if each question is separately useful, and a batch
+  of three broad questions is three broad questions, not one decision.
 - `state` holds the content plus supporting facts, and nothing else.
   Judgments live in `questions`: text pasted into the state gets judged
   as content, so never put the question itself in the state.
@@ -132,6 +205,15 @@ application assembles the result:
 - Check the answer's own order, too: highest confidence does not
   override a conflicting explicit decision. If you only want the best
   option, take the highest-confidence one instead of gating at all.
+- **Higher confidence does not make an answer correct.** It means the
+  judge was sure, which is a statement about the distribution and not
+  about the world. A confident wrong answer is exactly what an untested
+  integration produces, so hold some back with known-answer examples.
+- Ask each decision one way. Don't hold the judge to arithmetic identities
+  between separate questions (`P(A) + P(not A) = 1`) — the official
+  guidance treats these as structural invariants that are simply not
+  guaranteed, and the tension between them is worth surfacing in the
+  answer rather than averaging away.
 - Start thresholds conservative, log decisions with their confidence,
   and move the numbers once you see where wrong answers cluster. Pin
   the backend model version once a threshold is tuned (`jev-latest`
