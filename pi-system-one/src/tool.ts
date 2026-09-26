@@ -420,11 +420,9 @@ function mergeSpilledChoiceLabels(
  * a JSON object or array, decode it so it can be normalized; anything else
  * passes through untouched and still reports a clear validation error.
  */
-function decodeJsonString(input: string): unknown {
-  const trimmed = input.trim();
-  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) return input;
+function tryParseJson(input: string): unknown {
   try {
-    return JSON.parse(trimmed);
+    return JSON.parse(input);
   } catch {
     return input;
   }
@@ -432,7 +430,7 @@ function decodeJsonString(input: string): unknown {
 
 /** Decode a JSON-encoded question value; any non-string passes through. */
 function decodeJsonInput(value: unknown): unknown {
-  return typeof value === "string" ? decodeJsonString(value) : value;
+  return typeof value === "string" ? tryParseJson(value) : value;
 }
 
 /**
@@ -710,7 +708,7 @@ function flattenQuestionMap(
 }
 
 function normalizeQuestions(input: unknown, drops?: string[]): unknown {
-  if (typeof input === "string") input = decodeJsonString(input);
+  if (typeof input === "string") input = tryParseJson(input);
   if (isRecord(input)) {
     // An array of questions wrapped in one key (`{"item": [...]}`) is the
     // list the contract already accepts, one level too deep. Unwrap it and
