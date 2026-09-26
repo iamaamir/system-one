@@ -10,7 +10,7 @@
 # NOTE: repository.url in each package.json must match this repo.
 #
 # Usage: push a tag like system-one-core@0.1.2, pi-system-one@1.2.0, or
-# systemone-mcp@0.1.0-rc.1. The tag version must match package.json. Any
+# systemone-mcp@0.1.0-rc.2. The tag version must match package.json. Any
 # prerelease version is published with the `next` dist-tag; stable versions use
 # `latest`.
 # Provenance attestations are generated automatically (public repo).

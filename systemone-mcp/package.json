@@ -1,6 +1,6 @@
 {
   "name": "systemone-mcp",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "description": "Provider-neutral System One tool for local MCP hosts",
   "type": "module",
   "license": "MIT",
@@ -10,7 +10,7 @@
     "directory": "systemone-mcp"
   },
   "bin": {
-    "systemone-mcp": "./dist/index.js"
+    "systemone-mcp": "dist/index.js"
   },
   "main": "./dist/index.js",
   "exports": {
