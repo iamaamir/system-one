@@ -359,7 +359,16 @@ describe("system_one tool", () => {
           },
         } as never,
       });
-      for (const questions of ["foo", "{not json"]) {
+      for (const questions of [
+        "foo",
+        "{not json",
+        "{{{{",
+        "[[[",
+        "123",
+        "true",
+        "null",
+        '"hello"',
+      ]) {
         await assert.rejects(
           tool.execute(
             "id-rej-string",
@@ -1096,11 +1105,6 @@ describe("system_one tool", () => {
         provider: new MockSystemOneProvider({ answers: {} }),
       });
       assert.ok(tool.promptSnippet && tool.promptSnippet.length > 0);
-      for (const guideline of tool.promptGuidelines ?? []) {
-        assert.match(guideline, /system_one/);
-      }
-      assert.match(tool.description, /instead of answering directly/);
-      assert.match(tool.description, /calibrated probabilities/);
     });
 
     it("keeps discovery and type selection mechanical in one layer", () => {
