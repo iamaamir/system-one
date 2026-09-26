@@ -1,6 +1,6 @@
 # Release via npm trusted publishing (OIDC). No tokens.
 #
-# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one):
+# ONE-TIME SETUP on npmjs.com, per package (system-one-core, pi-system-one, @system_one/mcp):
 #   Settings -> Trusted publishing -> Add GitHub Actions publisher with
 #     user iamaamir, repo system-one, workflow filename release.yml,
 #   and allow direct `npm publish` (not stage-only).
@@ -9,19 +9,22 @@
 #   then revoke old automation tokens.
 # NOTE: repository.url in each package.json must match this repo.
 #
-# Usage: push a tag like system-one-core@0.1.2 or pi-system-one@1.2.0.
-# The tag version must match the package.json version.
+# Usage: push a tag like system-one-core@0.1.2, pi-system-one@1.2.0, or
+# @system_one/mcp@0.1.0-rc.3. The tag version must match package.json. Any
+# prerelease version is published with the `next` dist-tag; stable versions use
+# `latest`.
 # Provenance attestations are generated automatically (public repo).
 name: Release
 on:
   push:
-    tags: ["system-one-core@*", "pi-system-one@*"]
+    tags: ["system-one-core@*", "pi-system-one@*", "@system_one/mcp@*"]
 permissions:
   contents: read
   id-token: write
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: MCP
     steps:
       - uses: actions/checkout@v6
       # NOTE: npm caching is disabled for releases (fresh resolve every time).
@@ -39,8 +42,16 @@ jobs:
           TAG_DIR: ${{ github.ref_name }}
         run: |
           TAG="${TAG_DIR%@*}"
+          VERSION="${TAG_DIR##*@}"
+          test "$TAG" = "@system_one/mcp" || test "$TAG" = "system-one-core" || test "$TAG" = "pi-system-one" \
+            || { echo "unsupported package tag: $TAG_DIR"; exit 1; }
+          DIST_TAG="latest"
+          case "$VERSION" in
+            *-*) DIST_TAG="next" ;;
+          esac
           echo "name=$TAG" >> "$GITHUB_OUTPUT"
-          test "$(TAG_DIR="$TAG" node -p "require('./' + process.env.TAG_DIR + '/package.json').version")" = "${TAG_DIR#*@}" \
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          test "$(TAG_DIR="$TAG" node -p "require('./' + process.env.TAG_DIR + '/package.json').version")" = "$VERSION" \
             || { echo "tag/version mismatch"; exit 1; }
       - run: npm test
-      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --access public
+      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --access public --tag "${{ steps.pkg.outputs.dist_tag }}"
