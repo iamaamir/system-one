@@ -1,10 +1,16 @@
-# OpenCode System One
+# opencode-system-one
 
-`opencode-system-one` is an OpenCode plugin that exposes one `system_one` tool for batched, bounded `choice`, `noul`, and `score` decisions. It uses the provider-neutral `system-one-core` runtime and can connect to TypeSafe Jev, Reflex, or a compatible System One endpoint.
+System One decisions for OpenCode. Ask ordinary questions and get calibrated probabilities for bounded decisions.
 
 ## Installation
 
-Add `opencode-system-one` to the `plugin` array in `opencode.json`:
+Install the plugin globally with the OpenCode CLI:
+
+```bash
+opencode plug -g opencode-system-one
+```
+
+You can also add it to the `plugin` array in `opencode.json`:
 
 ```json
 {
@@ -13,77 +19,51 @@ Add `opencode-system-one` to the `plugin` array in `opencode.json`:
 }
 ```
 
-OpenCode uses Bun to install npm plugins and their dependencies automatically at startup, so a separate `npm install opencode-system-one` step is not required.
+## Configuration
 
-Set `SYSTEM_ONE_BASE_URL` before starting OpenCode. This is the base URL/prefix before the standard `/v1/systemone` path: `https://api.typesafe.ai` sends to `https://api.typesafe.ai/v1/systemone`. Do not include `/v1` unless provider specifically expects the resulting `/v1/v1/systemone`. `SYSTEM_ONE_API_KEY`, `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` are optional; timeout defaults to 10 seconds.
+Set `SYSTEM_ONE_BASE_URL` before starting OpenCode. The plugin sends requests to the standard `/v1/systemone` path:
+
+```bash
+export SYSTEM_ONE_BASE_URL="https://api.typesafe.ai"
+export SYSTEM_ONE_API_KEY="your-api-key"
+export SYSTEM_ONE_MODEL="jev-latest"
+```
+
+For a locally hosted model:
 
 ```bash
 export SYSTEM_ONE_BASE_URL="http://localhost:8008"
-export SYSTEM_ONE_API_KEY="your-api-key"
-export SYSTEM_ONE_MODEL="your-model"
-export SYSTEM_ONE_TIMEOUT_MS="10000"
 ```
 
-API-key requests require HTTPS for remote providers. Plain HTTP remains supported for local `localhost`, `127.0.0.1`, and IPv6 loopback `[::1]` development.
+`SYSTEM_ONE_API_KEY`, `SYSTEM_ONE_MODEL`, and `SYSTEM_ONE_TIMEOUT_MS` are optional. Timeout defaults to 10 seconds. API-key requests require HTTPS for remote providers; plain HTTP is supported for local loopback hosts.
 
-If required configuration is missing, the plugin logs a warning and skips registering the `system_one` tool.
+If `SYSTEM_ONE_BASE_URL` is missing or invalid, OpenCode logs a warning and skips registering the `system_one` tool.
 
-## Tool usage
+## Usage
 
-Batch independent questions that share the supplied state. A `choice` question takes a criteria object keyed by exact answer labels. A `noul` question is a yes/no question and may take an optional criteria object describing the `"1"` and `"0"` outcomes. A `score` question takes an ordered array of at least two rubric levels, from lowest to highest.
+Ask OpenCode questions naturally. Include the relevant context in your prompt and request probabilities when you want a System One judgment.
 
-```json
-{
-  "state": {
-    "diff": "- one line",
-    "touched": ["src/tool.ts"]
-  },
-  "questions": {
-    "team": {
-      "type": "choice",
-      "instructions": "Which team should investigate?",
-      "criteria": {
-        "frontend": "Owns the affected UI.",
-        "backend": "Owns the affected service."
-      }
-    },
-    "blocked": {
-      "type": "noul",
-      "instructions": "Is the task blocked?",
-      "criteria": {
-        "1": "Blocked.",
-        "0": "Not blocked."
-      }
-    },
-    "severity": {
-      "type": "score",
-      "instructions": "How severe is the impact?",
-      "criteria": ["minor", "degraded", "blocking"]
-    }
-  }
-}
+### Choice
+
+```text
+Which team should investigate this issue: frontend, backend, or platform? Give me the probability for each and your confidence in the pick.
 ```
 
-Use this tool for bounded decisions over supplied state. Do not use it for factual lookup, browsing, or open-ended text generation.
+### Yes/no judgment
 
-## Local development
-
-Build `system-one-core` first, then build the plugin:
-
-```bash
-npm install
-npm run build --workspace system-one-core
-npm --workspace opencode-system-one run build
+```text
+Should we ship this change or revert it? Give me the probability that shipping causes a follow-up bug within a week.
 ```
 
-To load the locally built plugin, add its absolute file URL to `opencode.json`:
+### Ordered rating
 
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugin": ["file:///absolute/path/.../dist/index.js"]
-}
+```text
+How severe is this incident? Rate it as minor, degraded, or blocking, with probabilities and confidence.
 ```
+
+System One is for bounded judgments over supplied context. It is not a replacement for factual lookup, browsing, or open-ended writing. Retrieve facts first, then ask System One to evaluate the supplied evidence.
+
+Independent judgments over the same context are batched automatically when appropriate.
 
 ## License
 
