@@ -2347,3 +2347,68 @@ describe("system_one tool", () => {
     });
   });
 });
+
+describe("discarded question reporting", () => {
+  function toolWithAnswers(answers: Record<string, unknown>) {
+    const stub = {
+      id: "stub",
+      async evaluate() {
+        return { answers, metadata: { provider: "stub" } };
+      },
+    };
+    return buildSystemOneTool({ provider: stub as never });
+  }
+
+  async function renderOf(args: unknown): Promise<string> {
+    const tool = toolWithAnswers({
+      kept: { type: "noul", noul: 0.7 },
+    });
+    const result = await tool.execute(
+      "id",
+      args as never,
+      undefined,
+      undefined,
+      {} as never,
+    );
+    return (result.content as Array<{ text: string }>)[0].text;
+  }
+
+  // A real defect the scenario suite could not see: the model sends a
+  // two-question batch, one of which is filed under the wrapper's own name.
+  // The unwrap returned that question and dropped its sibling silently, so
+  // the model received a confident answer to half of what it asked.
+  it("reports a question abandoned by the wrapper-alias unwrap", async () => {
+    const text = await renderOf({
+      state: "an outage and a refund",
+      questions: {
+        questions: { type: "choice", instructions: "Which?", criteria: { a: null } },
+        risk: { type: "noul", instructions: "Is there a risk?" },
+      },
+    });
+    assert.match(text, /NOTE:/);
+    assert.match(text, /discarded/);
+    assert.match(text, /risk/);
+    // The kept answer is still complete and still first.
+    assert.match(text, /kept:[\s\S]*noul: 0\.7/);
+  });
+
+  it("reports a name-slot entry dropped beside a real question", async () => {
+    const text = await renderOf({
+      state: "S",
+      questions: {
+        q1: { type: "noul", instructions: "Is it?" },
+        stray_label: "refund it",
+      },
+    });
+    assert.match(text, /NOTE:/);
+    assert.match(text, /stray_label/);
+  });
+
+  it("adds no note when nothing was discarded", async () => {
+    const text = await renderOf({
+      state: "S",
+      questions: { q1: { type: "noul", instructions: "Is it?" } },
+    });
+    assert.doesNotMatch(text, /NOTE:/);
+  });
+});

@@ -47,9 +47,10 @@ function scoreScaleNote(
   return `  (position on the 0..${count - 1} rubric scale; it can land between levels)`;
 }
 
-export function renderSystemOneResult(response: {
-  answers: Record<string, any>;
-}): string {
+export function renderSystemOneResult(
+  response: { answers: Record<string, any> },
+  discarded: string[] = [],
+): string {
   const lines = ["System One result", ""];
   for (const [id, a] of Object.entries(response.answers)) {
     if (a?.type === "choice") {
@@ -86,5 +87,15 @@ export function renderSystemOneResult(response: {
   lines.push(
     "noul is P(yes). A choice always returns a winner, so treat it as the best fit rather than proof one applies. confidence reflects the least certain judgment behind an answer and is not permission to act.",
   );
+  if (discarded.length > 0) {
+    // Lead with this, not bury it: the answers above are complete and
+    // confident, and without this the model cannot tell that it asked for
+    // more than it got. Re-send those entries as proper questions.
+    lines.unshift(
+      "",
+      `NOTE: ${discarded.length} question entr${discarded.length === 1 ? "y was" : "ies were"} discarded during normalization and NOT judged: ${discarded.join("; ")}. Every entry above is a complete answer, but it does not cover what was dropped. Re-send ${discarded.length === 1 ? "that entry" : "those entries"} as a question object with type, instructions and criteria.`,
+      "",
+    );
+  }
   return lines.join("\n").trimEnd();
 }

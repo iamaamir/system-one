@@ -562,6 +562,28 @@ function looksLikeQuestion(value: unknown): boolean {
 }
 
 /**
+ * Record a question-map entry that had to be discarded, so the caller can be
+ * told rather than silently handed an answer to a smaller question set.
+ *
+ * The contract is one-directional: a choice cannot pick an option omitted
+ * from its criteria, and a batch cannot report on a question that was never
+ * sent. Every repair here is allowed to reshape or drop a malformed entry,
+ * but none of them may do it invisibly — a dropped entry means the model asked
+ * something that was quietly not judged, which is exactly the kind of mistake
+ * a typed output cannot surface.
+ */
+function noteDrop(drops: string[] | undefined, name: string, value: unknown): void {
+  if (!drops) return;
+  const shown = typeof value === "string" ? value : value === null ? "null" : "";
+  drops.push(shown === "" ? name : `${name} (${truncateForNote(shown)})`);
+}
+
+function truncateForNote(text: string): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  return clean.length <= 60 ? clean : `${clean.slice(0, 57)}...`;
+}
+
+/**
  * Some models write a batch of questions as parallel arrays — one entry per
  * field, aligned by position:
  *
@@ -654,7 +676,7 @@ function flattenQuestionMap(
   return out;
 }
 
-function normalizeQuestions(input: unknown): unknown {
+function normalizeQuestions(input: unknown, drops?: string[]): unknown {
   if (isRecord(input)) {
     // An array of questions wrapped in one key (`{"item": [...]}`) is the
     // list the contract already accepts, one level too deep. Unwrap it and
@@ -668,7 +690,7 @@ function normalizeQuestions(input: unknown): unknown {
       Array.isArray(input[keys[0]]) &&
       (input[keys[0]] as unknown[]).some((entry) => isRecord(entry))
     ) {
-      return normalizeQuestions(input[keys[0]]);
+      return normalizeQuestions(input[keys[0]], drops);
     }
     // One unwrapped question filed under the wrapper's own name, e.g.
     // `{"questions": {"type": ..., "instructions": ...}}` — possibly beside
@@ -677,7 +699,15 @@ function normalizeQuestions(input: unknown): unknown {
       if (!QUESTION_NAME_ALIASES.has(key.toLowerCase())) continue;
       const value = input[key];
       if (isRecord(value) && typeof value.type === "string") {
-        return normalizeQuestions(value);
+        // Every sibling is abandoned by this unwrap, and a sibling is often a
+        // real question: `{"questions": {"questions": {choice}, "risk":
+        // {noul}}}` is a two-question batch. Returning the aliased question
+        // alone answered half the batch and said nothing, so name what was
+        // left behind rather than letting the model believe it was answered.
+        for (const other of keys) {
+          if (other !== key) noteDrop(drops, other, input[other]);
+        }
+        return normalizeQuestions(value, drops);
       }
     }
     // Parallel arrays standing in for a batch of questions.
@@ -703,7 +733,7 @@ function normalizeQuestions(input: unknown): unknown {
             );
           }
         }
-        return normalizeQuestions(merged);
+        return normalizeQuestions(merged, drops);
       }
     }
   }
@@ -739,7 +769,10 @@ function normalizeQuestions(input: unknown): unknown {
     });
     const hasQuestion = pairs.some(([, value]) => looksLikeQuestion(value));
     for (const [base, value] of pairs) {
-      if (hasQuestion && !looksLikeQuestion(value)) continue;
+      if (hasQuestion && !looksLikeQuestion(value)) {
+        noteDrop(drops, base, value);
+        continue;
+      }
       setOwn(record, claimName(base), value);
     }
     return record;
@@ -806,7 +839,10 @@ function normalizeQuestions(input: unknown): unknown {
     }
     const hasQuestion = pairs.some(([, value]) => looksLikeQuestion(value));
     for (const [name, question] of pairs) {
-      if (hasQuestion && !looksLikeQuestion(question)) continue;
+      if (hasQuestion && !looksLikeQuestion(question)) {
+        noteDrop(drops, name, question);
+        continue;
+      }
       // Two questions can only reach the same name if one was spliced up out
       // of a nested map; suffix rather than silently drop the second.
       let unique = name;
@@ -826,11 +862,29 @@ function normalizeQuestions(input: unknown): unknown {
  * re-applies it defensively for direct calls that bypass validation.
  */
 export function prepareSystemOneArgs(args: unknown): SystemOneParams {
+  return normalizeArgs(args);
+}
+
+/**
+ * The same normalization, reporting any question-map entry it had to discard.
+ * `prepareSystemOneArgs` stays pure because Pi calls it on every tool call and
+ * the property harness relies on it being idempotent and reentrant; only the
+ * tool's own execute() needs to know what was thrown away, so only it pays for
+ * the second walk.
+ */
+export function collectDiscardedQuestions(args: unknown): string[] {
+  const drops: string[] = [];
+  if (!isRecord(args)) return drops;
+  normalizeArgs(args, drops);
+  return drops;
+}
+
+function normalizeArgs(args: unknown, drops?: string[]): SystemOneParams {
   if (!isRecord(args)) return args as SystemOneParams;
   const questions =
     args.questions ?? args.question ?? args.queries ?? undefined;
   const normalizedQuestions =
-    questions !== undefined ? normalizeQuestions(questions) : undefined;
+    questions !== undefined ? normalizeQuestions(questions, drops) : undefined;
   // A state nested inside a question is request state; lift it unless a real
   // top-level one was supplied, which always wins.
   const lifted = liftNestedState(
@@ -1036,7 +1090,10 @@ export function buildSystemOneTool(deps: {
         content: [
           {
             type: "text" as const,
-            text: renderSystemOneResult(response),
+            text: renderSystemOneResult(
+              response,
+              collectDiscardedQuestions(params),
+            ),
           },
         ],
 
