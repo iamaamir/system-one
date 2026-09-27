@@ -1228,35 +1228,65 @@ h2.big{
   text-transform:uppercase;
 }
 
-.mcp-tools{
-  display:flex;
-  flex-wrap:wrap;
+.mcp-hosts{
+  display:grid;
   gap:7px;
-  margin-top:20px;
+  margin-top:22px;
 }
 
-.mcp-tools span{
-  padding:5px 8px;
-  border:1px solid #3A3A3A;
-  border-radius:2px;
-  color:#D7D5CD;
+.mcp-hosts-label{
+  margin-bottom:2px;
+  color:#8D8D86;
   font-family:var(--mono);
   font-size:9px;
   letter-spacing:.08em;
   text-transform:uppercase;
 }
 
+.mcp-hosts button{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid #3A3A3A;
+  border-radius:2px;
+  background:transparent;
+  color:#D7D5CD;
+  text-align:left;
+  font-family:var(--mono);
+  font-size:11px;
+  letter-spacing:.04em;
+}
+
+.mcp-hosts button:hover,
+.mcp-hosts button[aria-pressed="true"]{
+  border-color:var(--acid);
+  background:var(--acid);
+  color:var(--text);
+}
+
+.mcp-tool-note{
+  margin-top:14px !important;
+  color:#8D8D86 !important;
+  font-family:var(--mono);
+  font-size:11px !important;
+}
+
 .mcp-command{
   margin:20px 0 0;
   padding:14px;
-  overflow:auto;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
   border:1px solid #353535;
   border-radius:3px;
   color:#EDEBE4;
   font-size:12px;
   line-height:1.65;
-  white-space:pre-wrap;
-  overflow-wrap:anywhere;
+  white-space:pre;
+}
+
+.mcp-command code{
+  color:inherit;
+  white-space:inherit;
 }
 
 .mcp-command .prompt{
@@ -2225,12 +2255,13 @@ footer a:hover{
             <code>system-one-core</code>. It is a transport adapter, with no hosted
             service or second decision layer.
           </p>
-          <div class="mcp-tools" aria-label="MCP clients and tool">
-            <span>Codex CLI</span>
-            <span>Claude Code</span>
-            <span>ChatGPT desktop</span>
-            <span>system_one / read-only</span>
+          <div class="mcp-hosts" role="group" aria-label="Choose where to use the MCP adapter">
+            <div class="mcp-hosts-label">use in</div>
+            <button type="button" aria-pressed="true" data-mcp-host="codex">Codex CLI</button>
+            <button type="button" aria-pressed="false" data-mcp-host="claude">Claude Code</button>
+            <button type="button" aria-pressed="false" data-mcp-host="chatgpt">ChatGPT Desktop</button>
           </div>
+          <p class="mcp-tool-note">One read-only tool: <code>system_one</code></p>
           <div class="mcp-links">
             <a class="micro-link dark-link" href="https://www.npmjs.com/package/@system_one/mcp">NPM PACKAGE <span aria-hidden="true">↗</span></a>
             <a class="micro-link dark-link" href="https://github.com/iamaamir/system-one/tree/main/%40system_one/mcp">SOURCE <span aria-hidden="true">↗</span></a>
@@ -2238,17 +2269,19 @@ footer a:hover{
         </article>
 
         <article class="mcp-card">
-          <div class="mcp-kicker">setup / codex cli</div>
-          <h3>Register locally.</h3>
-          <p>Export the endpoint and key, then register the prerelease command.</p>
-          <pre class="mcp-command"><span class="prompt">$</span> export SYSTEM_ONE_BASE_URL="https://your-system-one.example.com"
-<span class="prompt">$</span> export SYSTEM_ONE_API_KEY="your-api-key"
-<span class="prompt">$</span> codex mcp add \
+          <div id="mcp-setup-panel" aria-live="polite">
+            <div class="mcp-kicker" id="mcp-setup-kicker">setup / codex cli</div>
+            <h3 id="mcp-setup-title">Register locally.</h3>
+            <p id="mcp-setup-description">Export the endpoint and key, then register the prerelease command.</p>
+            <pre class="mcp-command"><code id="mcp-command-code">export SYSTEM_ONE_BASE_URL="https://your-system-one.example.com"
+export SYSTEM_ONE_API_KEY="your-api-key"
+codex mcp add \
   --env "SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}" \
   --env "SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}" \
-  system-one -- npx -y @system_one/mcp@next</pre>
+  system-one -- npx -y @system_one/mcp@next</code></pre>
+          </div>
           <div class="install-row-actions mcp-command-actions">
-            <button type="button" class="install-copy" aria-label="Copy Codex CLI MCP registration command" data-copy="codex mcp add --env &quot;SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}&quot; --env &quot;SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}&quot; system-one -- npx -y @system_one/mcp@next">COPY</button>
+            <button type="button" class="install-copy" id="mcp-copy" aria-label="Copy Codex CLI MCP setup" data-copy="export SYSTEM_ONE_BASE_URL=\"https://your-system-one.example.com\"\nexport SYSTEM_ONE_API_KEY=\"your-api-key\"\ncodex mcp add \\\n  --env \"SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}\" \\\n  --env \"SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}\" \\\n  system-one -- npx -y @system_one/mcp@next">COPY</button>
           </div>
         </article>
       </div>
@@ -2401,6 +2434,86 @@ footer a:hover{
   });
 
   selectProvider("reflex");
+
+  /* MCP host setup selector */
+  var mcpSetupKicker = document.getElementById("mcp-setup-kicker");
+  var mcpSetupTitle = document.getElementById("mcp-setup-title");
+  var mcpSetupDescription = document.getElementById("mcp-setup-description");
+  var mcpCommandCode = document.getElementById("mcp-command-code");
+  var mcpCopy = document.getElementById("mcp-copy");
+  var mcpHostButtons = Array.prototype.slice.call(
+    document.querySelectorAll("[data-mcp-host]")
+  );
+
+  var mcpHosts = {
+    codex: {
+      kicker: "SETUP / CODEX CLI",
+      title: "Register locally.",
+      description: "Export the endpoint and key, then register the prerelease command.",
+      command: [
+        "export SYSTEM_ONE_BASE_URL=\"https://your-system-one.example.com\"",
+        "export SYSTEM_ONE_API_KEY=\"your-api-key\"",
+        "codex mcp add " + "\\",
+        "  --env \"SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}\" " + "\\",
+        "  --env \"SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}\" " + "\\",
+        "  system-one -- npx -y @system_one/mcp@next"
+      ].join("\n")
+    },
+    claude: {
+      kicker: "SETUP / CLAUDE CODE",
+      title: "Register for your user.",
+      description: "Export the endpoint and key, then add the prerelease command to your user scope.",
+      command: [
+        "export SYSTEM_ONE_BASE_URL=\"https://your-system-one.example.com\"",
+        "export SYSTEM_ONE_API_KEY=\"your-api-key\"",
+        "claude mcp add --scope user " + "\\",
+        "  --env \"SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}\" " + "\\",
+        "  --env \"SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}\" " + "\\",
+        "  system-one -- npx -y @system_one/mcp@next"
+      ].join("\n")
+    },
+    chatgpt: {
+      kicker: "SETUP / CHATGPT DESKTOP",
+      title: "Add a local MCP server.",
+      description: "In ChatGPT Desktop, add a local server and enter these fields:",
+      command: [
+        "Command: npx",
+        "Arguments: -y @system_one/mcp@next",
+        "SYSTEM_ONE_BASE_URL: your-compatible-endpoint",
+        "SYSTEM_ONE_API_KEY: your-api-key"
+      ].join("\n")
+    }
+  };
+
+  function selectMcpHost(host){
+    var setup = mcpHosts[host];
+
+    if(!setup){
+      return;
+    }
+
+    mcpSetupKicker.textContent = setup.kicker;
+    mcpSetupTitle.textContent = setup.title;
+    mcpSetupDescription.textContent = setup.description;
+    mcpCommandCode.textContent = setup.command;
+    mcpCopy.setAttribute("data-copy", setup.command);
+    mcpCopy.setAttribute("aria-label", "Copy " + setup.kicker.toLowerCase() + " setup");
+
+    mcpHostButtons.forEach(function(button){
+      button.setAttribute(
+        "aria-pressed",
+        button.getAttribute("data-mcp-host") === host ? "true" : "false"
+      );
+    });
+  }
+
+  mcpHostButtons.forEach(function(button){
+    button.addEventListener("click", function(){
+      selectMcpHost(button.getAttribute("data-mcp-host"));
+    });
+  });
+
+  selectMcpHost("codex");
 
 
   /* modern reveal */
