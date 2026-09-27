@@ -1284,12 +1284,36 @@ h2.big{
   white-space:pre;
 }
 
-.mcp-setup-flash{
-  animation:mcpSetupChanged .24s var(--ease);
+#mcp-setup-panel{
+  view-transition-name:mcp-setup-panel;
 }
-@keyframes mcpSetupChanged{
-  0%{opacity:.62;transform:translateY(4px)}
-  100%{opacity:1;transform:translateY(0)}
+
+/* Keep the document stationary; only the named setup panel transitions. */
+::view-transition-old(root),
+::view-transition-new(root){
+  animation:none;
+}
+
+::view-transition-old(mcp-setup-panel),
+::view-transition-new(mcp-setup-panel){
+  animation-duration:.18s;
+  animation-timing-function:var(--ease);
+}
+
+::view-transition-old(mcp-setup-panel){
+  animation-name:mcpSetupPanelOld;
+}
+
+::view-transition-new(mcp-setup-panel){
+  animation-name:mcpSetupPanelNew;
+}
+
+@keyframes mcpSetupPanelOld{
+  to{opacity:0;transform:translateY(-2px)}
+}
+
+@keyframes mcpSetupPanelNew{
+  from{opacity:0;transform:translateY(2px)}
 }
 
 .mcp-command code{
@@ -1612,8 +1636,11 @@ footer a:hover{
   .provider-code-flash .change-line{
     animation:none;
   }
+}
 
-  .mcp-setup-flash{
+@media(prefers-reduced-motion:reduce){
+  ::view-transition-old(mcp-setup-panel),
+  ::view-transition-new(mcp-setup-panel){
     animation:none;
   }
 }
@@ -2512,18 +2539,8 @@ SYSTEM_ONE_API_KEY: your-api-key</code></pre>
     }
   };
 
-  function selectMcpHost(host){
+  function renderMcpHost(host){
     var setup = mcpHosts[host];
-
-    if(!setup){
-      return;
-    }
-
-    if(!reducedMotion && mcpSetupPanel.dataset.ready === "true"){
-      mcpSetupPanel.classList.remove("mcp-setup-flash");
-      void mcpSetupPanel.offsetWidth;
-      mcpSetupPanel.classList.add("mcp-setup-flash");
-    }
 
     mcpSetupKicker.textContent = setup.kicker;
     mcpSetupTitle.textContent = setup.title;
@@ -2539,6 +2556,26 @@ SYSTEM_ONE_API_KEY: your-api-key</code></pre>
       );
     });
     mcpSetupPanel.dataset.ready = "true";
+  }
+
+  function selectMcpHost(host){
+    if(!mcpHosts[host]){
+      return;
+    }
+
+    var canTransition =
+      !reducedMotion &&
+      mcpSetupPanel.dataset.ready === "true" &&
+      typeof document.startViewTransition === "function";
+
+    if(canTransition){
+      document.startViewTransition(function(){
+        renderMcpHost(host);
+      });
+      return;
+    }
+
+    renderMcpHost(host);
   }
 
   mcpHostButtons.forEach(function(button){
