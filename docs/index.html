@@ -1284,6 +1284,14 @@ h2.big{
   white-space:pre;
 }
 
+.mcp-setup-flash{
+  animation:mcpSetupChanged .24s var(--ease);
+}
+@keyframes mcpSetupChanged{
+  0%{opacity:.62;transform:translateY(4px)}
+  100%{opacity:1;transform:translateY(0)}
+}
+
 .mcp-command code{
   color:inherit;
   white-space:inherit;
@@ -1602,6 +1610,10 @@ footer a:hover{
   }
 
   .provider-code-flash .change-line{
+    animation:none;
+  }
+
+  .mcp-setup-flash{
     animation:none;
   }
 }
@@ -2241,23 +2253,23 @@ footer a:hover{
 
       <p class="lede">
         <code>@system_one/mcp</code> is a local STDIO, provider-neutral adapter.
-        It exposes exactly one read-only <code>system_one</code> tool to Codex CLI,
-        Claude Code, and ChatGPT desktop, then sends each call to your compatible
-        <code>/v1/systemone</code> provider.
+        It exposes exactly one read-only <code>system_one</code> tool to any MCP-supported
+        client, then sends each call to your compatible <code>/v1/systemone</code> provider.
       </p>
 
       <div class="mcp-grid">
         <article class="mcp-card">
-          <div class="mcp-kicker">one adapter / three hosts</div>
+          <div class="mcp-kicker">local stdio / any mcp host</div>
           <h3>One tool. Your provider.</h3>
           <p>
             The MCP process stays local and forwards requests through
-            <code>system-one-core</code>. It is a transport adapter, with no hosted
-            service or second decision layer.
+            <code>system-one-core</code>. Configure it in any client that supports
+            local STDIO MCP servers.
           </p>
-          <div class="mcp-hosts" role="group" aria-label="Choose where to use the MCP adapter">
+          <div class="mcp-hosts" role="group" aria-label="Choose MCP setup instructions">
             <div class="mcp-hosts-label">use in</div>
-            <button type="button" aria-pressed="true" data-mcp-host="codex">Codex CLI</button>
+            <button type="button" aria-pressed="true" data-mcp-host="generic">Any MCP host</button>
+            <button type="button" aria-pressed="false" data-mcp-host="codex">Codex CLI</button>
             <button type="button" aria-pressed="false" data-mcp-host="claude">Claude Code</button>
             <button type="button" aria-pressed="false" data-mcp-host="chatgpt">ChatGPT Desktop</button>
           </div>
@@ -2270,15 +2282,16 @@ footer a:hover{
 
         <article class="mcp-card">
           <div id="mcp-setup-panel" aria-live="polite">
-            <div class="mcp-kicker" id="mcp-setup-kicker">setup / codex cli</div>
-            <h3 id="mcp-setup-title">Register locally.</h3>
-            <p id="mcp-setup-description">Export the endpoint and key, then register the prerelease command.</p>
+            <div class="mcp-kicker" id="mcp-setup-kicker">setup / generic stdio</div>
+            <h3 id="mcp-setup-title">Configure any MCP host.</h3>
+            <p id="mcp-setup-description">Use these values in the local STDIO server settings for your MCP-supported client.</p>
             <pre class="mcp-command"><code id="mcp-command-code">export SYSTEM_ONE_BASE_URL="https://your-system-one.example.com"
 export SYSTEM_ONE_API_KEY="your-api-key"
-codex mcp add \
-  --env "SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}" \
-  --env "SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}" \
-  system-one -- npx -y @system_one/mcp@next</code></pre>
+Transport: stdio
+Command: npx
+Arguments: -y @system_one/mcp@next
+SYSTEM_ONE_BASE_URL: your-compatible-endpoint
+SYSTEM_ONE_API_KEY: your-api-key</code></pre>
           </div>
           <div class="install-row-actions mcp-command-actions">
             <button type="button" class="install-copy" id="mcp-copy" aria-label="Copy Codex CLI MCP setup" data-copy="export SYSTEM_ONE_BASE_URL=\"https://your-system-one.example.com\"\nexport SYSTEM_ONE_API_KEY=\"your-api-key\"\ncodex mcp add \\\n  --env \"SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}\" \\\n  --env \"SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}\" \\\n  system-one -- npx -y @system_one/mcp@next">COPY</button>
@@ -2439,6 +2452,7 @@ codex mcp add \
   var mcpSetupKicker = document.getElementById("mcp-setup-kicker");
   var mcpSetupTitle = document.getElementById("mcp-setup-title");
   var mcpSetupDescription = document.getElementById("mcp-setup-description");
+  var mcpSetupPanel = document.getElementById("mcp-setup-panel");
   var mcpCommandCode = document.getElementById("mcp-command-code");
   var mcpCopy = document.getElementById("mcp-copy");
   var mcpHostButtons = Array.prototype.slice.call(
@@ -2446,6 +2460,19 @@ codex mcp add \
   );
 
   var mcpHosts = {
+    generic: {
+      kicker: "SETUP / GENERIC STDIO",
+      title: "Configure any MCP host.",
+      description: "Use these values in the local STDIO server settings for your MCP-supported client.",
+      command: [
+        "Transport: stdio",
+        "Command: npx",
+        "Arguments: -y @system_one/mcp@next",
+        "Environment:",
+        "  SYSTEM_ONE_BASE_URL=your-compatible-endpoint",
+        "  SYSTEM_ONE_API_KEY=your-api-key"
+      ].join("\n")
+    },
     codex: {
       kicker: "SETUP / CODEX CLI",
       title: "Register locally.",
@@ -2492,6 +2519,12 @@ codex mcp add \
       return;
     }
 
+    if(!reducedMotion && mcpSetupPanel.dataset.ready === "true"){
+      mcpSetupPanel.classList.remove("mcp-setup-flash");
+      void mcpSetupPanel.offsetWidth;
+      mcpSetupPanel.classList.add("mcp-setup-flash");
+    }
+
     mcpSetupKicker.textContent = setup.kicker;
     mcpSetupTitle.textContent = setup.title;
     mcpSetupDescription.textContent = setup.description;
@@ -2505,6 +2538,7 @@ codex mcp add \
         button.getAttribute("data-mcp-host") === host ? "true" : "false"
       );
     });
+    mcpSetupPanel.dataset.ready = "true";
   }
 
   mcpHostButtons.forEach(function(button){
@@ -2513,7 +2547,7 @@ codex mcp add \
     });
   });
 
-  selectMcpHost("codex");
+  selectMcpHost("generic");
 
 
   /* modern reveal */
