@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>system-one — Provider-neutral System One SDK for TypeScript, Jev, Reflex & Pi</title>
-<meta name="description" content="A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider. Includes direct Pi integration.">
+<title>system-one — Provider-neutral System One SDK for TypeScript, Jev, Reflex, Pi & MCP</title>
+<meta name="description" content="A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, your own provider, Pi, or the local MCP adapter.">
 <meta name="theme-color" content="#F3F1EA">
 <meta name="application-name" content="system-one">
 <meta name="robots" content="index,follow,max-image-preview:large">
@@ -17,7 +17,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="system-one">
 <meta property="og:title" content="system-one — One interface. Any System One provider.">
-<meta property="og:description" content="A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider.">
+<meta property="og:description" content="A provider-neutral TypeScript runtime for System One decisions with Pi and a local MCP adapter for Codex CLI, Claude Code, and ChatGPT desktop.">
 <meta property="og:url" content="https://iamaamir.github.io/system-one/">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://iamaamir.github.io/system-one/social-card.png">
@@ -27,7 +27,7 @@
 
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="system-one — One interface. Any System One provider.">
-<meta name="twitter:description" content="Provider-neutral TypeScript runtime for System One decisions with Jev, Reflex, compatible endpoints, custom providers, and Pi integration.">
+<meta name="twitter:description" content="Provider-neutral TypeScript runtime for System One decisions with Jev, Reflex, compatible endpoints, Pi integration, and a local MCP adapter.">
 <meta name="twitter:image" content="https://iamaamir.github.io/system-one/social-card.png">
 
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23111111'/%3E%3Ctext x='32' y='42' font-family='monospace' font-size='28' font-weight='bold' fill='%23F3F1EA' text-anchor='middle'%3ES1%3C/text%3E%3C/svg%3E">
@@ -41,15 +41,15 @@
       "@id": "https://iamaamir.github.io/system-one/#website",
       "url": "https://iamaamir.github.io/system-one/",
       "name": "system-one",
-      "description": "Provider-neutral System One runtime for TypeScript and Pi.",
+      "description": "Provider-neutral System One runtime for TypeScript, Pi, and a local MCP adapter.",
       "inLanguage": "en"
     },
     {
       "@type": "WebPage",
       "@id": "https://iamaamir.github.io/system-one/#webpage",
       "url": "https://iamaamir.github.io/system-one/",
-      "name": "system-one — Provider-neutral System One SDK for TypeScript, Jev, Reflex & Pi",
-      "description": "A provider-neutral TypeScript runtime for System One decisions. Use TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, or your own provider. Includes direct Pi integration.",
+      "name": "system-one — Provider-neutral System One SDK for TypeScript, Jev, Reflex, Pi & MCP",
+      "description": "A provider-neutral TypeScript runtime for System One decisions with TypeSafe Jev, Reflex, compatible /v1/systemone endpoints, Pi, and a local MCP adapter.",
       "isPartOf": {
         "@id": "https://iamaamir.github.io/system-one/#website"
       },
@@ -78,6 +78,7 @@
         "Jev",
         "Reflex",
         "Pi",
+        "MCP",
         "typed decisions",
         "provider-neutral AI"
       ]
@@ -1180,6 +1181,100 @@ h2.big{
   color:var(--text);
 }
 
+/* ---------- mcp ---------- */
+
+.mcp-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);
+  gap:14px;
+  margin-top:38px;
+}
+
+.mcp-card{
+  min-width:0;
+  padding:24px;
+  border:1px solid #353535;
+  border-radius:4px;
+  background:#0B0B0B;
+}
+
+.mcp-card h3{
+  margin:0 0 10px;
+  color:var(--text-inverse);
+  font-size:27px;
+  letter-spacing:-.02em;
+}
+
+.mcp-card p{
+  margin:0;
+  color:#BDBDB5;
+  font-size:16px;
+}
+
+.mcp-card p + p{
+  margin-top:14px;
+}
+
+.mcp-card code{
+  color:var(--acid-soft);
+}
+
+.mcp-kicker{
+  margin-bottom:10px;
+  color:#8D8D86;
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.mcp-tools{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px;
+  margin-top:20px;
+}
+
+.mcp-tools span{
+  padding:5px 8px;
+  border:1px solid #3A3A3A;
+  border-radius:2px;
+  color:#D7D5CD;
+  font-family:var(--mono);
+  font-size:9px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+.mcp-command{
+  margin:20px 0 0;
+  padding:14px;
+  overflow:auto;
+  border:1px solid #353535;
+  border-radius:3px;
+  color:#EDEBE4;
+  font-size:12px;
+  line-height:1.65;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+.mcp-command .prompt{
+  color:var(--acid-soft);
+}
+
+.mcp-links{
+  display:flex;
+  flex-wrap:wrap;
+  gap:16px;
+  margin-top:20px;
+}
+
+.mcp-command-actions{
+  justify-content:flex-end;
+  margin-top:12px;
+}
+
 /* ---------- footer ---------- */
 
 footer{
@@ -1299,6 +1394,10 @@ footer a:hover{
   .pi-branch + .pi-branch{
     border-left:0;
     border-top:1px solid var(--border);
+  }
+
+  .mcp-grid{
+    grid-template-columns:1fr;
   }
 }
 
@@ -1726,6 +1825,7 @@ footer a:hover{
       <a href="#what" data-section-link="what">What</a>
       <a href="#interop" data-section-link="interop">Interop</a>
       <a href="#pi" data-section-link="pi">Pi</a>
+      <a href="#mcp" data-section-link="mcp">MCP</a>
       <a href="https://github.com/iamaamir/system-one">GitHub</a>
     </nav>
   </div>
@@ -2100,6 +2200,62 @@ footer a:hover{
   </div>
 </section>
 
+<!-- MCP -->
+<hr style="border:0;border-top:1px solid var(--border);margin:0">
+<div class="dark" id="mcp">
+  <div class="wrap"><p class="sec-label">04 / MCP — One local tool</p></div>
+
+  <section class="block reveal-section" aria-labelledby="mcp-title">
+    <div class="wrap">
+      <h2 class="big" id="mcp-title">System One<br>where agents work.</h2>
+
+      <p class="lede">
+        <code>@system_one/mcp</code> is a local STDIO, provider-neutral adapter.
+        It exposes exactly one read-only <code>system_one</code> tool to Codex CLI,
+        Claude Code, and ChatGPT desktop, then sends each call to your compatible
+        <code>/v1/systemone</code> provider.
+      </p>
+
+      <div class="mcp-grid">
+        <article class="mcp-card">
+          <div class="mcp-kicker">one adapter / three hosts</div>
+          <h3>One tool. Your provider.</h3>
+          <p>
+            The MCP process stays local and forwards requests through
+            <code>system-one-core</code>. It is a transport adapter, with no hosted
+            service or second decision layer.
+          </p>
+          <div class="mcp-tools" aria-label="MCP clients and tool">
+            <span>Codex CLI</span>
+            <span>Claude Code</span>
+            <span>ChatGPT desktop</span>
+            <span>system_one / read-only</span>
+          </div>
+          <div class="mcp-links">
+            <a class="micro-link dark-link" href="https://www.npmjs.com/package/@system_one/mcp">NPM PACKAGE <span aria-hidden="true">↗</span></a>
+            <a class="micro-link dark-link" href="https://github.com/iamaamir/system-one/tree/main/%40system_one/mcp">SOURCE <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+
+        <article class="mcp-card">
+          <div class="mcp-kicker">setup / codex cli</div>
+          <h3>Register locally.</h3>
+          <p>Export the endpoint and key, then register the prerelease command.</p>
+          <pre class="mcp-command"><span class="prompt">$</span> export SYSTEM_ONE_BASE_URL="https://your-system-one.example.com"
+<span class="prompt">$</span> export SYSTEM_ONE_API_KEY="your-api-key"
+<span class="prompt">$</span> codex mcp add \
+  --env "SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}" \
+  --env "SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}" \
+  system-one -- npx -y @system_one/mcp@next</pre>
+          <div class="install-row-actions mcp-command-actions">
+            <button type="button" class="install-copy" aria-label="Copy Codex CLI MCP registration command" data-copy="codex mcp add --env &quot;SYSTEM_ONE_BASE_URL=${SYSTEM_ONE_BASE_URL}&quot; --env &quot;SYSTEM_ONE_API_KEY=${SYSTEM_ONE_API_KEY}&quot; system-one -- npx -y @system_one/mcp@next">COPY</button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+</div>
+
 </main>
 
 <footer>
@@ -2293,7 +2449,8 @@ footer a:hover{
     { id:"hero", label:"S1 / RUNTIME" },
     { id:"what", label:"S1 / WHAT" },
     { id:"interop", label:"S1 / INTEROP" },
-    { id:"pi", label:"S1 / PI" }
+    { id:"pi", label:"S1 / PI" },
+    { id:"mcp", label:"S1 / MCP" }
   ];
 
   function setHeaderSection(id,label){
