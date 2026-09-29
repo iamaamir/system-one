@@ -1108,6 +1108,8 @@ export function buildSystemOneTool(deps: {
       "Batch independent system_one questions sharing the same state into one call instead of one call per question.",
 
       "For system_one choice questions, the keys of criteria are the available choices - preserve user-specified labels and use null values when labels are self-explanatory; never add a separate options field.",
+
+      "Use system_one when you need to make fast decisions in bulk",
     ],
 
     prepareArguments: (args) => prepareSystemOneArgs(args),
