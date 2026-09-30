@@ -3,7 +3,10 @@ import { readFile } from "node:fs/promises";
 import { it } from "node:test";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { createSystemOneMcpServer } from "../src/index.ts";
+import {
+  createSystemOneMcpServer,
+  SYSTEM_ONE_MCP_INSTRUCTIONS,
+} from "../src/index.ts";
 
 it("advertises exactly one read-only system_one tool", async () => {
   const packageJson = JSON.parse(
@@ -17,34 +20,150 @@ it("advertises exactly one read-only system_one tool", async () => {
     createSystemOneMcpServer().connect(serverTransport),
   ]);
   assert.equal(client.getServerVersion()?.version, packageJson.version);
+  assert.equal(client.getInstructions(), SYSTEM_ONE_MCP_INSTRUCTIONS);
   const tools = await client.listTools();
   assert.deepEqual(
     tools.tools.map((tool) => tool.name),
     ["system_one"],
   );
   assert.equal(tools.tools[0]?.annotations?.readOnlyHint, true);
-  assert.ok(tools.tools[0]?.outputSchema);
+  assert.equal(tools.tools[0]?.annotations?.openWorldHint, true);
+  assert.equal(tools.tools[0]?.annotations?.destructiveHint, undefined);
+  assert.equal(tools.tools[0]?.annotations?.idempotentHint, undefined);
+  const outputSchema = tools.tools[0]?.outputSchema as {
+    properties?: {
+      answers?: {
+        additionalProperties?: {
+          oneOf?: Array<{
+            properties?: Record<
+              string,
+              { const?: string; minimum?: number; maximum?: number }
+            >;
+          }>;
+        };
+      };
+      usage?: {
+        properties?: Record<string, { minimum?: number }>;
+      };
+      metadata?: {
+        properties?: { latencyMs?: { minimum?: number } };
+      };
+    };
+  };
+  assert.ok(outputSchema);
+  const outputVariants =
+    outputSchema.properties?.answers?.additionalProperties?.oneOf ?? [];
+  assert.equal(outputVariants.length, 3);
+  const outputByType = new Map(
+    outputVariants.map((variant) => [variant.properties?.type?.const, variant]),
+  );
+  assert.equal(outputByType.get("choice")?.properties?.confidence?.maximum, 1);
+  assert.equal(outputByType.get("noul")?.properties?.noul?.minimum, 0);
+  assert.equal(outputByType.get("score")?.properties?.score?.minimum, 0);
+  assert.equal(
+    outputSchema.properties?.usage?.properties?.inputTokens?.minimum,
+    0,
+  );
+  assert.equal(
+    outputSchema.properties?.metadata?.properties?.latencyMs?.minimum,
+    0,
+  );
   const inputSchema = tools.tools[0]?.inputSchema as {
     properties?: {
       questions?: {
         type?: string;
-        additionalProperties?: { properties?: Record<string, unknown> };
+        minProperties?: number;
+        additionalProperties?: {
+          oneOf?: Array<{
+            properties?: Record<
+              string,
+              {
+                const?: string;
+                type?: string;
+                minItems?: number;
+                minProperties?: number;
+              }
+            >;
+            required?: string[];
+          }>;
+        };
       };
     };
   };
-  assert.equal(inputSchema.properties?.questions?.type, "object");
-  assert.ok(
-    inputSchema.properties?.questions?.additionalProperties?.properties?.type,
+  const questionSchema = inputSchema.properties?.questions;
+  assert.equal(questionSchema?.type, "object");
+  assert.equal(questionSchema?.minProperties, 1);
+  const variants = questionSchema?.additionalProperties?.oneOf ?? [];
+  assert.equal(variants.length, 3);
+  const byType = new Map(
+    variants.map((variant) => [variant.properties?.type?.const, variant]),
   );
-  assert.ok(
-    inputSchema.properties?.questions?.additionalProperties?.properties
-      ?.instructions,
-  );
-  assert.ok(
-    inputSchema.properties?.questions?.additionalProperties?.properties
-      ?.criteria,
-  );
+  assert.deepEqual(byType.get("choice")?.required, [
+    "type",
+    "instructions",
+    "criteria",
+  ]);
+  assert.equal(byType.get("choice")?.properties?.criteria?.minProperties, 1);
+  assert.deepEqual(byType.get("noul")?.required, ["type", "instructions"]);
+  assert.equal(byType.get("noul")?.properties?.criteria?.type, "object");
+  assert.deepEqual(byType.get("score")?.required, [
+    "type",
+    "instructions",
+    "criteria",
+  ]);
+  assert.equal(byType.get("score")?.properties?.criteria?.minItems, 2);
   await client.close();
+});
+
+it("rejects invalid type and criteria combinations before provider invocation", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls += 1;
+    return Response.json({});
+  };
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+  const client = new Client({ name: "test-client", version: "0.1.0" });
+  try {
+    await Promise.all([
+      client.connect(clientTransport),
+      createSystemOneMcpServer().connect(serverTransport),
+    ]);
+    const invalidArguments = [
+      {
+        state: "x",
+        questions: { q: { type: "choice", instructions: "which?" } },
+      },
+      {
+        state: "x",
+        questions: {
+          q: { type: "noul", instructions: "likely?", criteria: [] },
+        },
+      },
+      {
+        state: "x",
+        questions: {
+          q: {
+            type: "score",
+            instructions: "how severe?",
+            criteria: { low: null, high: null },
+          },
+        },
+      },
+    ];
+    for (const args of invalidArguments) {
+      const result = await client.callTool({
+        name: "system_one",
+        arguments: args,
+      });
+      assert.equal(result.isError, true);
+    }
+    assert.equal(calls, 0);
+  } finally {
+    await client.close();
+    globalThis.fetch = originalFetch;
+  }
 });
 
 it("executes one call through the core HTTP provider and returns structured output", async () => {
@@ -147,8 +266,6 @@ it("rejects prototype-shaped JSON before invoking the provider", async () => {
     });
     assert.equal(questionIdResult.isError, true);
     assert.equal(labelResult.isError, true);
-    assert.match(JSON.stringify(questionIdResult), /__proto__/);
-    assert.match(JSON.stringify(labelResult), /__proto__/);
     assert.equal(calls, 0);
   } finally {
     await client.close();

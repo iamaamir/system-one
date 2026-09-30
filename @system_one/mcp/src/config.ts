@@ -13,13 +13,14 @@ export interface SystemOneMcpConfig {
 }
 
 export const DEFAULT_TIMEOUT_MS = 10_000;
+export const MAX_TIMEOUT_MS = 120_000;
 
 function isLoopback(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
   return host === "localhost" || host === "127.0.0.1" || host === "::1";
 }
 
-export function validateBaseUrl(value: string, apiKey?: string): string {
+export function validateBaseUrl(value: string): string {
   if (!value || /[\s\\]/.test(value))
     throw new Error(
       "SYSTEM_ONE_BASE_URL must not contain whitespace or backslashes",
@@ -36,9 +37,9 @@ export function validateBaseUrl(value: string, apiKey?: string): string {
     throw new Error(
       "SYSTEM_ONE_BASE_URL must not contain credentials, query, or fragment",
     );
-  if (apiKey && url.protocol !== "https:" && !isLoopback(url.hostname))
+  if (url.protocol === "http:" && !isLoopback(url.hostname))
     throw new Error(
-      "SYSTEM_ONE_API_KEY requires HTTPS except for loopback endpoints",
+      "SYSTEM_ONE_BASE_URL must use HTTPS for non-loopback endpoints",
     );
   return value.replace(/\/$/, "");
 }
@@ -52,10 +53,14 @@ export function loadSystemOneConfig(
   const timeoutMs = env.SYSTEM_ONE_TIMEOUT_MS
     ? Number(env.SYSTEM_ONE_TIMEOUT_MS)
     : DEFAULT_TIMEOUT_MS;
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
-    throw new Error("SYSTEM_ONE_TIMEOUT_MS must be a positive number");
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0)
+    throw new Error("SYSTEM_ONE_TIMEOUT_MS must be a positive safe integer");
+  if (timeoutMs > MAX_TIMEOUT_MS)
+    throw new Error(
+      `SYSTEM_ONE_TIMEOUT_MS must be at most ${MAX_TIMEOUT_MS} milliseconds`,
+    );
   return {
-    baseUrl: validateBaseUrl(env.SYSTEM_ONE_BASE_URL, apiKey),
+    baseUrl: validateBaseUrl(env.SYSTEM_ONE_BASE_URL),
     apiKey,
     model: env.SYSTEM_ONE_MODEL || undefined,
     timeoutMs,

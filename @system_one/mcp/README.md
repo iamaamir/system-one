@@ -10,12 +10,13 @@ This prerelease is published under the `next` dist-tag, so use
 `@system_one/mcp@next` in registration commands until the stable release. After
 the stable release, the unversioned `@system_one/mcp` package command will apply.
 
-The examples below use shell variables so you do not type the API key literally
-into the registration command. Set the required base URL and key:
+The examples below use shell variables so you do not type secrets literally
+into registration commands. `SYSTEM_ONE_BASE_URL` is required. Set
+`SYSTEM_ONE_API_KEY` only when configured provider requires authentication:
 
 ```bash
 export SYSTEM_ONE_BASE_URL="https://your-system-one.example.com"
-export SYSTEM_ONE_API_KEY="your-api-key"
+# export SYSTEM_ONE_API_KEY="your-api-key"
 ```
 
 `codex mcp add` and `claude mcp add` store the resolved environment values in
@@ -88,14 +89,9 @@ server with command `npx`, arguments `-y @system_one/mcp@next`, and
 `SYSTEM_ONE_TIMEOUT_MS` when needed, then restart the app. There is no CLI
 registration command for the desktop app.
 
-The package includes `skills/system-one/SKILL.md`. For Codex CLI discovery,
-copy that file into the project's `.agents/skills/system-one/SKILL.md` (or the
-user-level `$CODEX_HOME/skills/system-one/SKILL.md`). ChatGPT desktop discovers the tool from
-the MCP registration and its tool description; restart after changing either
-configuration.
-
-To manually bootstrap the first prerelease, run `npm publish --access public
---tag next` from this scoped workspace directory.
+The package includes `skills/system-one/SKILL.md` as optional Codex-specific
+guidance. Standard MCP clients discover essential usage policy from the server
+instructions and tool description.
 
 Once connected, a minimal call is:
 

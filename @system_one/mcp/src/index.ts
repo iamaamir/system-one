@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -10,11 +10,22 @@ import {
   systemOneOutputSchema,
 } from "./tool.ts";
 
+const packageJson = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
+export const SYSTEM_ONE_MCP_VERSION = packageJson.version;
+export const SYSTEM_ONE_MCP_INSTRUCTIONS =
+  "Use system_one for bounded judgments over evidence already available: choose among named options, estimate a yes/no likelihood, or score against an ordered rubric. Retrieve missing factual evidence before calling it. Do not use System One for factual recall, browsing, open-ended generation, or authorization to perform an action. Batch questions that share state into one call.";
+
 export function createSystemOneMcpServer(): McpServer {
-  const server = new McpServer({
-    name: "systemone-mcp",
-    version: "0.1.0-rc.3",
-  });
+  const server = new McpServer(
+    {
+      name: "systemone-mcp",
+      version: SYSTEM_ONE_MCP_VERSION,
+    },
+    { instructions: SYSTEM_ONE_MCP_INSTRUCTIONS },
+  );
   server.registerTool(
     "system_one",
     {
@@ -23,8 +34,7 @@ export function createSystemOneMcpServer(): McpServer {
       outputSchema: systemOneOutputSchema,
       annotations: {
         readOnlyHint: true,
-        destructiveHint: false,
-        idempotentHint: true,
+        openWorldHint: true,
       },
     },
     async (args, extra) => {

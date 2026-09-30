@@ -57,9 +57,20 @@ describe("npm package metadata", () => {
         ["-xOf", join(destination, filename), "package/package.json"],
         { encoding: "utf8" },
       );
-      assert.deepEqual(JSON.parse(packedManifest).bin, {
+      const packedJson = JSON.parse(packedManifest) as {
+        bin: Record<string, string>;
+        engines?: { node?: string };
+      };
+      assert.deepEqual(packedJson.bin, {
         "systemone-mcp": "dist/index.js",
       });
+      assert.equal(packedJson.engines?.node, ">=18");
+      const packedLicense = execFileSync(
+        "tar",
+        ["-xOf", join(destination, filename), "package/LICENSE"],
+        { encoding: "utf8" },
+      );
+      assert.match(packedLicense, /MIT License/);
     } finally {
       rmSync(cache, { recursive: true, force: true });
       rmSync(destination, { recursive: true, force: true });

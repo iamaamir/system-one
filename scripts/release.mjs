@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import * as readline from "node:readline";
 import { fileURLToPath } from "node:url";
+import { inc, prerelease, valid } from "semver";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -27,10 +28,12 @@ const PKGS = [
 ];
 
 function usage() {
-  console.log(`usage: release.mjs [--major|--minor|--patch] [pkg...] [--publish] [--dry-run]
+  console.log(`usage: release.mjs [--major|--minor|--patch|--prerelease|--stable] [pkg...] [--publish] [--dry-run]
   run bare for fully interactive: pick packages, bump type, then dry-run or publish.
   flags preselect steps (useful non-interactively); omitted steps prompt.
-  one bump type applies uniformly to all selected packages.
+  one release mode applies uniformly to all selected packages.
+  --prerelease: increment prerelease identifier, or start next patch prerelease.
+  --stable: promote an existing prerelease to its stable version.
   pkg: system-one-core, pi-system-one, @system_one/mcp
   --publish: push main + created tags (triggers Release workflow)
   --dry-run: print plan, change nothing (mutually exclusive with --publish)`);
@@ -44,7 +47,13 @@ function parseArgs(argv) {
     else if (a === "--help" || a === "-h") {
       usage();
       process.exit(0);
-    } else if (a === "--minor" || a === "--patch" || a === "--major") {
+    } else if (
+      a === "--minor" ||
+      a === "--patch" ||
+      a === "--major" ||
+      a === "--prerelease" ||
+      a === "--stable"
+    ) {
       if (args.bump) {
         console.error("only one bump type allowed");
         process.exit(1);
@@ -68,15 +77,27 @@ function sh(cmd, opts = {}) {
   }
 }
 
-function bumpVersion(version, type) {
-  const parts = version.split(".").map(Number);
-  if (parts.length !== 3 || parts.some((n) => !Number.isInteger(n) || n < 0)) {
-    throw new Error(`not a semver version: ${version}`);
+function bumpVersion(version, mode) {
+  if (!valid(version)) throw new Error(`not a semver version: ${version}`);
+  const currentPrerelease = prerelease(version);
+  if (currentPrerelease && mode !== "prerelease" && mode !== "stable") {
+    throw new Error(
+      `${version} is a prerelease; use --prerelease to increment it or --stable to promote it`,
+    );
   }
-  const [maj, min, pat] = parts;
-  if (type === "major") return `${maj + 1}.0.0`;
-  if (type === "minor") return `${maj}.${min + 1}.0`;
-  return `${maj}.${min}.${pat + 1}`;
+  if (mode === "stable") {
+    if (!currentPrerelease)
+      throw new Error(
+        `${version} is already stable; --stable requires a prerelease`,
+      );
+    const promoted = inc(version, "patch");
+    if (!promoted || prerelease(promoted))
+      throw new Error(`could not promote prerelease: ${version}`);
+    return promoted;
+  }
+  const next = inc(version, mode === "prerelease" ? "prerelease" : mode);
+  if (!next) throw new Error(`could not bump semver version: ${version}`);
+  return next;
 }
 
 function getDepRange(current, newVersion) {
@@ -162,16 +183,28 @@ async function main() {
     requireTTY("bump type");
     const { json } = readPkg(selected[0].dir);
     console.log(`\nBump type for ${selected.map((p) => p.name).join(", ")}:\n`);
-    for (const [i, t] of ["patch", "minor", "major"].entries()) {
-      const preview =
-        selected.length === 1
-          ? ` (${json.version} -> ${bumpVersion(json.version, t)})`
-          : "";
+    for (const [i, t] of [
+      "patch",
+      "minor",
+      "major",
+      "prerelease",
+      "stable",
+    ].entries()) {
+      let preview = "";
+      if (selected.length === 1) {
+        try {
+          preview = ` (${json.version} -> ${bumpVersion(json.version, t)})`;
+        } catch {
+          preview = " (unavailable for current version)";
+        }
+      }
       console.log(`  ${i + 1}. ${t}${preview}`);
     }
     console.log();
     const answer = await ask("> ");
-    bump = ["patch", "minor", "major"][Number.parseInt(answer, 10) - 1];
+    bump = ["patch", "minor", "major", "prerelease", "stable"][
+      Number.parseInt(answer, 10) - 1
+    ];
     if (!bump) {
       console.error("invalid bump type");
       process.exit(1);
@@ -216,6 +249,20 @@ async function main() {
       process.exit(1);
     }
   }
+  // A core major exiles dependents: release every workspace whose range would
+  // otherwise remain pointed at the old major.
+  const coreBump = plan.find((b) => b.name === "system-one-core");
+  const coreDependents = ["pi-system-one", "@system_one/mcp"];
+  const missingCoreDependents = coreDependents.filter(
+    (name) => !plan.some((b) => b.name === name),
+  );
+  if (coreBump && bump === "major" && missingCoreDependents.length > 0) {
+    console.error(
+      `core major bump requires ${coreDependents.join(" and ")} in the same release (their dependency ranges would be orphaned)`,
+    );
+    process.exit(1);
+  }
+
   console.log(`\nRelease: bump ${bump}`);
   for (const b of plan)
     console.log(`  ${b.name}: ${b.oldVersion} -> ${b.newVersion}`);
@@ -234,24 +281,11 @@ async function main() {
   sh("npm run lint", { stdio: "inherit" });
   sh("npm test", { stdio: "inherit" });
 
-  // A core major exiles dependents: refuse unless pi rides along.
-  const coreBump = plan.find((b) => b.name === "system-one-core");
-  if (
-    coreBump &&
-    bump === "major" &&
-    !plan.some((b) => b.name === "pi-system-one")
-  ) {
-    console.error(
-      "core major bump requires pi-system-one in the same release (its dependency range would be orphaned)",
-    );
-    process.exit(1);
-  }
-
   for (const b of plan) {
     const { path: pkgPath, json } = readPkg(b.dir);
     json.version = b.newVersion;
     // Keep dependent workspace ranges pointed at the bumped core.
-    if (b.name === "pi-system-one") {
+    if (b.name === "pi-system-one" || b.name === "@system_one/mcp") {
       const core = plan.find((x) => x.name === "system-one-core");
       if (core && json.dependencies?.["system-one-core"]) {
         json.dependencies["system-one-core"] = getDepRange(
@@ -269,6 +303,20 @@ async function main() {
   sh(
     "npm install --package-lock-only --offline || npm install --package-lock-only",
   );
+
+  // Build after version changes and compare advertised server version before
+  // creating commit/tag. Prevent mismatch discovered only after push.
+  if (plan.some((b) => b.name === "@system_one/mcp")) {
+    sh("npm run build --workspace @system_one/mcp", { stdio: "inherit" });
+    const advertised = sh(
+      "node --input-type=module -e \"import('./@system_one/mcp/dist/index.js').then(({ SYSTEM_ONE_MCP_VERSION }) => process.stdout.write(SYSTEM_ONE_MCP_VERSION))\"",
+    );
+    const expected = plan.find((b) => b.name === "@system_one/mcp")?.newVersion;
+    if (advertised !== expected)
+      throw new Error(
+        `MCP server version ${advertised} does not match package version ${expected}`,
+      );
+  }
 
   // One commit for all bumps: lockfile and package.jsons stay consistent.
   for (const b of plan) sh(`git add ${b.dir}/package.json`);

@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { z } from "zod";
 import { evaluateSystemOne, systemOneInputSchema } from "../src/tool.ts";
 
 it("accepts the canonical mixed request and rejects extra fields", () => {
-  const schema = z.object(systemOneInputSchema).strict();
+  const schema = systemOneInputSchema;
   assert.equal(
     schema.safeParse({
       state: { diff: "x" },
@@ -30,16 +29,48 @@ it("accepts the canonical mixed request and rejects extra fields", () => {
   );
 });
 
-it("rejects prototype-shaped question ids and criteria labels without dropping them", async () => {
-  const schema = z.object(systemOneInputSchema).strict();
+it("allows constructor and prototype labels but rejects __proto__", async () => {
+  const schema = systemOneInputSchema;
   const questionIdRequest = JSON.parse(
     '{"state":"x","questions":{"__proto__":{"type":"noul","instructions":"is it?"}}}',
   ) as unknown;
   const labelRequest = JSON.parse(
     '{"state":"x","questions":{"q":{"type":"choice","instructions":"which?","criteria":{"__proto__":null,"safe":null}}}}',
   ) as unknown;
-  assert.equal(schema.safeParse(questionIdRequest).success, false);
-  assert.equal(schema.safeParse(labelRequest).success, false);
+  assert.throws(
+    () => schema.safeParse(questionIdRequest),
+    /question id "__proto__" is not allowed/,
+  );
+  assert.throws(
+    () => schema.safeParse(labelRequest),
+    /criteria label "__proto__" is not allowed/,
+  );
+  for (const questionId of ["constructor", "prototype"]) {
+    assert.equal(
+      schema.safeParse({
+        state: "x",
+        questions: {
+          [questionId]: { type: "noul", instructions: "is it?" },
+        },
+      }).success,
+      true,
+    );
+  }
+  for (const label of ["constructor", "prototype"]) {
+    assert.equal(
+      schema.safeParse({
+        state: "x",
+        questions: {
+          q: {
+            type: "choice",
+            instructions: "which?",
+            criteria: { [label]: null },
+          },
+        },
+      }).success,
+      true,
+    );
+  }
   await assert.rejects(
     evaluateSystemOne(questionIdRequest),
     /question id "__proto__" is not allowed/,
@@ -51,7 +82,7 @@ it("rejects prototype-shaped question ids and criteria labels without dropping t
 });
 
 it("accepts JSON object and array instructions", () => {
-  const schema = z.object(systemOneInputSchema).strict();
+  const schema = systemOneInputSchema;
   assert.equal(
     schema.safeParse({
       state: "x",

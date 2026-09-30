@@ -4,6 +4,9 @@
   "description": "Provider-neutral System One tool for local MCP hosts",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/iamaamir/system-one.git",

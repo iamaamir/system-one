@@ -22,7 +22,45 @@ permissions:
   contents: read
   id-token: write
 jobs:
+  # Existing packages do not use MCP-specific environment protections.
   publish:
+    if: startsWith(github.ref_name, 'system-one-core@') || startsWith(github.ref_name, 'pi-system-one@')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      # NOTE: npm caching is disabled for releases (fresh resolve every time).
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm ci
+      - run: npm run build --workspace system-one-core
+      - run: npm run typecheck
+      - run: npm run lint
+      - id: pkg
+        env:
+          TAG_DIR: ${{ github.ref_name }}
+        run: |
+          TAG="${TAG_DIR%@*}"
+          VERSION="${TAG_DIR##*@}"
+          test "$TAG" = "@system_one/mcp" || test "$TAG" = "system-one-core" || test "$TAG" = "pi-system-one" \
+            || { echo "unsupported package tag: $TAG_DIR"; exit 1; }
+          DIST_TAG="latest"
+          case "$VERSION" in
+            *-*) DIST_TAG="next" ;;
+          esac
+          echo "name=$TAG" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          test "$(TAG_DIR="$TAG" node -p "require('./' + process.env.TAG_DIR + '/package.json').version")" = "$VERSION" \
+            || { echo "tag/version mismatch"; exit 1; }
+      - run: npm test
+      - run: npm publish --workspace "${{ steps.pkg.outputs.name }}" --access public --tag "${{ steps.pkg.outputs.dist_tag }}"
+
+  # MCP trusted publishing may require MCP environment approval; isolate it
+  # from core and Pi releases while preserving identical publish steps.
+  publish-mcp:
+    if: startsWith(github.ref_name, '@system_one/mcp@')
     runs-on: ubuntu-latest
     environment: MCP
     steps:

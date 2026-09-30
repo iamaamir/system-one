@@ -19,7 +19,7 @@ const jsonValue: z.ZodType = z.lazy(() =>
   ]),
 );
 
-const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const UNSAFE_KEYS = new Set(["__proto__"]);
 
 function inspectUnsafeQuestionMap(
   value: unknown,
@@ -52,103 +52,106 @@ function inspectUnsafeQuestionMap(
   }
 }
 
-function rejectUnsafeQuestionMap(value: unknown): void {
+const criteriaObject = z.record(z.string(), jsonValue);
+const nonEmptyCriteriaObject = criteriaObject
+  .check(z.minSize(1))
+  .meta({ minProperties: 1 });
+
+const choiceQuestion = z
+  .object({
+    type: z.literal("choice"),
+    instructions: jsonValue,
+    criteria: nonEmptyCriteriaObject,
+  })
+  .strict();
+const noulQuestion = z
+  .object({
+    type: z.literal("noul"),
+    instructions: jsonValue,
+    criteria: criteriaObject.optional(),
+  })
+  .strict();
+const scoreQuestion = z
+  .object({
+    type: z.literal("score"),
+    instructions: jsonValue,
+    criteria: z.array(jsonValue).min(2),
+  })
+  .strict();
+const question = z.discriminatedUnion("type", [
+  choiceQuestion,
+  noulQuestion,
+  scoreQuestion,
+]);
+const questions = z
+  .record(z.string(), question)
+  .refine(
+    (value) => Object.keys(value).length > 0,
+    "at least one question is required",
+  )
+  .meta({ minProperties: 1 });
+
+const protectedQuestions = z.preprocess((value) => {
   inspectUnsafeQuestionMap(value, (message) => {
     throw new Error(message);
   });
-}
+  return value;
+}, questions);
 
-const question = z
+export const systemOneInputSchema = z
   .object({
-    type: z.enum(["choice", "noul", "score"]),
-    instructions: jsonValue,
-    criteria: z
-      .union([z.record(z.string(), z.unknown()), z.array(z.unknown()).min(2)])
-      .optional(),
+    state: z.unknown(),
+    questions: protectedQuestions,
   })
   .strict();
 
-export const systemOneInputSchema = {
-  state: z.unknown(),
-  questions: z.preprocess(
-    (value, ctx) => {
-      inspectUnsafeQuestionMap(value, (message) => {
-        ctx.addIssue({ code: "custom", message });
-      });
-      return value;
-    },
-    z
-      .record(z.string(), question)
-      .refine(
-        (value) => Object.keys(value).length > 0,
-        "at least one question is required",
-      ),
-  ),
-};
-
 export const systemOneDescription =
-  "Evaluate bounded choice, yes/no likelihood, or ordered rubric questions over supplied state using the configured System One provider.";
+  "Use for bounded judgments over evidence already available: choose among named options, estimate a yes/no likelihood, or score against an ordered rubric. Retrieve missing factual evidence first. Do not use for factual recall, browsing, open-ended generation, or authorization to perform an action. Batch questions that share state.";
 
-export const systemOneOutputSchema = {
+const probability = z.number().min(0).max(1);
+const answer = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("choice"),
+    choice: z.string(),
+    probabilities: z.record(z.string(), probability),
+    confidence: probability,
+  }),
+  z.object({
+    type: z.literal("noul"),
+    noul: probability,
+  }),
+  z.object({
+    type: z.literal("score"),
+    score: z.number().nonnegative(),
+    probabilities: z.record(z.string(), probability),
+    legend: z.record(z.string(), jsonValue),
+    confidence: probability,
+  }),
+]);
+
+export const systemOneOutputSchema = z.object({
   model: z.string().optional(),
-  answers: z.record(z.string(), z.unknown()),
+  answers: z.record(z.string(), answer),
   usage: z
     .object({
-      inputTokens: z.number().optional(),
-      outputTokens: z.number().optional(),
+      inputTokens: z.number().nonnegative().optional(),
+      outputTokens: z.number().nonnegative().optional(),
     })
+    .strict()
     .optional(),
   requestId: z.string().optional(),
-  metadata: z.object({
-    provider: z.string(),
-    latencyMs: z.number().optional(),
-  }),
-};
-
-function rejectUnsafeQuestionKeys(args: unknown): void {
-  if (typeof args !== "object" || args === null || Array.isArray(args)) return;
-  rejectUnsafeQuestionMap((args as Record<string, unknown>).questions);
-}
-
-function assertQuestions(
-  questions: Record<string, z.infer<typeof question>>,
-): void {
-  for (const [name, value] of Object.entries(questions)) {
-    if (
-      value.type === "choice" &&
-      (!value.criteria ||
-        Array.isArray(value.criteria) ||
-        Object.keys(value.criteria).length === 0)
-    )
-      throw new Error(
-        `choice question "${name}" needs a non-empty criteria object`,
-      );
-    if (
-      value.type === "score" &&
-      (!Array.isArray(value.criteria) || value.criteria.length < 2)
-    )
-      throw new Error(
-        `score question "${name}" needs an ordered criteria array with at least two levels`,
-      );
-    if (
-      value.type === "noul" &&
-      value.criteria !== undefined &&
-      (Array.isArray(value.criteria) ||
-        typeof value.criteria !== "object" ||
-        value.criteria === null)
-    )
-      throw new Error(
-        `noul question "${name}" needs an object criteria or no criteria`,
-      );
-  }
-}
+  metadata: z
+    .object({
+      provider: z.string(),
+      latencyMs: z.number().nonnegative().optional(),
+    })
+    .strict(),
+});
 
 export async function evaluateSystemOne(args: unknown, signal?: AbortSignal) {
-  rejectUnsafeQuestionKeys(args);
-  const parsed = z.object(systemOneInputSchema).strict().safeParse(args);
+  const parsed = systemOneInputSchema.safeParse(args);
   if (!parsed.success)
     throw new Error(`system_one input is invalid: ${parsed.error.message}`);
-  assertQuestions(parsed.data.questions);
   const config = loadSystemOneConfig();
   const provider = new HttpSystemOneProvider({
     baseUrl: config.baseUrl,
