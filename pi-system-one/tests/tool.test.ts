@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { MockSystemOneProvider } from "system-one-core";
 import { Value } from "typebox/value";
+import { executeCodemode } from "../../node_modules/@earendil-works/pi-coding-agent/dist/extensions/codemode/execute.js";
+import { renderSystemOneResult } from "../src/render.ts";
 import {
   buildSystemOneTool,
   prepareSystemOneArgs,
@@ -59,6 +61,164 @@ describe("system_one tool", () => {
     assert.match(text, /"a"/);
     assert.equal((res.details.answers.t as { choice: string }).choice, "a");
   });
+  it("exposes answers as structured output without changing content or details", async () => {
+    const response = {
+      answers: {
+        choice: {
+          type: "choice",
+          choice: "a",
+          probabilities: { a: 0.8, b: 0.2 },
+          confidence: 0.8,
+        },
+        noul: { type: "noul", noul: 0.7 },
+        score: {
+          type: "score",
+          score: 1.5,
+          probabilities: { "0": 0.5, "1": 0.5 },
+          legend: { "0": "low", "1": "high" },
+          confidence: 0.6,
+        },
+      },
+      model: "stub-model",
+      usage: { inputTokens: 5, outputTokens: 2 },
+      requestId: "req-1",
+      metadata: { provider: "stub", latencyMs: 10 },
+    };
+    const tool = buildSystemOneTool({
+      provider: {
+        id: "stub",
+        async evaluate() {
+          return response;
+        },
+      } as never,
+    });
+    const result = await tool.execute(
+      "structured-id",
+      {
+        state: "hi",
+        questions: {
+          choice: {
+            type: "choice",
+            instructions: "Pick",
+            criteria: { a: null, b: null },
+          },
+        },
+      },
+      undefined,
+      undefined,
+      {} as never,
+    );
+    assert.ok(tool.outputSchema);
+    const answerMap = (
+      tool.outputSchema as {
+        properties: { answers: { additionalProperties?: unknown } };
+      }
+    ).properties.answers;
+    assert.ok(
+      answerMap.additionalProperties,
+      "codemode declarations need typed additionalProperties for named answers",
+    );
+    assert.deepEqual(result.structuredContent, response);
+    assert.equal(
+      Value.Check(tool.outputSchema, result.structuredContent),
+      true,
+    );
+    assert.deepEqual(result.details, response);
+    assert.deepEqual(result.content, [
+      { type: "text", text: renderSystemOneResult(response as never, []) },
+    ]);
+
+    const minimal = buildSystemOneTool({
+      provider: {
+        id: "stub",
+        async evaluate() {
+          return {
+            answers: {},
+            model: undefined,
+            requestId: undefined,
+            metadata: { provider: "stub" },
+          };
+        },
+      } as never,
+    });
+    const minimalResult = await minimal.execute(
+      "minimal-id",
+      {
+        state: "hi",
+        questions: { q: { type: "noul", instructions: "Is it?" } },
+      },
+      undefined,
+      undefined,
+      {} as never,
+    );
+    assert.ok(minimal.outputSchema);
+    assert.equal(
+      Value.Check(minimal.outputSchema, minimalResult.structuredContent),
+      true,
+    );
+    assert.equal(
+      Object.hasOwn(minimalResult.structuredContent as object, "model"),
+      false,
+    );
+    assert.equal(
+      Object.hasOwn(minimalResult.structuredContent as object, "requestId"),
+      false,
+    );
+    assert.equal(Object.hasOwn(minimalResult.details, "model"), true);
+    assert.equal(Object.hasOwn(minimalResult.details, "requestId"), true);
+  });
+
+  it("returns answers to a real codemode sandbox script", async () => {
+    const tool = buildSystemOneTool({
+      provider: {
+        id: "stub",
+        async evaluate() {
+          return {
+            answers: { q: { type: "noul", noul: 0.75 } },
+            metadata: { provider: "stub" },
+          };
+        },
+      } as never,
+    });
+    const args = {
+      state: "evidence",
+      questions: { q: { type: "noul", instructions: "Is it?" } },
+    };
+    const result = await executeCodemode(
+      "sandbox-id",
+      {
+        code: `const r = await tools.system_one(${JSON.stringify(args)}); text(r.answers.q.noul);`,
+      },
+      undefined,
+      undefined,
+      {
+        tools: [tool],
+        sessionManager: { getBranch: () => [] },
+        async executeTool(_name: string, input: typeof args) {
+          return {
+            toolCall: { id: "sandbox-id/1" },
+            isError: false,
+            result: await tool.execute(
+              "sandbox-id/1",
+              input,
+              undefined,
+              undefined,
+              {} as never,
+            ),
+          };
+        },
+      } as never,
+    );
+    assert.equal(result.isError, undefined);
+    assert.equal(result.details.calls[0].status, "ok");
+    assert.match(
+      result.content
+        .map((block) => (block.type === "text" ? block.text : ""))
+        .join("\n"),
+      /0\.75/,
+    );
+  });
+
   it("propagates provider errors by throwing (never error-results)", async () => {
     const tool = buildSystemOneTool({
       provider: {
