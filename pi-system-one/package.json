@@ -42,5 +42,8 @@
     "extensions": [
       "./src/extension.ts"
     ]
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.0.1"
   }
 }
