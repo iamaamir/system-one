@@ -81,6 +81,154 @@ describe("validation", () => {
       assert.throws(() => validateResponse(questions, bad, "p"), /protocol/i);
     }
   });
+  it("rejects choice distributions that do not sum to one or contain extra keys", () => {
+    const questions = { c: choice("Which?", { a: null, b: null }) };
+    for (const [probabilities, error] of [
+      [{ a: 0.2, b: 0.2 }, /choice answer "c" probabilities sum to/],
+      [{ a: 0.8, b: 0.8 }, /choice answer "c" probabilities sum to/],
+      [{ a: 0.5, b: 0.5, extra: 0 }, /protocol/i],
+    ] as const) {
+      assert.throws(
+        () =>
+          validateResponse(
+            questions,
+            {
+              answers: {
+                c: {
+                  type: "choice",
+                  choice: "a",
+                  probabilities,
+                  confidence: 0.5,
+                },
+              },
+            },
+            "p",
+          ),
+        error,
+      );
+    }
+  });
+  it("rejects score distributions that do not sum to one", () => {
+    const questions = { s: score("How hard?", ["easy", "hard"]) };
+    for (const probabilities of [
+      { easy: 0.2, hard: 0.2 },
+      { easy: 0.8, hard: 0.8 },
+    ]) {
+      assert.throws(
+        () =>
+          validateResponse(
+            questions,
+            {
+              answers: {
+                s: {
+                  type: "score",
+                  score: 1,
+                  probabilities,
+                  legend: { easy: 0, hard: 1 },
+                  confidence: 0.5,
+                },
+              },
+            },
+            "p",
+          ),
+        /score answer "s" probabilities sum to/,
+      );
+    }
+  });
+  it("accepts rounded choice and score totals within tolerance", () => {
+    const choiceQuestions = { c: choice("Which?", { a: null, b: null }) };
+    const scoreQuestions = { s: score("How hard?", ["easy", "hard"]) };
+    for (const probabilities of [
+      { a: 0.4999995, b: 0.4999995 },
+      { a: 0.5000005, b: 0.5000005 },
+    ]) {
+      assert.doesNotThrow(() =>
+        validateResponse(
+          choiceQuestions,
+          {
+            answers: {
+              c: {
+                type: "choice",
+                choice: "a",
+                probabilities,
+                confidence: 0.5,
+              },
+            },
+          },
+          "p",
+        ),
+      );
+    }
+    for (const probabilities of [
+      { easy: 0.4999995, hard: 0.4999995 },
+      { easy: 0.5000005, hard: 0.5000005 },
+    ]) {
+      assert.doesNotThrow(() =>
+        validateResponse(
+          scoreQuestions,
+          {
+            answers: {
+              s: {
+                type: "score",
+                score: 1,
+                probabilities,
+                legend: { easy: 0, hard: 1 },
+                confidence: 0.5,
+              },
+            },
+          },
+          "p",
+        ),
+      );
+    }
+  });
+  it("requires own choice probability keys and object-map containers", () => {
+    const questions = { c: choice("Which?", { a: null, b: null }) };
+    const inherited = Object.assign(Object.create({ b: 0.5 }), { a: 0.5 });
+    for (const probabilities of [inherited, [0.5, 0.5]]) {
+      assert.throws(
+        () =>
+          validateResponse(
+            questions,
+            {
+              answers: {
+                c: {
+                  type: "choice",
+                  choice: "a",
+                  probabilities,
+                  confidence: 0.5,
+                },
+              },
+            },
+            "p",
+          ),
+        /protocol/i,
+      );
+    }
+  });
+  it("validates prototype-like offered choice keys", () => {
+    const questions = JSON.parse(
+      JSON.stringify({
+        c: choice("Which?", { ["__proto__"]: null, constructor: null }),
+      }),
+    );
+    const raw = JSON.parse(
+      JSON.stringify({
+        answers: {
+          c: {
+            type: "choice",
+            choice: "__proto__",
+            probabilities: { ["__proto__"]: 0.5, constructor: 0.5 },
+            confidence: 0.5,
+          },
+        },
+      }),
+    );
+    assert.equal(
+      (validateResponse(questions, raw, "p").answers.c as any).choice,
+      "__proto__",
+    );
+  });
   it("validates score answers", () => {
     const questions = { s: score("How hard?", ["easy", "hard"]) };
     const raw = {

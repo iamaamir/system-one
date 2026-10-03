@@ -18,6 +18,12 @@ function assertProb(n: unknown, what: string): void {
   if (!isFiniteNum(n) || n < 0 || n > 1)
     throw new SystemOneProtocolError(`invalid probability for ${what}`);
 }
+function assertProbabilityTotal(total: number, answer: string): void {
+  if (Math.abs(total - 1) > 1e-5)
+    throw new SystemOneProtocolError(
+      `${answer} probabilities sum to ${total}, expected 1`,
+    );
+}
 function asCount(n: unknown): number | undefined {
   return typeof n === "number" && Number.isFinite(n) && n >= 0 ? n : undefined;
 }
@@ -85,9 +91,23 @@ export function validateResponse(
       const keys = Object.keys(criteria);
       if (!keys.includes(a.choice))
         throw new SystemOneProtocolError(`unknown choice for ${id}`);
-      if (!a.probabilities || typeof a.probabilities !== "object")
+      if (!isRecord(a.probabilities))
         throw new SystemOneProtocolError(`missing probabilities for ${id}`);
-      for (const k of keys) assertProb(a.probabilities[k], `${id}.${k}`);
+      const probabilityKeys = Object.keys(a.probabilities);
+      const unexpected = probabilityKeys.find((k) => !keys.includes(k));
+      if (unexpected !== undefined)
+        throw new SystemOneProtocolError(
+          `choice answer "${id}" contains unexpected probability key "${unexpected}"`,
+        );
+      let total = 0;
+      for (const k of keys) {
+        const probability = Object.hasOwn(a.probabilities, k)
+          ? a.probabilities[k]
+          : undefined;
+        assertProb(probability, `${id}.${k}`);
+        total += probability;
+      }
+      assertProbabilityTotal(total, `choice answer "${id}"`);
       if (!isFiniteNum(a.confidence) || a.confidence < 0 || a.confidence > 1)
         throw new SystemOneProtocolError(`invalid confidence for ${id}`);
       setOwnAnswer(answers, id, {
@@ -151,7 +171,12 @@ export function validateResponse(
           `score answer "${id}" is missing probability for rubric level "${missing}"`,
         );
       }
-      for (const k of probKeys) assertProb(probs[k], `${id}.${k}`);
+      let total = 0;
+      for (const k of probKeys) {
+        assertProb(probs[k], `${id}.${k}`);
+        total += probs[k] as number;
+      }
+      assertProbabilityTotal(total, `score answer "${id}"`);
       const legendKeys = Object.keys(a.legend as object);
       for (const k of probKeys) {
         if (!Object.hasOwn(a.legend, k))
