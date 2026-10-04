@@ -17,4 +17,4 @@ Monorepo (npm workspaces): `system-one-core` (TS runtime, published) → `pi-sys
 - Golden fixtures (`system-one-core/tests/fixtures/`) are excluded from Biome — never reformat them. `any` in src is an intentional JSON-boundary type (file-level suppressions); `noExplicitAny` is off only in tests.
 - Live contract tests are env-gated (`SYSTEM_ONE_TEST_REFLEX=1`, `SYSTEM_ONE_TEST_TYPESAFE=1`) and skipped otherwise.
 - Pushing `.github/workflows/*` requires a token with `workflow` scope; without it the push is rejected. `release.yml` does tag-triggered OIDC npm publishes (no tokens). Pages serves `docs/` via repo Settings → Pages → Deploy from branch (`main` + `/docs`).
-- Releases: push tag `<name>@<version>` matching that workspace's `package.json`; both packages trust the same `release.yml` on npmjs (trusted publisher per package).
+- Releases: push tag `<name>@<version>` matching that workspace's `package.json` (the MCP tag is `@system_one/mcp@<version>`); both packages trust the same `release.yml` on npmjs (trusted publisher per package).
