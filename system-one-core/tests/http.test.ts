@@ -38,6 +38,27 @@ describe("http provider", () => {
     assert.equal((res.answers.c as any).choice, "a");
     assert.equal(res.metadata.provider, "t");
   });
+  it("appends standard path after a configured base prefix", async () => {
+    let seenUrl = "";
+    const p = new HttpSystemOneProvider({
+      baseUrl: "https://api.example.com/systemone",
+      fetch: (async (url: string) => {
+        seenUrl = url;
+        return new Response(
+          JSON.stringify({ answers: { c: { type: "noul", noul: 0.5 } } }),
+          { status: 200 },
+        );
+      }) as typeof fetch,
+    });
+
+    await p.evaluate({
+      state: {},
+      questions: { c: { type: "noul", instructions: "Is it so?" } },
+    } as never);
+
+    assert.equal(seenUrl, "https://api.example.com/systemone/v1/systemone");
+  });
+
   it("decodes multi-byte characters split across stream chunks", async () => {
     // One-byte chunks split every multi-byte sequence; the decode must
     // reassemble them exactly (locks decode behavior across chunk splits).
