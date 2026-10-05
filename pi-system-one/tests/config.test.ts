@@ -11,6 +11,17 @@ import {
 } from "../src/config.ts";
 
 describe("config", () => {
+  it("native mode ignores HTTP environment key and model", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_API_KEY: "test-env-key", SYSTEM_ONE_MODEL: "other-model" },
+      { mode: "native", model: "stored-model", baseUrl: "http://stale/" },
+    );
+    assert.equal(s.mode, "native");
+    assert.equal(s.current.baseUrl, "");
+    assert.equal(s.current.apiKey, undefined);
+    assert.equal(s.current.model, "jev-latest");
+    assert.match(describeConfig(s), /api key: managed by Pi/);
+  });
   it("defaults to TypeSafe Jev without environment configuration", () => {
     const s = createSessionConfig({});
     assert.equal(s.mode, "typesafe");

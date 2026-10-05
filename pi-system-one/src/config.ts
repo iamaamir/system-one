@@ -69,8 +69,10 @@ export function createSessionConfig(
     ? "custom"
     : (stored.mode ?? "typesafe");
   const baseUrl =
-    env.SYSTEM_ONE_BASE_URL ??
-    (mode === "typesafe" ? TYPESAFE_BASE_URL : (stored.baseUrl ?? ""));
+    mode === "native"
+      ? ""
+      : (env.SYSTEM_ONE_BASE_URL ??
+        (mode === "typesafe" ? TYPESAFE_BASE_URL : (stored.baseUrl ?? "")));
   const rawTimeout = env.SYSTEM_ONE_TIMEOUT_MS
     ? Number(env.SYSTEM_ONE_TIMEOUT_MS)
     : (stored.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -82,15 +84,19 @@ export function createSessionConfig(
       baseUrl,
       // An env key without an env endpoint must not follow a saved custom URL.
       apiKey:
-        stored.mode === "custom" && !env.SYSTEM_ONE_BASE_URL
+        mode === "native" ||
+        (stored.mode === "custom" && !env.SYSTEM_ONE_BASE_URL)
           ? undefined
           : env.SYSTEM_ONE_API_KEY || undefined,
       model:
-        env.SYSTEM_ONE_MODEL ||
-        (env.SYSTEM_ONE_BASE_URL && env.SYSTEM_ONE_BASE_URL !== stored.baseUrl
-          ? undefined
-          : stored.model) ||
-        (mode === "typesafe" ? TYPESAFE_MODEL : undefined),
+        mode === "native"
+          ? TYPESAFE_MODEL
+          : env.SYSTEM_ONE_MODEL ||
+            (env.SYSTEM_ONE_BASE_URL &&
+            env.SYSTEM_ONE_BASE_URL !== stored.baseUrl
+              ? undefined
+              : stored.model) ||
+            (mode === "typesafe" ? TYPESAFE_MODEL : undefined),
       timeoutMs: rawTimeout,
     },
     keyInMemory: false,
@@ -148,11 +154,14 @@ export function applyConfigAnswers(
 /** Human-readable summary. Shows whether a key exists, never the key. */
 export function describeConfig(session: SessionConfig): string {
   const c = session.current;
-  const keyLine = !c.apiKey
-    ? "  api key: absent"
-    : session.keyInMemory
-      ? "  api key: in memory only (gone when the session closes; export SYSTEM_ONE_API_KEY to persist)"
-      : "  api key: from environment";
+  const keyLine =
+    session.mode === "native"
+      ? "  api key: managed by Pi (native classifier)"
+      : !c.apiKey
+        ? "  api key: absent"
+        : session.keyInMemory
+          ? "  api key: in memory only (gone when the session closes; export SYSTEM_ONE_API_KEY to persist)"
+          : "  api key: from environment";
   return [
     "System One:",
     `  mode: ${session.mode}`,

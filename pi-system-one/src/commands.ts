@@ -167,12 +167,8 @@ export function registerSystemOneCommands(
   async function cmdStatus(ctx: ExtensionCommandContext): Promise<void> {
     const session = store.session ?? createSessionConfig();
     let summary = describeConfig(session);
-    if (session.mode === "native") {
-      summary = summary.replace(
-        "api key: absent",
-        "api key: managed by Pi (native classifier)",
-      );
-    } else if (
+    if (
+      session.mode !== "native" &&
       !session.current.apiKey &&
       isTypeSafeEndpoint(session.current.baseUrl)
     ) {

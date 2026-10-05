@@ -289,6 +289,23 @@ describe("so command", () => {
         : undefined,
     );
   });
+  it("native status reports Pi-managed credentials, not unused HTTP environment key", async () => {
+    const { pi, cap } = harness();
+    const store: SessionStore = {
+      session: createSessionConfig(
+        { SYSTEM_ONE_API_KEY: "test-env-key", SYSTEM_ONE_MODEL: "other-model" },
+        { mode: "native" },
+      ),
+    };
+    registerSystemOneCommands(pi, store);
+    await cap.handler?.("status", ctxFor([], cap));
+    assert.match(cap.notices[0], /api key: managed by Pi/);
+    assert.match(cap.notices[0], /model: jev-latest/);
+    assert.doesNotMatch(
+      cap.notices[0],
+      /from environment|test-env-key|other-model/,
+    );
+  });
   it("status shows current config; STATUS routes case-insensitively", async () => {
     const { pi, cap } = harness();
     const store: SessionStore = {
