@@ -64,7 +64,12 @@ export function registerSystemOneCommands(
     if (mode === "typesafe") {
       next.current.baseUrl = TYPESAFE_BASE_URL;
       next.current.model = TYPESAFE_MODEL;
-      next.current.apiKey = undefined;
+      // A key exported for a custom endpoint must not follow a mode switch.
+      next.current.apiKey =
+        !process.env.SYSTEM_ONE_BASE_URL ||
+        isTypeSafeEndpoint(process.env.SYSTEM_ONE_BASE_URL)
+          ? process.env.SYSTEM_ONE_API_KEY || undefined
+          : undefined;
       next.keyInMemory = false;
     } else if (mode === "native") {
       next.current.baseUrl = "";

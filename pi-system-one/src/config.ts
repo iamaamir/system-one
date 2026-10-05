@@ -87,7 +87,9 @@ export function createSessionConfig(
           : env.SYSTEM_ONE_API_KEY || undefined,
       model:
         env.SYSTEM_ONE_MODEL ||
-        stored.model ||
+        (env.SYSTEM_ONE_BASE_URL && env.SYSTEM_ONE_BASE_URL !== stored.baseUrl
+          ? undefined
+          : stored.model) ||
         (mode === "typesafe" ? TYPESAFE_MODEL : undefined),
       timeoutMs: rawTimeout,
     },

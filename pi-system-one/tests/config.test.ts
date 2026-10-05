@@ -28,6 +28,21 @@ describe("config", () => {
     assert.equal(s.current.model, "old");
     assert.equal(s.current.timeoutMs, 5000);
   });
+  it("does not carry a saved model to a different environment endpoint", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_BASE_URL: "http://new/" },
+      { mode: "custom", baseUrl: "http://old/", model: "old-model" },
+    );
+    assert.equal(s.current.model, undefined);
+    assert.equal(s.current.baseUrl, "http://new/");
+  });
+  it("keeps saved model when environment endpoint matches saved endpoint", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_BASE_URL: "http://same/" },
+      { mode: "custom", baseUrl: "http://same/", model: "saved-model" },
+    );
+    assert.equal(s.current.model, "saved-model");
+  });
   it("does not forward an env key to a saved custom URL without an env endpoint", () => {
     const s = createSessionConfig(
       { SYSTEM_ONE_API_KEY: "key-for-other-endpoint" },

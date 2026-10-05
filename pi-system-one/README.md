@@ -74,9 +74,9 @@ For example, a saved custom endpoint looks like this:
 }
 ```
 
-Never store a key in JSON. A key entered into `/so config` stays in this session only. Leave key input blank to keep it; enter `-` to forget it. For custom endpoints, set `SYSTEM_ONE_BASE_URL` with `SYSTEM_ONE_API_KEY` if using environment credentials. An environment key without an environment endpoint never follows a saved custom URL. Native mode supports Choice and Noul but rejects Score questions rather than hide missing probabilities. For full Score results, select `typesafe` or `custom`.
+Never store a key in JSON. A key entered into `/so config` stays in this session only. Leave key input blank to keep it; enter `-` to forget it. For custom endpoints, set `SYSTEM_ONE_BASE_URL` with `SYSTEM_ONE_API_KEY` if using environment credentials. An environment key without an environment endpoint never follows a saved custom URL. Custom URLs saved by `/so config` must be HTTP(S), without URL credentials, query, or fragment; put authentication in the key input or environment instead. Native mode supports Choice and Noul but rejects Score questions rather than hide missing probabilities. For full Score results, select `typesafe` or `custom`.
 
-Environment endpoint and model values override saved settings at startup. An explicit `/so config` choice takes effect immediately in this session. If both are set, the environment endpoint wins again on next startup.
+Environment endpoint and model values override saved settings at startup. A saved model is not reused when an environment endpoint points elsewhere. An explicit `/so config` choice takes effect immediately in this session. If both are set, the environment endpoint wins again on next startup.
 
 ---
 

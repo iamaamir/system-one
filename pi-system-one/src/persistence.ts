@@ -35,6 +35,26 @@ function validate(value: unknown, path: string): StoredConfig {
     throw new Error(
       `Invalid System One settings in ${path}: baseUrl must be a nonempty string`,
     );
+  if (typeof v.baseUrl === "string") {
+    let url: URL;
+    try {
+      url = new URL(v.baseUrl);
+    } catch {
+      throw new Error(
+        `Invalid System One settings in ${path}: baseUrl must be an HTTP(S) URL`,
+      );
+    }
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      throw new Error(
+        `Invalid System One settings in ${path}: baseUrl must be an HTTP(S) URL without credentials, query, or fragment`,
+      );
+  }
   if (v.model !== undefined && (typeof v.model !== "string" || !v.model.trim()))
     throw new Error(
       `Invalid System One settings in ${path}: model must be a nonempty string`,
