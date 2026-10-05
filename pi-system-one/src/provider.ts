@@ -29,6 +29,14 @@ export function isTypeSafeEndpoint(baseUrl: string): boolean {
   }
 }
 
+function nativeFailure(aborted: boolean): Error {
+  return new Error(
+    aborted
+      ? "Pi native classifier request aborted."
+      : "Pi native classifier failed. Check /login typesafe and Pi logs.",
+  );
+}
+
 class PiNativeProvider implements SystemOneProvider {
   readonly id = "pi-native";
   private readonly ctx: ExtensionToolContext;
@@ -98,14 +106,22 @@ class PiNativeProvider implements SystemOneProvider {
       !Array.isArray(request.state)
         ? request.state
         : { state: request.state };
-    const result = await this.ctx.modelRegistry.classify(
-      model,
-      { state, questions } as never,
-      { signal: options?.signal },
-    );
+    let result: Awaited<
+      ReturnType<ExtensionToolContext["modelRegistry"]["classify"]>
+    >;
+    try {
+      result = await this.ctx.modelRegistry.classify(
+        model,
+        { state, questions } as never,
+        { signal: options?.signal },
+      );
+    } catch {
+      // Pi and its provider may include untrusted response bodies in errors.
+      throw nativeFailure(options?.signal?.aborted === true);
+    }
     if (result.stopReason !== "stop")
-      throw new Error(
-        result.errorMessage ?? `Pi classifier ${result.stopReason}`,
+      throw nativeFailure(
+        result.stopReason === "aborted" || options?.signal?.aborted === true,
       );
     const answers: Record<string, unknown> = Object.create(null);
     for (const [id, answer] of Object.entries(result.answers))

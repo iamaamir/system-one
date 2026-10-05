@@ -92,9 +92,11 @@ export function registerSystemOneCommands(
         ctx.ui.notify("Cancelled (base URL is required).", "info");
         return;
       }
+      const sameEndpoint =
+        current.mode === "custom" && baseUrl === current.current.baseUrl;
       const modelRaw = await ctx.ui.input(
-        `SYSTEM_ONE_MODEL (current: ${current.mode === "custom" ? (current.current.model ?? "server default") : "server default"}):`,
-        current.mode === "custom" ? (current.current.model ?? "") : "",
+        `SYSTEM_ONE_MODEL (current: ${sameEndpoint ? (current.current.model ?? "server default") : "server default"}):`,
+        sameEndpoint ? (current.current.model ?? "") : "",
       );
       if (modelRaw === undefined) {
         ctx.ui.notify("Cancelled.", "info");
@@ -110,17 +112,15 @@ export function registerSystemOneCommands(
       }
       next.current.baseUrl = baseUrl;
       next.current.model =
-        modelRaw.trim() ||
-        (current.mode === "custom" ? current.current.model : undefined);
-      if (baseUrl !== current.current.baseUrl || current.mode !== "custom") {
+        modelRaw.trim() || (sameEndpoint ? current.current.model : undefined);
+      if (!sameEndpoint) {
         // Never carry a key entered for one endpoint to another endpoint.
         next.current.apiKey = undefined;
         next.keyInMemory = false;
       }
       if (apiKeyRaw.trim() === "-") {
         next.current.apiKey =
-          baseUrl === current.current.baseUrl &&
-          process.env.SYSTEM_ONE_BASE_URL === baseUrl
+          sameEndpoint && process.env.SYSTEM_ONE_BASE_URL === baseUrl
             ? process.env.SYSTEM_ONE_API_KEY || undefined
             : undefined;
         next.keyInMemory = false;

@@ -45,11 +45,18 @@ function harness() {
   return { pi: pi as never, cap };
 }
 
-function ctxFor(answers: (string | undefined)[], cap: Captured) {
+function ctxFor(
+  answers: (string | undefined)[],
+  cap: Captured,
+  defaults?: string[],
+) {
   return {
     modelRegistry: { getApiKeyForProvider: async () => undefined },
     ui: {
-      input: async () => answers.shift(),
+      input: async (_prompt: string, initial?: string) => {
+        defaults?.push(initial ?? "");
+        return answers.shift();
+      },
       notify: (msg: string) => {
         cap.notices.push(msg);
       },
@@ -58,6 +65,66 @@ function ctxFor(answers: (string | undefined)[], cap: Captured) {
 }
 
 describe("so command", () => {
+  it("clears prior model on custom endpoint change with blank model", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-model-change-"));
+    const originalFetch = globalThis.fetch;
+    try {
+      const path = join(dir, "pi-system-one.json");
+      const { pi, cap } = harness();
+      const store: SessionStore = {
+        session: createSessionConfig({
+          SYSTEM_ONE_BASE_URL: "http://localhost:8008",
+          SYSTEM_ONE_MODEL: "reflex",
+        }),
+      };
+      registerSystemOneCommands(pi, store, path);
+      const defaults: string[] = [];
+      await cap.handler?.(
+        "config custom",
+        ctxFor(["http://localhost:8009", "", ""], cap, defaults),
+      );
+      assert.equal(defaults[1], "");
+      assert.equal(store.session?.current.model, undefined);
+      assert.equal(JSON.parse(readFileSync(path, "utf8")).model, undefined);
+      globalThis.fetch = (async (url, options) => {
+        assert.equal(url, "http://localhost:8009/v1/systemone");
+        assert.equal(JSON.parse(String(options?.body)).model, undefined);
+        return new Response(
+          JSON.stringify({ answers: { q: { type: "noul", noul: 0.6 } } }),
+          { status: 200 },
+        );
+      }) as typeof fetch;
+      const session = store.session;
+      assert.ok(session);
+      const provider = await resolveSessionProvider(session, {} as never);
+      await provider.evaluate({
+        state: "x",
+        questions: { q: { type: "noul", instructions: "Yes?" } },
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps model for same custom endpoint and accepts explicit replacement", async () => {
+    const { pi, cap } = harness();
+    const store: SessionStore = {
+      session: createSessionConfig({
+        SYSTEM_ONE_BASE_URL: "http://localhost:8008",
+        SYSTEM_ONE_MODEL: "reflex",
+      }),
+    };
+    registerSystemOneCommands(pi, store);
+    await cap.handler?.("config custom", ctxFor(["", "", ""], cap));
+    assert.equal(store.session?.current.model, "reflex");
+    await cap.handler?.(
+      "config custom",
+      ctxFor(["http://localhost:8009", "replacement", ""], cap),
+    );
+    assert.equal(store.session?.current.model, "replacement");
+  });
+
   it("keeps explicit TypeSafe environment key after selecting TypeSafe", async () => {
     const previousKey = process.env.SYSTEM_ONE_API_KEY;
     const previousUrl = process.env.SYSTEM_ONE_BASE_URL;
