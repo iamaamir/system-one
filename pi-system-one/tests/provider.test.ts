@@ -4,6 +4,102 @@ import { createSessionConfig } from "../src/config.ts";
 import { resolveSessionProvider } from "../src/provider.ts";
 import { buildSystemOneTool } from "../src/tool.ts";
 
+it("rejects malformed successful native probability before tool output", async () => {
+  const session = createSessionConfig({});
+  session.mode = "native";
+  const ctx = {
+    modelRegistry: {
+      findOfType: () => ({ id: "jev-latest" }),
+      classify: async () => ({
+        stopReason: "stop",
+        model: "jev-latest",
+        provider: "typesafe",
+        answers: { q: { type: "bool", probability: 2 } },
+      }),
+    },
+  } as never;
+  const tool = buildSystemOneTool({
+    resolveProvider: () => resolveSessionProvider(session, ctx),
+  });
+  await assert.rejects(
+    tool.execute(
+      "native-invalid",
+      { state: "x", questions: { q: { type: "noul", instructions: "Yes?" } } },
+      undefined,
+      undefined,
+      ctx,
+    ),
+    (error: Error) => {
+      assert.match(error.message, /Pi native classifier failed/);
+      assert.doesNotMatch(error.message, /probability|Bearer/);
+      return true;
+    },
+  );
+});
+
+it("rejects malformed native choice labels, distributions, and missing answers", async () => {
+  const invalidAnswers = [
+    {
+      q: {
+        type: "choice",
+        choice: "unknown",
+        probabilities: { a: 1, b: 0 },
+        confidence: 1,
+      },
+    },
+    {
+      q: {
+        type: "choice",
+        choice: "a",
+        probabilities: { a: 0.8, b: 0.8 },
+        confidence: 1,
+      },
+    },
+    {
+      q: {
+        type: "choice",
+        choice: "a",
+        probabilities: { a: 1, b: 0 },
+        confidence: 2,
+      },
+    },
+    {
+      q: {
+        type: "choice",
+        choice: "a",
+        probabilities: { a: 1 },
+        confidence: 1,
+      },
+    },
+    { q: { type: "bool", probability: 0.5 } },
+    {},
+  ];
+  const session = createSessionConfig({});
+  session.mode = "native";
+  for (const answers of invalidAnswers) {
+    const ctx = {
+      modelRegistry: {
+        findOfType: () => ({ id: "jev-latest" }),
+        classify: async () => ({ stopReason: "stop", answers }),
+      },
+    } as never;
+    const provider = await resolveSessionProvider(session, ctx);
+    await assert.rejects(
+      provider.evaluate({
+        state: "x",
+        questions: {
+          q: {
+            type: "choice",
+            instructions: "Which?",
+            criteria: { a: null, b: null },
+          },
+        },
+      }),
+      /^Error: Pi native classifier failed\./,
+    );
+  }
+});
+
 it("native classifier failure never exposes provider error body through tool", async () => {
   const session = createSessionConfig({});
   session.mode = "native";

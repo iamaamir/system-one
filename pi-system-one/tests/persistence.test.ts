@@ -56,6 +56,24 @@ it("rejects credential-bearing endpoint URLs without persisting them", () => {
   }
 });
 
+it("does not echo unknown JSON field names in diagnostics", () => {
+  const dir = mkdtempSync(join(tmpdir(), "so-config-"));
+  try {
+    const path = join(dir, "pi-system-one.json");
+    writeFileSync(path, JSON.stringify({ "Bearer secret-token": "ignored" }));
+    assert.throws(
+      () => loadStoredConfig(path),
+      (error: Error) => {
+        assert.match(error.message, /unknown field/);
+        assert.doesNotMatch(error.message, /Bearer|secret-token/);
+        return true;
+      },
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 it("rejects malformed settings and refuses stored secrets", () => {
   const dir = mkdtempSync(join(tmpdir(), "so-config-"));
   try {

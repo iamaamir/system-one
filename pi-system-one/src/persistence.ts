@@ -20,9 +20,7 @@ function validate(value: unknown, path: string): StoredConfig {
     );
   for (const key of Object.keys(v)) {
     if (!["mode", "baseUrl", "model", "timeoutMs"].includes(key))
-      throw new Error(
-        `Invalid System One settings in ${path}: unknown field ${key}`,
-      );
+      throw new Error(`Invalid System One settings in ${path}: unknown field`);
   }
   if (v.mode !== undefined && !MODES.includes(v.mode as ConfigMode))
     throw new Error(

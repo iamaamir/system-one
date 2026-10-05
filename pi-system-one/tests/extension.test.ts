@@ -1,7 +1,13 @@
 // pi-system-one/tests/extension.test.ts
 
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -9,8 +15,107 @@ import piSystemOneExtension, {
   systemOnePromptsDir,
   systemOneSkillsDir,
 } from "../src/extension.ts";
+import type { buildSystemOneTool } from "../src/tool.ts";
 
 describe("extension resources", () => {
+  it("startup warning does not echo an untrusted settings field name", () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-extension-warning-"));
+    const previous = process.env.PI_CODING_AGENT_DIR;
+    try {
+      process.env.PI_CODING_AGENT_DIR = dir;
+      writeFileSync(
+        join(dir, "pi-system-one.json"),
+        JSON.stringify({ "Bearer secret-token": "ignored" }),
+      );
+      const handlers: Record<string, (event: never, ctx: never) => void> = {};
+      piSystemOneExtension({
+        registerTool: () => {},
+        registerCommand: () => {},
+        on: (name: string, handler: (event: never, ctx: never) => void) => {
+          handlers[name] = handler;
+        },
+      } as never);
+      let warning = "";
+      handlers.session_start(
+        { reason: "startup" } as never,
+        {
+          ui: {
+            notify: (message: string) => {
+              warning = message;
+            },
+          },
+        } as never,
+      );
+      assert.match(warning, /Ignoring saved settings/);
+      assert.doesNotMatch(warning, /Bearer|secret-token/);
+    } finally {
+      if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("uses the registered tool after switching to native mode and rejects malformed success", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-extension-native-"));
+    const previous = {
+      dir: process.env.PI_CODING_AGENT_DIR,
+      base: process.env.SYSTEM_ONE_BASE_URL,
+    };
+    try {
+      process.env.PI_CODING_AGENT_DIR = dir;
+      delete process.env.SYSTEM_ONE_BASE_URL;
+      let tool: ReturnType<typeof buildSystemOneTool> | undefined;
+      let command: ((args: string, ctx: never) => Promise<void>) | undefined;
+      piSystemOneExtension({
+        registerTool: (value: ReturnType<typeof buildSystemOneTool>) => {
+          tool = value;
+        },
+        registerCommand: (
+          _name: string,
+          options: { handler: typeof command },
+        ) => {
+          command = options.handler;
+        },
+        on: () => {},
+      } as never);
+      await command?.("config native", { ui: { notify: () => {} } } as never);
+      assert.ok(tool);
+      let probability = 0.7;
+      const ctx = {
+        modelRegistry: {
+          findOfType: () => ({ id: "jev-latest" }),
+          classify: async () => ({
+            stopReason: "stop",
+            model: "jev-latest",
+            provider: "typesafe",
+            answers: { q: { type: "bool", probability } },
+          }),
+        },
+      } as never;
+      const args = {
+        state: "x",
+        questions: { q: { type: "noul" as const, instructions: "Yes?" } },
+      };
+      const result = await tool.execute(
+        "native-valid",
+        args,
+        undefined,
+        undefined,
+        ctx,
+      );
+      assert.deepEqual(result.details.answers.q, { type: "noul", noul: 0.7 });
+      probability = 2;
+      await assert.rejects(
+        tool.execute("native-invalid", args, undefined, undefined, ctx),
+        /Pi native classifier failed/,
+      );
+    } finally {
+      if (previous.dir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = previous.dir;
+      if (previous.base === undefined) delete process.env.SYSTEM_ONE_BASE_URL;
+      else process.env.SYSTEM_ONE_BASE_URL = previous.base;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("reloads saved custom config across extension instances", async () => {
     const dir = mkdtempSync(join(tmpdir(), "so-extension-"));
     const prev = {

@@ -6,6 +6,7 @@ import {
   type SystemOneProvider,
   type SystemOneRequest,
   type SystemOneResponse,
+  validateResponse,
 } from "system-one-core";
 import {
   type SessionConfig,
@@ -123,20 +124,31 @@ class PiNativeProvider implements SystemOneProvider {
       throw nativeFailure(
         result.stopReason === "aborted" || options?.signal?.aborted === true,
       );
-    const answers: Record<string, unknown> = Object.create(null);
-    for (const [id, answer] of Object.entries(result.answers))
-      answers[id] =
-        answer.type === "bool"
-          ? { type: "noul", noul: answer.probability }
-          : answer;
-    return {
-      model: result.model,
-      answers: answers as SystemOneResponse<Q>["answers"],
-      usage: result.usage
-        ? { inputTokens: result.usage.input, outputTokens: result.usage.output }
-        : undefined,
-      metadata: { provider: result.provider },
-    };
+    try {
+      const answers: Record<string, unknown> = Object.create(null);
+      for (const [id, answer] of Object.entries(result.answers))
+        answers[id] =
+          answer.type === "bool"
+            ? { type: "noul", noul: answer.probability }
+            : answer;
+      return validateResponse(
+        request.questions,
+        {
+          model: result.model,
+          answers,
+          usage: result.usage
+            ? {
+                inputTokens: result.usage.input,
+                outputTokens: result.usage.output,
+              }
+            : undefined,
+        },
+        this.id,
+      );
+    } catch {
+      // Core validation can quote provider-controlled values; hide its detail.
+      throw nativeFailure(false);
+    }
   }
 }
 
