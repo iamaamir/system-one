@@ -11,6 +11,36 @@ import {
 } from "../src/tool.ts";
 
 describe("system_one tool", () => {
+  it("resolves provider for each call so credentials can rotate", async () => {
+    let calls = 0;
+    const tool = buildSystemOneTool({
+      resolveProvider: async () =>
+        ({
+          id: "dynamic",
+          async evaluate() {
+            calls++;
+            return {
+              answers: { q: { type: "noul", noul: calls / 10 } },
+              metadata: { provider: "dynamic" },
+            };
+          },
+        }) as never,
+    });
+    const args = {
+      state: "test",
+      questions: { q: { type: "noul", instructions: "Is it?" } },
+    };
+    await tool.execute("first", args, undefined, undefined, {} as never);
+    const second = await tool.execute(
+      "second",
+      args,
+      undefined,
+      undefined,
+      {} as never,
+    );
+    assert.equal(calls, 2);
+    assert.equal((second.details.answers.q as { noul: number }).noul, 0.2);
+  });
   /**
    * A tool whose provider records the request it was handed, so a test can
    * assert the exact shape that reached the wire after normalization.

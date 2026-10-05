@@ -1,6 +1,9 @@
 // pi-system-one/tests/commands.test.ts
 
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   registerSystemOneCommands,
@@ -43,6 +46,7 @@ function harness() {
 
 function ctxFor(answers: (string | undefined)[], cap: Captured) {
   return {
+    modelRegistry: { getApiKeyForProvider: async () => undefined },
     ui: {
       input: async () => answers.shift(),
       notify: (msg: string) => {
@@ -53,6 +57,29 @@ function ctxFor(answers: (string | undefined)[], cap: Captured) {
 }
 
 describe("so command", () => {
+  it("persists custom settings without session key and switches back to native", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-command-"));
+    try {
+      const path = join(dir, "pi-system-one.json");
+      const { pi, cap } = harness();
+      const store: SessionStore = {};
+      registerSystemOneCommands(pi, store, path);
+      await cap.handler?.(
+        "config custom",
+        ctxFor(["http://localhost:8008", "reflex", "secret"], cap),
+      );
+      assert.equal(store.session?.current.apiKey, "secret");
+      const saved = readFileSync(path, "utf8");
+      assert.doesNotMatch(saved, /secret|apiKey/);
+      assert.match(saved, /localhost:8008/);
+      await cap.handler?.("config native", ctxFor([], cap));
+      assert.equal(store.session?.mode, "native");
+      assert.equal(store.session?.current.apiKey, undefined);
+      assert.match(readFileSync(path, "utf8"), /native/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("completes config + status, case-insensitively", () => {
     const { pi, cap } = harness();
     registerSystemOneCommands(pi, {});
@@ -66,13 +93,14 @@ describe("so command", () => {
     );
     assert.deepEqual(cap.completions?.("x"), []);
   });
-  it("bare /so configures from blank session and registers the tool", async () => {
+  it("registers the tool before config and switches to custom on request", async () => {
     const { pi, cap } = harness();
     const store: SessionStore = {};
-    registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["http://x/", "", ""], cap));
+    registerSystemOneCommands(pi, store).applyProvider();
     assert.deepEqual(cap.tools, ["system_one"]);
+    await cap.handler?.("", ctxFor(["custom", "http://x/", "", ""], cap));
     assert.equal(store.session?.current.baseUrl, "http://x/");
+    assert.equal(store.session?.mode, "custom");
   });
   it("cancel (undefined) keeps everything and registers nothing", async () => {
     const { pi, cap } = harness();
@@ -89,15 +117,15 @@ describe("so command", () => {
       session: createSessionConfig({ SYSTEM_ONE_BASE_URL: "http://keep/" }),
     };
     registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["", "", ""], cap));
+    await cap.handler?.("", ctxFor(["custom", "", "", ""], cap));
     assert.equal(store.session?.current.baseUrl, "http://keep/");
   });
   it("whitespace-only base URL is rejected", async () => {
     const { pi, cap } = harness();
-    const store: SessionStore = {};
+    const store: SessionStore = { session: createSessionConfig({}) };
     registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["   ", "", ""], cap));
-    assert.equal(store.session, undefined);
+    await cap.handler?.("", ctxFor(["custom", "   ", "", ""], cap));
+    assert.equal(store.session?.mode, "typesafe");
     assert.match(cap.notices[0], /Cancelled/);
   });
   it("'-' forgets a memory key back to env", async () => {
@@ -106,15 +134,16 @@ describe("so command", () => {
       session: createSessionConfig({ SYSTEM_ONE_BASE_URL: "http://x/" }),
     };
     registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["", "", "sk-mem", ""], cap));
+    await cap.handler?.("", ctxFor(["custom", "", "", "sk-mem"], cap));
     assert.equal(store.session?.keyInMemory, true);
-    await cap.handler?.("", ctxFor(["", "", "-", ""], cap));
-    // After forgetting the memory key, the API key should revert to the environment variable (if any).
-    // In the CI environment, SYSTEM_ONE_API_KEY may be set; otherwise it will be undefined.
+    await cap.handler?.("", ctxFor(["custom", "", "", "-"], cap));
+    // A key from another endpoint must never follow this configured URL.
     assert.equal(store.session?.keyInMemory, false);
     assert.equal(
       store.session?.current.apiKey,
-      process.env.SYSTEM_ONE_API_KEY || undefined,
+      process.env.SYSTEM_ONE_BASE_URL === "http://x/"
+        ? process.env.SYSTEM_ONE_API_KEY || undefined
+        : undefined,
     );
   });
   it("status shows current config; STATUS routes case-insensitively", async () => {
@@ -126,10 +155,11 @@ describe("so command", () => {
     await cap.handler?.("STATUS", ctxFor([], cap));
     assert.match(cap.notices[0], /http:\/\/x\//);
   });
-  it("status with no session explains how to configure", async () => {
+  it("status shows TypeSafe defaults and login guidance without auth", async () => {
     const { pi, cap } = harness();
-    registerSystemOneCommands(pi, {});
+    registerSystemOneCommands(pi, { session: createSessionConfig({}) });
     await cap.handler?.("status", ctxFor([], cap));
-    assert.match(cap.notices[0], /not configured/);
+    assert.match(cap.notices[0], /typesafe/);
+    assert.match(cap.notices[0], /login typesafe/);
   });
 });

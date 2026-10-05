@@ -6,6 +6,21 @@ System One decisions for Pi. Plug in TypeSafe Jev, Reflex, or your own provider.
 pi install npm:pi-system-one
 ```
 
+## Pi built-in classifier vs `pi-system-one`
+
+Pi already supports Jev through `codemode`. Use that path if you only need direct classifier calls and Pi-managed credentials. This extension adds a dedicated `system_one` tool, a `/judge` prompt, and a skill that guides when to use the tool.
+
+| Need | Pi classifier through `codemode` | `pi-system-one` today |
+|---|---|---|
+| Setup | Enable `codemode`; sign in with `/login typesafe` or set `TYPESAFE_API_KEY`. | Install extension and sign in with `/login typesafe` or set `TYPESAFE_API_KEY`. Jev uses `jev-latest` by default. |
+| Agent interface | Script calls `models.classify()`; you choose model, state, and questions. | Model calls `system_one` directly. `/judge` and bundled skill provide usage guidance. |
+| Endpoints | Pi's registered classifier models, including Jev across supported providers. | Any backend compatible with `POST /v1/systemone`, including local Reflex and custom endpoints. |
+| Inputs | Pi classifier schema: object state, string question fields, `bool` for yes/no. | Accepts string or JSON state, `noul` for yes/no, and normalizes common argument aliases. |
+| Score output | Score and confidence. | Score, confidence, per-level probabilities, and legend when backend supplies them. |
+| Credentials | Pi resolves provider credentials, including saved `/login typesafe` key. | TypeSafe endpoint reuses Pi credentials per call. Explicit `SYSTEM_ONE_API_KEY` or session key takes precedence; custom endpoints never receive Pi's TypeSafe key. |
+
+For Jev-only use, Pi's built-in path needs no extension. Choose this extension when its direct tool, prompt guidance, custom endpoint support, or complete Score distribution matters. `/so config` can save non-secret settings or select Pi's native classifier. Native mode rejects Score questions because Pi does not expose their probability distribution. See [Pi classifier docs](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/models.md#use-classifier-models).
+
 For Oh My Pi (OMP), install the published package with:
 
 ```bash
@@ -20,7 +35,7 @@ omp install /path/to/pi-system-one
 omp --extension /path/to/pi-system-one
 ```
 
-Set `SYSTEM_ONE_BASE_URL` before launch, or run `/so config`; the `system_one` tool is registered after the endpoint is configured.
+The `system_one` tool registers at startup. Without settings, it uses TypeSafe Jev through this extension's HTTP provider and asks Pi for your TypeSafe credential at call time. Run `/login typesafe` first, or set `TYPESAFE_API_KEY`.
 
 <!-- <img src="./demo.gif" alt="Description" width="640" >    -->
 
@@ -29,41 +44,39 @@ Set `SYSTEM_ONE_BASE_URL` before launch, or run `/so config`; the `system_one` t
 <img width="1836" height="1092" alt="demo" src="https://github.com/user-attachments/assets/341c0e4a-d0e5-4df0-85d2-74ca2f316db5" />
 
 
-Setup Provider:
-##### locally hosted model e.g Reflex, von, laya etc, any model that supports `POST /v1/systemone`
+### Custom endpoint
+
+For Reflex or another backend that supports `POST /v1/systemone`, run `/so config` and choose `custom`, or retain your existing environment setup:
+
 ```bash
 export SYSTEM_ONE_BASE_URL=http://localhost:8008
+export SYSTEM_ONE_MODEL=reflex
+# Set SYSTEM_ONE_API_KEY only when your endpoint requires a key.
 ```
-or
 
-##### typesafe/JEV
-```bash
-export SYSTEM_ONE_BASE_URL=https://api.typesafe.ai
-export SYSTEM_ONE_MODEL=jev-latest
-# Option 1: paste the key directly
-export SYSTEM_ONE_API_KEY="..."
-# Option 2: reuse an existing variable
-export SYSTEM_ONE_API_KEY="$TYPESAFE_API_KEY"
-```
+Existing `SYSTEM_ONE_BASE_URL` takes precedence over saved settings. For TypeSafe, `jev-latest` is supplied automatically when no model is set. Other endpoints may require `SYSTEM_ONE_MODEL`.
 
 
 ---
 
-**Configuration**
+## Configuration
 
-The extension provides a `/so` command for configuring the System One client:
+Run `/so config` to choose `typesafe` (default HTTP path), `custom` (any System One endpoint), or `native` (Pi classifier). `/so config native` and `/so config typesafe` switch directly. Non-secret settings are saved to `<agent-dir>/pi-system-one.json`, where `<agent-dir>` is Pi's agent directory (`~/.pi/agent` by default or `PI_CODING_AGENT_DIR`). Terminal Pi and Paseo must use the same agent directory to share that file and Pi's saved login. Restart or reload an already-running client after the other client changes settings. Use `/so status` to inspect current mode and credential availability.
 
-- `SYSTEM_ONE_BASE_URL` – required endpoint URL.
-- `SYSTEM_ONE_MODEL` – optional default model name.
-- `SYSTEM_ONE_API_KEY` – optional API key.
+For example, a saved custom endpoint looks like this:
 
-When you run `/so config`, you can:
+```json
+{
+  "mode": "custom",
+  "baseUrl": "http://localhost:8008",
+  "model": "reflex",
+  "timeoutMs": 10000
+}
+```
 
-- **Enter a new API key** – it is stored in memory only and will be lost when the session ends.
-- **Enter `-`** – forget the memory‑only key. If a `SYSTEM_ONE_API_KEY` environment variable is present, the client will fall back to it; otherwise the key becomes absent.
-- **Leave the input empty** – keep the existing value.
+Never store a key in JSON. A key entered into `/so config` stays in this session only. Leave key input blank to keep it; enter `-` to forget it. For custom endpoints, set `SYSTEM_ONE_BASE_URL` with `SYSTEM_ONE_API_KEY` if using environment credentials. An environment key without an environment endpoint never follows a saved custom URL. Native mode supports Choice and Noul but rejects Score questions rather than hide missing probabilities. For full Score results, select `typesafe` or `custom`.
 
-The current configuration can be inspected with `/so status`.
+Environment endpoint and model values override saved settings at startup. An explicit `/so config` choice takes effect immediately in this session. If both are set, the environment endpoint wins again on next startup.
 
 ---
 

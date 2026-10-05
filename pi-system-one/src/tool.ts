@@ -1,4 +1,7 @@
-import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionToolContext,
+  ToolDefinition,
+} from "@earendil-works/pi-coding-agent";
 import {
   type QuestionMap,
   SystemOne,
@@ -1066,11 +1069,11 @@ function assertAnswerableQuestions(questions: unknown): void {
 }
 
 export function buildSystemOneTool(deps: {
-  provider: SystemOneProvider;
+  provider?: SystemOneProvider;
+  resolveProvider?: (ctx: ExtensionToolContext) => Promise<SystemOneProvider>;
 }): ToolDefinition<typeof systemOneParams, SystemOneDetails> {
-  const systemOne = new SystemOne({
-    provider: deps.provider,
-  });
+  if (!deps.provider && !deps.resolveProvider)
+    throw new Error("system_one requires a provider resolver");
 
   return {
     name: "system_one",
@@ -1114,7 +1117,7 @@ export function buildSystemOneTool(deps: {
 
     prepareArguments: (args) => prepareSystemOneArgs(args),
 
-    async execute(_toolCallId, params, signal, _onUpdate, _ctx) {
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       /*
        * The LLM-facing TypeBox schema is intentionally separate from the
        * provider protocol types. Cast only at this boundary instead of
@@ -1146,7 +1149,11 @@ export function buildSystemOneTool(deps: {
 
       assertAnswerableQuestions(normalized.questions);
 
-      const response = await systemOne.evaluate(
+      const provider = deps.resolveProvider
+        ? await deps.resolveProvider(ctx)
+        : deps.provider;
+      if (!provider) throw new Error("system_one provider unavailable");
+      const response = await new SystemOne({ provider }).evaluate(
         {
           state: normalized.state as SystemOneState,
           questions: normalized.questions as QuestionMap,

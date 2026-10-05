@@ -11,6 +11,39 @@ import {
 } from "../src/config.ts";
 
 describe("config", () => {
+  it("defaults to TypeSafe Jev without environment configuration", () => {
+    const s = createSessionConfig({});
+    assert.equal(s.mode, "typesafe");
+    assert.equal(s.current.baseUrl, "https://api.typesafe.ai");
+    assert.equal(s.current.model, "jev-latest");
+    assert.equal(s.current.apiKey, undefined);
+  });
+  it("keeps environment endpoint ahead of saved custom config", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_BASE_URL: "http://existing/", SYSTEM_ONE_MODEL: "old" },
+      { mode: "native", model: "new", timeoutMs: 5000 },
+    );
+    assert.equal(s.mode, "custom");
+    assert.equal(s.current.baseUrl, "http://existing/");
+    assert.equal(s.current.model, "old");
+    assert.equal(s.current.timeoutMs, 5000);
+  });
+  it("does not forward an env key to a saved custom URL without an env endpoint", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_API_KEY: "key-for-other-endpoint" },
+      { mode: "custom", baseUrl: "https://other.example" },
+    );
+    assert.equal(s.current.apiKey, undefined);
+  });
+  it("loads saved custom config without an environment variable", () => {
+    const s = createSessionConfig(
+      {},
+      { mode: "custom", baseUrl: "http://localhost:8008", model: "reflex" },
+    );
+    assert.equal(s.mode, "custom");
+    assert.equal(s.current.model, "reflex");
+    assert.equal(s.current.baseUrl, "http://localhost:8008");
+  });
   it("loads from env", () => {
     const s = createSessionConfig({
       SYSTEM_ONE_BASE_URL: "http://localhost:8008",

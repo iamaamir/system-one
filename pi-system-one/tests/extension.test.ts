@@ -1,7 +1,8 @@
 // pi-system-one/tests/extension.test.ts
 
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import piSystemOneExtension, {
@@ -10,6 +11,59 @@ import piSystemOneExtension, {
 } from "../src/extension.ts";
 
 describe("extension resources", () => {
+  it("reloads saved custom config across extension instances", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-extension-"));
+    const prev = {
+      base: process.env.SYSTEM_ONE_BASE_URL,
+      model: process.env.SYSTEM_ONE_MODEL,
+      agentDir: process.env.PI_CODING_AGENT_DIR,
+    };
+    try {
+      delete process.env.SYSTEM_ONE_BASE_URL;
+      delete process.env.SYSTEM_ONE_MODEL;
+      process.env.PI_CODING_AGENT_DIR = dir;
+      let command: ((args: string, ctx: never) => Promise<void>) | undefined;
+      const pi = {
+        registerTool: () => {},
+        registerCommand: (
+          _name: string,
+          options: { handler: typeof command },
+        ) => {
+          command = options.handler;
+        },
+        on: () => {},
+      };
+      piSystemOneExtension(pi as never);
+      const values = ["http://localhost:8008", "reflex", "temporary-key"];
+      await command?.("config custom", {
+        ui: { input: async () => values.shift(), notify: () => {} },
+      } as never);
+      const stored = readFileSync(join(dir, "pi-system-one.json"), "utf8");
+      assert.doesNotMatch(stored, /temporary-key|apiKey/);
+      piSystemOneExtension(pi as never);
+      let status = "";
+      await command?.("status", {
+        ui: {
+          notify: (value: string) => {
+            status = value;
+          },
+        },
+      } as never);
+      assert.match(status, /mode: custom/);
+      assert.match(status, /localhost:8008/);
+      assert.match(status, /model: reflex/);
+    } finally {
+      for (const [key, value] of Object.entries({
+        SYSTEM_ONE_BASE_URL: prev.base,
+        SYSTEM_ONE_MODEL: prev.model,
+        PI_CODING_AGENT_DIR: prev.agentDir,
+      })) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("contributes a valid system-one skill directory", async () => {
     const prev = process.env.SYSTEM_ONE_BASE_URL;
     process.env.SYSTEM_ONE_BASE_URL = "http://localhost:8008";
