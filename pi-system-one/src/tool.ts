@@ -982,6 +982,42 @@ function normalizeArgs(args: unknown, drops?: string[]): SystemOneParams {
   return out as SystemOneParams;
 }
 
+// Keep codemode's result small and question-name keyed; each answer carries
+// its own kind-specific fields without requiring a per-kind schema union.
+const systemOneOutput = Type.Object({
+  answers: Type.Object(
+    {},
+    {
+      additionalProperties: Type.Object(
+        {
+          type: Type.String(),
+          noul: Type.Optional(Type.Number()),
+          choice: Type.Optional(Type.String()),
+          score: Type.Optional(Type.Number()),
+          probabilities: Type.Optional(
+            Type.Object({}, { additionalProperties: Type.Number() }),
+          ),
+          legend: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+          confidence: Type.Optional(Type.Number()),
+        },
+        { additionalProperties: true },
+      ),
+    },
+  ),
+  model: Type.Optional(Type.String()),
+  usage: Type.Optional(
+    Type.Object({
+      inputTokens: Type.Optional(Type.Number()),
+      outputTokens: Type.Optional(Type.Number()),
+    }),
+  ),
+  requestId: Type.Optional(Type.String()),
+  metadata: Type.Object({
+    provider: Type.String(),
+    latencyMs: Type.Optional(Type.Number()),
+  }),
+});
+
 export interface SystemOneDetails {
   answers: Record<string, unknown>;
   model?: string;
@@ -1088,6 +1124,7 @@ export function buildSystemOneTool(deps: {
       "score criteria is an ordered array of at least two levels.",
 
     parameters: systemOneParams,
+    outputSchema: systemOneOutput,
 
     promptSnippet:
       "Use system_one for bounded judgments over supplied evidence, including classification, routing, and selecting among plausible tools, skills, strategies, implementations, models, or providers",
@@ -1164,6 +1201,18 @@ export function buildSystemOneTool(deps: {
             ),
           },
         ],
+
+        // Core responses can contain undefined optional fields. Omit those
+        // from the script-facing JSON value without changing direct details.
+        structuredContent: {
+          answers: response.answers,
+          metadata: response.metadata,
+          ...(response.model !== undefined ? { model: response.model } : {}),
+          ...(response.usage !== undefined ? { usage: response.usage } : {}),
+          ...(response.requestId !== undefined
+            ? { requestId: response.requestId }
+            : {}),
+        } as unknown as SystemOneState,
 
         details: {
           answers: response.answers,

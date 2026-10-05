@@ -1,9 +1,20 @@
 // pi-system-one/tests/tool.test.ts
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
+import {
+  createAgentSession,
+  createCodemodeExtension,
+  DefaultResourceLoader,
+  SessionManager,
+  SettingsManager,
+} from "@earendil-works/pi-coding-agent";
 import { MockSystemOneProvider } from "system-one-core";
 import { Value } from "typebox/value";
+import { renderSystemOneResult } from "../src/render.ts";
 import {
   buildSystemOneTool,
   prepareSystemOneArgs,
@@ -59,6 +70,211 @@ describe("system_one tool", () => {
     assert.match(text, /"a"/);
     assert.equal((res.details.answers.t as { choice: string }).choice, "a");
   });
+  it("exposes answers as structured output without changing content or details", async () => {
+    const response = {
+      answers: {
+        choice: {
+          type: "choice",
+          choice: "a",
+          probabilities: { a: 0.8, b: 0.2 },
+          confidence: 0.8,
+        },
+        noul: { type: "noul", noul: 0.7 },
+        score: {
+          type: "score",
+          score: 1.5,
+          probabilities: { "0": 0.5, "1": 0.5 },
+          legend: { "0": "low", "1": "high" },
+          confidence: 0.6,
+        },
+      },
+      model: "stub-model",
+      usage: { inputTokens: 5, outputTokens: 2 },
+      requestId: "req-1",
+      metadata: { provider: "stub", latencyMs: 10 },
+    };
+    const tool = buildSystemOneTool({
+      provider: {
+        id: "stub",
+        async evaluate() {
+          return response;
+        },
+      } as never,
+    });
+    const result = await tool.execute(
+      "structured-id",
+      {
+        state: "hi",
+        questions: {
+          choice: {
+            type: "choice",
+            instructions: "Pick",
+            criteria: { a: null, b: null },
+          },
+        },
+      },
+      undefined,
+      undefined,
+      {} as never,
+    );
+    assert.ok(tool.outputSchema);
+    const answerMap = (
+      tool.outputSchema as {
+        properties: { answers: { additionalProperties?: unknown } };
+      }
+    ).properties.answers;
+    assert.ok(
+      answerMap.additionalProperties,
+      "codemode declarations need typed additionalProperties for named answers",
+    );
+    assert.deepEqual(result.structuredContent, response);
+    assert.equal(
+      Value.Check(tool.outputSchema, result.structuredContent),
+      true,
+    );
+    assert.deepEqual(result.details, response);
+    assert.deepEqual(result.content, [
+      { type: "text", text: renderSystemOneResult(response as never, []) },
+    ]);
+
+    const minimal = buildSystemOneTool({
+      provider: {
+        id: "stub",
+        async evaluate() {
+          return {
+            answers: {},
+            model: undefined,
+            requestId: undefined,
+            metadata: { provider: "stub" },
+          };
+        },
+      } as never,
+    });
+    const minimalResult = await minimal.execute(
+      "minimal-id",
+      {
+        state: "hi",
+        questions: { q: { type: "noul", instructions: "Is it?" } },
+      },
+      undefined,
+      undefined,
+      {} as never,
+    );
+    assert.ok(minimal.outputSchema);
+    assert.equal(
+      Value.Check(minimal.outputSchema, minimalResult.structuredContent),
+      true,
+    );
+    assert.equal(
+      Object.hasOwn(minimalResult.structuredContent as object, "model"),
+      false,
+    );
+    assert.equal(
+      Object.hasOwn(minimalResult.structuredContent as object, "requestId"),
+      false,
+    );
+    assert.equal(Object.hasOwn(minimalResult.details, "model"), true);
+    assert.equal(Object.hasOwn(minimalResult.details, "requestId"), true);
+  });
+
+  it("returns structured answers through a Pi SDK codemode session", async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "pi-system-one-codemode-"));
+    try {
+      const loader = new DefaultResourceLoader({
+        cwd: tempDir,
+        agentDir: tempDir,
+        noSkills: true,
+        noPromptTemplates: true,
+        noThemes: true,
+        noContextFiles: true,
+        extensionFactories: [
+          createCodemodeExtension({ models: false }),
+          (pi) =>
+            pi.registerTool(
+              buildSystemOneTool({
+                provider: {
+                  id: "stub",
+                  async evaluate() {
+                    return {
+                      answers: { q: { type: "noul", noul: 0.75 } },
+                      metadata: { provider: "stub" },
+                    };
+                  },
+                } as never,
+              }),
+            ),
+        ],
+      });
+      await loader.reload();
+      const { session, extensionsResult } = await createAgentSession({
+        cwd: tempDir,
+        agentDir: tempDir,
+        resourceLoader: loader,
+        settingsManager: SettingsManager.inMemory({}),
+        sessionManager: SessionManager.inMemory(tempDir),
+        tools: ["codemode", "system_one"],
+      });
+      try {
+        assert.deepEqual(extensionsResult.errors, []);
+        const args = {
+          state: "evidence",
+          questions: { q: { type: "noul", instructions: "Is it?" } },
+        };
+        const code = `const r = await tools.system_one(${JSON.stringify(args)}); text({type: typeof r, answer: r.answers.q.noul});`;
+        // Nested calls require an issuing assistant message. Keep it in the
+        // public in-memory session instead of mocking codemode's tool context.
+        session.sessionManager.appendMessage({
+          role: "assistant",
+          content: [
+            {
+              type: "toolCall",
+              id: "sandbox-id",
+              name: "codemode",
+              arguments: { code },
+            },
+          ],
+          api: "anthropic-messages",
+          provider: "stub",
+          model: "stub",
+          usage: {
+            input: 0,
+            output: 0,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 0,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0,
+            },
+          },
+          stopReason: "toolUse",
+          timestamp: Date.now(),
+        });
+        session.refreshContext();
+        const codemode = session.agent.state.tools.find(
+          (tool) => tool.name === "codemode",
+        );
+        assert.ok(codemode);
+        const result = await codemode.execute("sandbox-id", { code });
+        assert.equal(result.isError, undefined);
+        assert.equal(result.details.calls[0].status, "ok");
+        assert.match(
+          result.content
+            .map((block) => (block.type === "text" ? block.text : ""))
+            .join("\n"),
+          /"type":"object","answer":0\.75/,
+        );
+      } finally {
+        session.dispose();
+      }
+    } finally {
+      rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it("propagates provider errors by throwing (never error-results)", async () => {
     const tool = buildSystemOneTool({
       provider: {
