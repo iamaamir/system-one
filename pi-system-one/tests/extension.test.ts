@@ -27,25 +27,29 @@ describe("extension resources", () => {
         join(dir, "pi-system-one.json"),
         JSON.stringify({ "Bearer secret-token": "ignored" }),
       );
-      const handlers: Record<string, (event: never, ctx: never) => void> = {};
+      const handlers: Record<string, ((event: never, ctx: never) => void)[]> =
+        {};
       piSystemOneExtension({
         registerTool: () => {},
         registerCommand: () => {},
         on: (name: string, handler: (event: never, ctx: never) => void) => {
-          handlers[name] = handler;
+          handlers[name] ??= [];
+          handlers[name].push(handler);
         },
       } as never);
       let warning = "";
-      handlers.session_start(
-        { reason: "startup" } as never,
-        {
-          ui: {
-            notify: (message: string) => {
-              warning = message;
+      for (const handler of handlers.session_start) {
+        handler(
+          { reason: "startup" } as never,
+          {
+            ui: {
+              notify: (message: string) => {
+                warning = message;
+              },
             },
-          },
-        } as never,
-      );
+          } as never,
+        );
+      }
       assert.match(warning, /Ignoring saved settings/);
       assert.doesNotMatch(warning, /Bearer|secret-token/);
     } finally {

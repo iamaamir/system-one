@@ -158,31 +158,60 @@ function supportsNative(request: SystemOneRequest<QuestionMap>): boolean {
   });
 }
 
+export type RouteObserver = (
+  provider: "pi-native" | "typesafe" | "configured",
+  reason:
+    | "compatible request"
+    | "contains Score"
+    | "native-incompatible input"
+    | "classifier unavailable"
+    | "selected mode",
+) => void;
+
 class AutoSystemOneProvider implements SystemOneProvider {
   readonly id = "auto";
   private readonly session: SessionConfig;
   private readonly ctx: ExtensionToolContext;
-  constructor(session: SessionConfig, ctx: ExtensionToolContext) {
+  private readonly onRoute?: RouteObserver;
+  constructor(
+    session: SessionConfig,
+    ctx: ExtensionToolContext,
+    onRoute?: RouteObserver,
+  ) {
     this.session = session;
     this.ctx = ctx;
+    this.onRoute = onRoute;
   }
 
   async evaluate<Q extends QuestionMap>(
     request: SystemOneRequest<Q>,
     options?: SystemOneCallOptions,
   ): Promise<SystemOneResponse<Q>> {
+    const compatible = supportsNative(request);
     if (
-      supportsNative(request) &&
+      compatible &&
       this.ctx.modelRegistry?.findOfType?.(
         "classifier",
         "typesafe",
         "jev-latest",
       )
-    )
+    ) {
+      this.onRoute?.("pi-native", "compatible request");
       return new PiNativeProvider(
         this.ctx,
         this.session.current.timeoutMs,
       ).evaluate(request, options);
+    }
+    this.onRoute?.(
+      "typesafe",
+      compatible
+        ? "classifier unavailable"
+        : Object.values(request.questions).some(
+              (question) => question.type === "score",
+            )
+          ? "contains Score"
+          : "native-incompatible input",
+    );
     const http = await resolveSessionProvider(
       {
         ...this.session,
@@ -203,14 +232,19 @@ class AutoSystemOneProvider implements SystemOneProvider {
 export async function resolveSessionProvider(
   session: SessionConfig,
   ctx: ExtensionToolContext,
+  onRoute?: RouteObserver,
 ): Promise<SystemOneProvider> {
-  if (session.mode === "native")
+  if (session.mode === "native") {
+    onRoute?.("pi-native", "selected mode");
     return new PiNativeProvider(ctx, session.current.timeoutMs);
-  if (session.mode === "auto") return new AutoSystemOneProvider(session, ctx);
+  }
+  if (session.mode === "auto")
+    return new AutoSystemOneProvider(session, ctx, onRoute);
   const config = session.current;
   if (!config.baseUrl)
     throw new Error("Custom endpoint missing. Run /so config.");
   const typeSafe = isTypeSafeEndpoint(config.baseUrl);
+  onRoute?.(typeSafe ? "typesafe" : "configured", "selected mode");
   const key =
     config.apiKey ??
     (typeSafe
