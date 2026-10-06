@@ -225,7 +225,7 @@ export function registerSystemOneCommands(
         ),
       {
         overlay: true,
-        overlayOptions: { anchor: "center", width: 76, maxHeight: 24 },
+        overlayOptions: { anchor: "center", width: 70, maxHeight: 24 },
       },
     );
   }

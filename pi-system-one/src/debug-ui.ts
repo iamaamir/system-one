@@ -11,6 +11,17 @@ function counts(entry: DebugEntry): string {
   return `${choice} choice · ${noul} noul · ${score} score`;
 }
 
+function rowCounts(entry: DebugEntry): string {
+  const { choice, noul, score } = entry.questions;
+  return [
+    choice ? `${choice} choice` : "",
+    noul ? `${noul} noul` : "",
+    score ? `${score} score` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 /** Only render fields assembled by DebugHistory, never tool input or raw provider text. */
 export function debugSummary(entries: readonly DebugEntry[]): string {
   const last = entries[0];
@@ -59,26 +70,24 @@ export class DebugOverlay {
     if (width < 3) return [" ".repeat(Math.max(0, width))];
     const inner = width - 2;
     const th = this.theme;
+    const page = Math.floor(this.selected / 7) * 7;
+    const pageEnd = Math.min(page + 7, this.entries.length);
     const lines = [
       th.fg("accent", " System One · Debug"),
       th.fg(
-        "muted",
-        ` Session-only · ${this.entries.length} recent call(s) · no request data stored`,
+        "text",
+        this.entries.length
+          ? ` ${page + 1}-${pageEnd} of ${this.entries.length} recent calls · selected #${this.selected + 1} · session-only`
+          : " Session-only · no request content saved",
       ),
       "",
     ];
     if (this.entries.length === 0) lines.push(" No system_one calls yet.");
     else {
-      const page = Math.floor(this.selected / 7) * 7;
-      for (
-        let index = page;
-        index < Math.min(page + 7, this.entries.length);
-        index++
-      ) {
+      for (let index = page; index < pageEnd; index++) {
         const entry = this.entries[index];
-        lines.push(
-          `${index === this.selected ? ">" : " "} ${entry.startedAt.slice(11, 19)}  ${entry.provider}  ${entry.outcome}`,
-        );
+        const row = `${index === this.selected ? ">" : " "} #${index + 1} ${entry.startedAt.slice(11, 19)}  ${entry.provider.padEnd(10)} ${entry.outcome.padEnd(7)} ${rowCounts(entry)}`;
+        lines.push(index === this.selected ? th.fg("accent", row) : row);
       }
       const entry = this.entries[this.selected];
       lines.push(
@@ -86,6 +95,7 @@ export class DebugOverlay {
         th.fg("accent", " Selected call"),
         ` Mode: ${entry.mode}  ·  Provider: ${entry.provider}`,
         ` Route: ${entry.reason}`,
+        ...(entry.requestTarget ? [` Target: ${entry.requestTarget}`] : []),
         ` Questions: ${counts(entry)}`,
         ` Outcome: ${entry.outcome}  ·  Duration: ${entry.durationMs ?? "running"} ms`,
         ` Dispatch: ${entry.attempted ? "attempted (delivery not verified)" : "not attempted"}`,
@@ -96,7 +106,7 @@ export class DebugOverlay {
           : []),
       );
     }
-    lines.push("", th.fg("muted", " ↑/↓ browse · q/Esc close"));
+    lines.push("", th.fg("text", " ↑/↓ browse · q/Esc close"));
     const output = [th.fg("border", `╭${"─".repeat(inner)}╮`)];
     for (const line of lines) {
       const clipped = truncateToWidth(line, inner, "…", true);

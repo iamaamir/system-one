@@ -9,14 +9,47 @@ import {
   SystemOneTimeoutError,
   SystemOneTransportError,
 } from "system-one-core";
-import type { SessionConfig } from "./config.ts";
+import { type SessionConfig, TYPESAFE_BASE_URL } from "./config.ts";
 import { type RouteObserver, resolveSessionProvider } from "./provider.ts";
+
+const SAFE_PATH_SEGMENTS = new Set([
+  "api",
+  "v1",
+  "v2",
+  "systemone",
+  "system-one",
+  "classify",
+]);
+
+/** Mirror HTTP provider's POST target, but never retain userinfo, query, fragment, or arbitrary path segments. */
+export function safeRequestTarget(baseUrl: string): string {
+  try {
+    // HttpSystemOneProvider appends /v1/systemone after trimming one trailing slash.
+    const url = new URL(`${baseUrl.replace(/\/$/, "")}/v1/systemone`);
+    if (url.protocol !== "https:" && url.protocol !== "http:")
+      return "POST invalid HTTP endpoint";
+    const path = url.pathname
+      .split("/")
+      .map((segment) =>
+        SAFE_PATH_SEGMENTS.has(segment) ? segment : segment ? "[redacted]" : "",
+      )
+      .join("/");
+    const note =
+      url.search || url.hash
+        ? " (base URL contains query/fragment; check path)"
+        : "";
+    return `POST ${url.origin}${path}${note}`;
+  } catch {
+    return "POST invalid HTTP endpoint";
+  }
+}
 
 export interface DebugEntry {
   startedAt: string;
   mode: SessionConfig["mode"];
   provider: "pi-native" | "typesafe" | "configured" | "not selected";
   reason: string;
+  requestTarget?: string;
   outcome: "pending" | "success" | "failure";
   attempted: boolean;
   durationMs?: number;
@@ -67,6 +100,12 @@ export function observedProvider(
       const onRoute: RouteObserver = (provider, reason) => {
         entry.provider = provider;
         entry.reason = reason;
+        if (provider !== "pi-native")
+          entry.requestTarget = safeRequestTarget(
+            provider === "typesafe"
+              ? TYPESAFE_BASE_URL
+              : session.current.baseUrl,
+          );
       };
       try {
         const provider = await resolveSessionProvider(session, ctx, onRoute);

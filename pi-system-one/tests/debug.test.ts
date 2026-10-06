@@ -5,6 +5,47 @@ import { createSessionConfig } from "../src/config.ts";
 import { DebugHistory, observedProvider } from "../src/debug.ts";
 import { DebugOverlay, debugSummary } from "../src/debug-ui.ts";
 
+it("shows page position, distinct question counts, target, and readable controls", () => {
+  const history = new DebugHistory();
+  for (let i = 0; i < 17; i++) {
+    const entry = history.start("custom", {
+      q: { type: "score", instructions: "hidden", criteria: ["low", "high"] },
+    });
+    entry.provider = "configured";
+    entry.outcome = "failure";
+    entry.httpStatus = 405;
+    entry.failure = "HTTP error";
+    entry.requestTarget = "POST http://localhost:8008/v1/systemone";
+  }
+  const colors: string[] = [];
+  const overlay = new DebugOverlay(
+    history.entries,
+    {
+      fg: (color: string, text: string) => {
+        colors.push(`${color}:${text}`);
+        return text;
+      },
+    } as never,
+    () => {},
+    () => {},
+  );
+  const initial = overlay.render(68).join("\n");
+  assert.match(initial, /1-7 of 17/);
+  assert.match(initial, /#1/);
+  assert.match(initial, /1 score/);
+  assert.match(initial, /POST http:\/\/localhost:8008\/v1\/systemone/);
+  assert.ok(
+    colors.some(
+      (line) => line.startsWith("text:") && line.includes("recent call"),
+    ),
+  );
+  assert.ok(
+    colors.some((line) => line.startsWith("text:") && line.includes("browse")),
+  );
+  for (let i = 0; i < 7; i++) overlay.handleInput("\u001b[B");
+  assert.match(overlay.render(68).join("\n"), /8-14 of 17/);
+});
+
 it("renders bounded debug overlay and lets keyboard move focus and close", () => {
   const history = new DebugHistory();
   const entry = history.start("auto", {
@@ -45,6 +86,52 @@ it("renders bounded debug overlay and lets keyboard move focus and close", () =>
   assert.match(debugSummary([]), /No system_one calls yet/);
   history.clear();
   assert.equal(history.entries.length, 0);
+});
+
+it("shows POST target shape for custom 405 without retaining URL secrets", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response("not allowed", { status: 405 })) as typeof fetch;
+  try {
+    const history = new DebugHistory();
+    const request = {
+      state: "private",
+      questions: { q: { type: "noul" as const, instructions: "Yes?" } },
+    };
+    const duplicate = observedProvider(
+      createSessionConfig({
+        SYSTEM_ONE_BASE_URL: "http://localhost:8008/v1/systemone",
+      }),
+      {} as never,
+      history,
+    );
+    await assert.rejects(duplicate.evaluate(request), /provider error 405/);
+    assert.match(
+      history.entries[0]?.requestTarget ?? "",
+      /POST http:\/\/localhost:8008\/v1\/systemone\/v1\/systemone/,
+    );
+    const secret = observedProvider(
+      createSessionConfig({
+        SYSTEM_ONE_BASE_URL:
+          "https://user:password@private.example/api/token123?key=secret#fragment",
+      }),
+      {} as never,
+      history,
+    );
+    await assert.rejects(secret.evaluate(request), /provider error 405/);
+    const record = JSON.stringify(history.entries);
+    assert.match(
+      history.entries[0]?.requestTarget ?? "",
+      /POST https:\/\/private.example\/api\/\[redacted\]/,
+    );
+    assert.match(history.entries[0]?.requestTarget ?? "", /query\/fragment/);
+    assert.doesNotMatch(
+      record,
+      /user:password|token123|key=secret|#fragment|private"/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 it("records credential failure as selected but not dispatched, without error text", async () => {
