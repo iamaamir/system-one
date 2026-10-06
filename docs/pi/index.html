@@ -227,7 +227,7 @@
           "name": "How do I use Jev in Pi?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Install pi-system-one in Pi. The system_one tool uses TypeSafe Jev by default with a key from TYPESAFE_API_KEY or /login typesafe. Use /so config native for Pi's classifier on Choice and Noul questions. Native mode rejects Score questions. Use the default TypeSafe mode for full Score results."
+            "text": "Install pi-system-one in Pi. The system_one tool uses TypeSafe Jev by default with a key from TYPESAFE_API_KEY or /login typesafe. Use /so config native for Pi's classifier on Choice and Noul questions. Native mode rejects Score questions. Keep TypeSafe mode for full Score results, or use /so config auto to route compatible Choice and Noul requests to a registered Pi classifier and other requests to TypeSafe."
           }
         },
         {
@@ -2801,8 +2801,8 @@ p code {
         <div class="section-head">
           <h2>Install the extension.<br />Choose a mode.</h2>
           <p class="section-lead">
-            The same package works in Pi and OMP. TypeSafe Jev is the default.
-            Configure a compatible endpoint only if you need one.
+            TypeSafe Jev is the default. Install in Pi or OMP, then choose
+            another mode only when your workflow needs it.
           </p>
         </div>
 
@@ -2834,7 +2834,12 @@ p code {
               </div>
               <button class="copy" type="button" data-copy-target="jev-code" aria-label="Copy optional TypeSafe key environment command">COPY</button>
             </div>
-            <p class="install-note">In Pi, use <code>/so config native</code> for its built-in classifier. Native mode handles Choice and Noul only. For Score probabilities, keep the default TypeSafe mode.</p>
+            <div style="height:18px"></div>
+
+            <div class="side-title">Choose a mode</div>
+            <p class="install-note"><code>/so config</code> lets you select and save a mode. <code>typesafe</code> (default) returns full Score distributions. <code>native</code> uses Pi's classifier for compatible Choice and Noul requests but rejects Score. <code>custom</code> uses your configured endpoint.</p>
+            <p class="install-note"><code>auto</code> uses a registered Pi classifier for compatible Choice and Noul requests. Other requests use TypeSafe HTTP, not your custom endpoint. Registration does not prove credentials work. Failed calls do not retry through another provider.</p>
+            <p class="install-note">Saved mode and custom endpoint take precedence over <code>SYSTEM_ONE_BASE_URL</code> after restart. Keys are never saved in the extension settings file. <a class="text-link" href="https://github.com/iamaamir/system-one/tree/main/pi-system-one#configuration">Read configuration details ↗</a></p>
 
             <div style="height:18px"></div>
 
@@ -2880,7 +2885,12 @@ p code {
 
               <div class="config-row">
                 <code>/so status</code>
-                <span>Inspect the active endpoint, model, and credential source from the agent session.</span>
+                <span>See the current mode, endpoint, model, and credential source.</span>
+              </div>
+
+              <div class="config-row">
+                <code>/so debug</code>
+                <span>In terminal Pi, inspect recent provider calls, routes, outcomes, and safe failure categories. History stays in this session.</span>
               </div></div>
           </aside>
         </div>
@@ -3100,7 +3110,9 @@ p code {
                   <code>/login typesafe</code> key. No endpoint or model setting is needed.
                   For Pi's built-in classifier, run <code>/so config native</code>.
                   Native mode supports Choice and Noul, but rejects Score questions.
-                  Use the default TypeSafe mode for full Score results.
+                  Use TypeSafe mode for full Score results, or select
+                  <code>/so config auto</code> to route compatible Choice and Noul
+                  requests to a registered Pi classifier and other requests to TypeSafe.
                 </p>
               </div>
             </div>
