@@ -8,20 +8,25 @@ pi install npm:pi-system-one
 
 ## Pi built-in classifier vs `pi-system-one` (as of Pi v1.0.3)
 
-Pi already supports Jev through `codemode`. Use that path if you only need direct classifier calls and Pi-managed credentials. This extension adds a dedicated `system_one` tool, a `/judge` prompt, and a skill that guides when to use the tool.
+Pi already supports Jev through `codemode`. It can classify one question or combine classification with other tool calls in a script. This extension exposes decisions as a dedicated `system_one` tool, with a `/judge` prompt and a skill that guides when to use it. Choose based on your workflow, not on a claim that either route is more accurate.
 
 | Need | Pi classifier through `codemode` | `pi-system-one` today |
 |---|---|---|
 | Setup | Enable `codemode`; sign in with `/login typesafe` or set `TYPESAFE_API_KEY`. | Install extension and sign in with `/login typesafe` or set `TYPESAFE_API_KEY`. Jev uses `jev-latest` by default. |
 | Agent interface | Script calls `models.classify()`; you choose model, state, and questions. | Model calls `system_one` directly. `/judge` and bundled skill provide usage guidance. |
+| One-off decisions | Write a `codemode` script even for a standalone classification. Useful if you already use scripts. | Call `system_one` without writing a script or enabling `codemode`. The same tool works mid-conversation when no other tool calls need orchestration. |
+| Multiple tool calls | A script can gather data, call a classifier, and filter results before they reach the model. | The tool batches decision questions over supplied state, but does not replace `codemode` for scripting other tools. |
+| Host availability | Requires a Pi host with `codemode` enabled and classifier models exposed to its scripts. | Loads as an extension without `codemode`; package also declares an OMP extension entry. Requires a host that supports this extension's APIs. |
 | Endpoints | Pi's registered classifier models, including Jev across supported providers. | Any backend compatible with `POST /v1/systemone`, including local Reflex and custom endpoints. |
 | Inputs | Pi classifier schema: object state, string question fields, `bool` for yes/no. | Accepts string or JSON state, `noul` for yes/no, and normalizes common argument aliases. |
 | Score output | Score and confidence. Choice answers still include probabilities. | Score, confidence, per-level probabilities, and legend when backend supplies them. |
 | Credentials | Pi resolves provider credentials, including saved `/login typesafe` key. | TypeSafe endpoint reuses Pi credentials per call. Explicit `SYSTEM_ONE_API_KEY` or session key takes precedence; custom endpoints never receive Pi's TypeSafe key. |
 
+Pi's [v1.0.3 Codemode guide](https://github.com/earendil-works/pi/blob/v1.0.3/packages/coding-agent/docs/codemode.md) documents scripts, model calls, and orchestration. Its [CLI guide](https://github.com/earendil-works/pi/blob/v1.0.3/packages/coding-agent/docs/cli.md#enable-codemode) explains how to enable `codemode`. Pi extensions can also [call classifiers without Codemode](https://github.com/earendil-works/pi/blob/v1.0.3/packages/coding-agent/docs/models.md#use-classifier-models); the table compares the agent-facing Codemode route with this extension's agent-facing tool, not every way to write a Pi extension.
+
 Pi v1.0.3 [defines its Score answer](https://github.com/earendil-works/pi/blob/v1.0.3/packages/ai/src/types.ts#L660-L678) with only `score` and `confidence`. Its [response parser](https://github.com/earendil-works/pi/blob/v1.0.3/packages/ai/src/api/system-one-shared.ts#L80-L119) copies only those two Score fields. [TypeSafe's HTTP API](https://docs.typesafe.ai/api#score-answer) returns `probabilities` and `legend` too. Pi's [classifier input types](https://github.com/earendil-works/pi/blob/v1.0.3/packages/ai/src/types.ts#L635-L658) and [codemode docs](https://github.com/earendil-works/pi/blob/v1.0.3/packages/coding-agent/docs/codemode.md#classify) document the narrower inputs shown above. These references describe Pi v1.0.3, not future releases.
 
-For Jev-only use, Pi's built-in path needs no extension. Choose this extension when its direct tool, prompt guidance, custom endpoint support, or complete Score distribution matters. `/so config` can save non-secret settings or select Pi's native classifier. Native mode rejects Score questions because Pi v1.0.3 does not expose their probability distribution. See [Pi classifier docs for v1.0.3](https://github.com/earendil-works/pi/blob/v1.0.3/packages/coding-agent/docs/models.md#use-classifier-models).
+If you already use `codemode` to combine tools and only need Pi's classifier response, use Pi's built-in route. For standalone decisions, choose this extension when you want a direct tool without a script or Codemode setup. It also provides prompt guidance, compatible custom endpoints, and the full Score distribution when the backend supplies it. The extension can run on a host without `codemode` if that host supports its extension APIs. Its OMP package entry makes it installable in OMP, but it does not guarantee support for every Pi or OMP version. `/so config` can save non-secret settings or select Pi's native classifier. Native mode rejects Score questions because Pi v1.0.3 does not expose their probability distribution. See [Pi classifier docs for v1.0.3](https://github.com/earendil-works/pi/blob/v1.0.3/packages/coding-agent/docs/models.md#use-classifier-models).
 
 For Oh My Pi (OMP), install the published package with:
 
