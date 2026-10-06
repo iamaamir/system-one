@@ -61,7 +61,7 @@ export SYSTEM_ONE_MODEL=reflex
 # Set SYSTEM_ONE_API_KEY only when your endpoint requires a key.
 ```
 
-Existing `SYSTEM_ONE_BASE_URL` takes precedence over saved settings. For TypeSafe, `jev-latest` is supplied automatically when no model is set. Other endpoints may require `SYSTEM_ONE_MODEL`.
+`SYSTEM_ONE_BASE_URL` selects a custom endpoint when no mode is saved. A saved mode and custom endpoint win on restart. TypeSafe defaults to `jev-latest`; other endpoints may require `SYSTEM_ONE_MODEL`.
 
 
 ---
