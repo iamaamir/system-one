@@ -41,8 +41,10 @@ function nativeFailure(aborted: boolean): Error {
 class PiNativeProvider implements SystemOneProvider {
   readonly id = "pi-native";
   private readonly ctx: ExtensionToolContext;
-  constructor(ctx: ExtensionToolContext) {
+  private readonly timeoutMs: number;
+  constructor(ctx: ExtensionToolContext, timeoutMs: number) {
     this.ctx = ctx;
+    this.timeoutMs = timeoutMs;
   }
 
   async evaluate<Q extends QuestionMap>(
@@ -114,7 +116,7 @@ class PiNativeProvider implements SystemOneProvider {
       result = await this.ctx.modelRegistry.classify(
         model,
         { state, questions } as never,
-        { signal: options?.signal },
+        { signal: options?.signal, timeoutMs: this.timeoutMs },
       );
     } catch {
       // Pi and its provider may include untrusted response bodies in errors.
@@ -157,7 +159,8 @@ export async function resolveSessionProvider(
   session: SessionConfig,
   ctx: ExtensionToolContext,
 ): Promise<SystemOneProvider> {
-  if (session.mode === "native") return new PiNativeProvider(ctx);
+  if (session.mode === "native")
+    return new PiNativeProvider(ctx, session.current.timeoutMs);
   const config = session.current;
   if (!config.baseUrl)
     throw new Error("Custom endpoint missing. Run /so config.");

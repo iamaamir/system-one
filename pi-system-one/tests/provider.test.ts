@@ -164,6 +164,39 @@ it("native classifier thrown errors are content-free and cancellation is distinc
   );
 });
 
+it("passes the configured timeout to a stalled native classifier call", async () => {
+  const session = createSessionConfig({ SYSTEM_ONE_TIMEOUT_MS: "25" });
+  session.mode = "native";
+  let receivedTimeout: number | undefined;
+  const ctx = {
+    modelRegistry: {
+      findOfType: () => ({ id: "jev-latest" }),
+      classify: async (
+        _model: unknown,
+        _context: unknown,
+        options: { timeoutMs?: number },
+      ) => {
+        receivedTimeout = options.timeoutMs;
+        // Mirror Pi's timeout signal, with a guard so a regression cannot hang.
+        const signal = AbortSignal.timeout(options.timeoutMs ?? 100);
+        await new Promise<void>((resolve) =>
+          signal.addEventListener("abort", () => resolve(), { once: true }),
+        );
+        return { stopReason: "error", errorMessage: "provider timeout detail" };
+      },
+    },
+  } as never;
+  const provider = await resolveSessionProvider(session, ctx);
+  await assert.rejects(
+    provider.evaluate({
+      state: "x",
+      questions: { q: { type: "noul", instructions: "Yes?" } },
+    }),
+    /^Error: Pi native classifier failed\./,
+  );
+  assert.equal(receivedTimeout, 25);
+});
+
 it("native mode fails closed for score questions without network fallback", async () => {
   const session = createSessionConfig({});
   session.mode = "native";
