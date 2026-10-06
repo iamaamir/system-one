@@ -157,6 +157,78 @@ it("records credential failure as selected but not dispatched, without error tex
   );
 });
 
+it("reports native Score rejection as not dispatched and gives a fixed reason", async () => {
+  const history = new DebugHistory();
+  const provider = observedProvider(
+    createSessionConfig({}, { mode: "native" }),
+    {
+      modelRegistry: {
+        findOfType: () => ({ id: "jev-latest" }),
+        classify: () => {
+          throw Error("must not classify unsupported Score");
+        },
+      },
+    } as never,
+    history,
+  );
+  await assert.rejects(
+    provider.evaluate({
+      state: "x",
+      questions: {
+        q: { type: "score", instructions: "Rate", criteria: ["low", "high"] },
+      },
+    }),
+    /omits Score probabilities/,
+  );
+  assert.equal(history.entries[0]?.failure, "native Score unsupported");
+  assert.equal(history.entries[0]?.attempted, false);
+});
+
+it("distinguishes native provider error from malformed success without logging content", async () => {
+  const cases = [
+    {
+      result: {
+        stopReason: "error",
+        errorMessage: "Bearer secret-provider-body",
+      },
+      category: "native classifier returned error",
+    },
+    {
+      result: {
+        stopReason: "stop",
+        answers: { q: { type: "bool", probability: 2 } },
+      },
+      category: "invalid native response",
+    },
+  ];
+  for (const { result, category } of cases) {
+    const history = new DebugHistory();
+    const provider = observedProvider(
+      createSessionConfig({}, { mode: "native" }),
+      {
+        modelRegistry: {
+          findOfType: () => ({ id: "jev-latest" }),
+          classify: async () => result,
+        },
+      } as never,
+      history,
+    );
+    await assert.rejects(
+      provider.evaluate({
+        state: "private state",
+        questions: { q: { type: "noul", instructions: "Yes?" } },
+      }),
+      /Pi native classifier failed/,
+    );
+    assert.equal(history.entries[0]?.failure, category);
+    assert.equal(history.entries[0]?.attempted, true);
+    assert.doesNotMatch(
+      JSON.stringify(history.entries),
+      /secret-provider-body|private state/,
+    );
+  }
+});
+
 it("records failed native attempt without retaining provider-controlled error text", async () => {
   const history = new DebugHistory();
   const provider = observedProvider(
@@ -181,6 +253,7 @@ it("records failed native attempt without retaining provider-controlled error te
   assert.equal(history.entries[0]?.provider, "pi-native");
   assert.equal(history.entries[0]?.outcome, "failure");
   assert.equal(history.entries[0]?.attempted, true);
+  assert.equal(history.entries[0]?.failure, "native classify threw");
   assert.doesNotMatch(JSON.stringify(history.entries), /private response body/);
 });
 

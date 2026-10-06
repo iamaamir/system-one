@@ -10,7 +10,12 @@ import {
   SystemOneTransportError,
 } from "system-one-core";
 import { type SessionConfig, TYPESAFE_BASE_URL } from "./config.ts";
-import { type RouteObserver, resolveSessionProvider } from "./provider.ts";
+import {
+  type NativeFailureCategory,
+  PiNativeDiagnosticError,
+  type RouteObserver,
+  resolveSessionProvider,
+} from "./provider.ts";
 
 const SAFE_PATH_SEGMENTS = new Set([
   "api",
@@ -53,12 +58,17 @@ export interface DebugEntry {
   outcome: "pending" | "success" | "failure";
   attempted: boolean;
   durationMs?: number;
-  failure?: "HTTP error" | "timeout" | "transport error" | "request failed";
+  failure?:
+    | NativeFailureCategory
+    | "HTTP error"
+    | "timeout"
+    | "transport error"
+    | "request failed";
   httpStatus?: number;
   questions: { choice: number; noul: number; score: number };
 }
 
-/** Bounded, in-memory diagnostics. Never retain input, credentials, URLs or raw errors. */
+/** Bounded, in-memory diagnostics. Never retain input, credentials, raw URLs or raw errors. */
 export class DebugHistory {
   readonly entries: DebugEntry[] = [];
 
@@ -108,21 +118,31 @@ export function observedProvider(
           );
       };
       try {
-        const provider = await resolveSessionProvider(session, ctx, onRoute);
-        entry.attempted = true;
+        const provider = await resolveSessionProvider(
+          session,
+          ctx,
+          onRoute,
+          () => {
+            entry.attempted = true;
+          },
+        );
+        if (provider.id === "typesafe" || provider.id === "configured")
+          entry.attempted = true;
         const response = await provider.evaluate(request, options);
         entry.outcome = "success";
         return response;
       } catch (error) {
         entry.outcome = "failure";
         entry.failure =
-          error instanceof SystemOneHttpError
-            ? "HTTP error"
-            : error instanceof SystemOneTimeoutError
-              ? "timeout"
-              : error instanceof SystemOneTransportError
-                ? "transport error"
-                : "request failed";
+          error instanceof PiNativeDiagnosticError
+            ? error.category
+            : error instanceof SystemOneHttpError
+              ? "HTTP error"
+              : error instanceof SystemOneTimeoutError
+                ? "timeout"
+                : error instanceof SystemOneTransportError
+                  ? "transport error"
+                  : "request failed";
         if (
           error instanceof SystemOneHttpError &&
           Number.isInteger(error.status) &&
