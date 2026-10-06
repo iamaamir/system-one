@@ -4,6 +4,215 @@ import { createSessionConfig } from "../src/config.ts";
 import { resolveSessionProvider } from "../src/provider.ts";
 import { buildSystemOneTool } from "../src/tool.ts";
 
+it("auto sends compatible Noul to native and Score to canonical TypeSafe HTTP", async () => {
+  const originalFetch = globalThis.fetch;
+  const urls: string[] = [];
+  let nativeCalls = 0;
+  const session = createSessionConfig(
+    {
+      SYSTEM_ONE_BASE_URL: "https://custom.example",
+      SYSTEM_ONE_API_KEY: "custom-secret",
+    },
+    { mode: "auto" as never },
+  );
+  const ctx = {
+    modelRegistry: {
+      findOfType: () => ({ id: "jev-latest" }),
+      classify: async () => {
+        nativeCalls++;
+        return {
+          stopReason: "stop",
+          model: "jev-latest",
+          answers: { q: { type: "bool", probability: 0.8 } },
+        };
+      },
+      getApiKeyForProvider: async () => "pi-key",
+    },
+  } as never;
+  globalThis.fetch = (async (url, options) => {
+    urls.push(String(url));
+    assert.equal(
+      new Headers(options?.headers).get("authorization"),
+      "Bearer pi-key",
+    );
+    return new Response(
+      JSON.stringify({
+        model: "jev-latest",
+        answers: {
+          score: {
+            type: "score",
+            score: 0,
+            confidence: 1,
+            probabilities: { "0": 1, "1": 0 },
+            legend: { "0": "low", "1": "high" },
+          },
+        },
+      }),
+      { status: 200 },
+    );
+  }) as typeof fetch;
+  try {
+    const provider = await resolveSessionProvider(session, ctx);
+    const native = await provider.evaluate({
+      state: "x",
+      questions: { q: { type: "noul", instructions: "Is it?" } },
+    });
+    assert.deepEqual(native.answers.q, { type: "noul", noul: 0.8 });
+    const score = await provider.evaluate({
+      state: "x",
+      questions: {
+        score: {
+          type: "score",
+          instructions: "Rate",
+          criteria: ["low", "high"],
+        },
+      },
+    });
+    assert.equal(score.answers.score.type, "score");
+    assert.equal(nativeCalls, 1);
+    assert.deepEqual(urls, ["https://api.typesafe.ai/v1/systemone"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+it("auto routes mixed and structured requests as one TypeSafe HTTP call", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  const session = createSessionConfig({}, { mode: "auto" });
+  const ctx = {
+    modelRegistry: {
+      findOfType: () => ({ id: "jev-latest" }),
+      classify: () => {
+        throw new Error("native must not be called");
+      },
+      getApiKeyForProvider: async () => "pi-key",
+    },
+  } as never;
+  globalThis.fetch = (async (url, options) => {
+    calls++;
+    assert.equal(String(url), "https://api.typesafe.ai/v1/systemone");
+    const request = JSON.parse(String(options?.body));
+    assert.ok(request.questions.noul && request.questions.score);
+    return new Response(
+      JSON.stringify({
+        answers: {
+          noul: { type: "noul", noul: 0.8 },
+          score: {
+            type: "score",
+            score: 0,
+            confidence: 1,
+            probabilities: { "0": 1, "1": 0 },
+            legend: { "0": "low", "1": "high" },
+          },
+        },
+      }),
+      { status: 200 },
+    );
+  }) as typeof fetch;
+  try {
+    const provider = await resolveSessionProvider(session, ctx);
+    await provider.evaluate({
+      state: "x",
+      questions: {
+        noul: { type: "noul", instructions: "Is it?" },
+        score: {
+          type: "score",
+          instructions: "Rate",
+          criteria: ["low", "high"],
+        },
+      },
+    });
+    assert.equal(calls, 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+it("auto uses TypeSafe HTTP when classifier is missing or input is incompatible", async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  let modelAvailable = false;
+  const session = createSessionConfig({}, { mode: "auto" });
+  const ctx = {
+    modelRegistry: {
+      findOfType: () => (modelAvailable ? { id: "jev-latest" } : undefined),
+      classify: () => {
+        throw new Error("native must not be called");
+      },
+      getApiKeyForProvider: async () => "pi-key",
+    },
+  } as never;
+  globalThis.fetch = (async (url) => {
+    calls++;
+    assert.equal(String(url), "https://api.typesafe.ai/v1/systemone");
+    return new Response(
+      JSON.stringify({ answers: { q: { type: "noul", noul: 0.7 } } }),
+      { status: 200 },
+    );
+  }) as typeof fetch;
+  try {
+    const provider = await resolveSessionProvider(session, ctx);
+    await provider.evaluate({
+      state: "x",
+      questions: { q: { type: "noul", instructions: "Yes?" } },
+    });
+    modelAvailable = true;
+    await provider.evaluate({
+      state: "x",
+      questions: {
+        q: { type: "noul", instructions: { text: "Yes?" } },
+      },
+    });
+    await provider.evaluate({
+      state: "x",
+      questions: {
+        q: {
+          type: "noul",
+          instructions: "Yes?",
+          criteria: { true: "yes", false: "no", maybe: "unsure" },
+        },
+      },
+    });
+    assert.equal(calls, 3);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+it("auto does not retry native failures through HTTP", async () => {
+  const originalFetch = globalThis.fetch;
+  const session = createSessionConfig({}, { mode: "auto" });
+  const ctx = {
+    modelRegistry: {
+      findOfType: () => ({ id: "jev-latest" }),
+      classify: async () => ({
+        stopReason: "error",
+        errorMessage: "secret provider error",
+      }),
+    },
+  } as never;
+  globalThis.fetch = (async () => {
+    throw Error("HTTP fallback forbidden");
+  }) as typeof fetch;
+  try {
+    const provider = await resolveSessionProvider(session, ctx);
+    await assert.rejects(
+      provider.evaluate({
+        state: "x",
+        questions: { q: { type: "noul", instructions: "Is it?" } },
+      }),
+      (error: Error) => {
+        assert.match(error.message, /Pi native classifier failed/);
+        assert.doesNotMatch(error.message, /secret provider error/);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 it("rejects malformed successful native probability before tool output", async () => {
   const session = createSessionConfig({});
   session.mode = "native";

@@ -8,7 +8,7 @@ import {
 import { dirname } from "node:path";
 import type { ConfigMode, StoredConfig } from "./config.ts";
 
-const MODES: ConfigMode[] = ["typesafe", "custom", "native"];
+const MODES: ConfigMode[] = ["typesafe", "custom", "native", "auto"];
 
 function validate(value: unknown, path: string): StoredConfig {
   if (typeof value !== "object" || value === null || Array.isArray(value))
@@ -24,7 +24,7 @@ function validate(value: unknown, path: string): StoredConfig {
   }
   if (v.mode !== undefined && !MODES.includes(v.mode as ConfigMode))
     throw new Error(
-      `Invalid System One settings in ${path}: mode must be typesafe, custom, or native`,
+      `Invalid System One settings in ${path}: mode must be typesafe, custom, native, or auto`,
     );
   if (
     v.baseUrl !== undefined &&
