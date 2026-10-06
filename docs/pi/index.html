@@ -227,7 +227,7 @@
           "name": "How do I use Jev in Pi?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Install pi-system-one in Pi, set SYSTEM_ONE_BASE_URL to https://api.typesafe.ai, set SYSTEM_ONE_API_KEY to your TypeSafe API key, and set SYSTEM_ONE_MODEL to jev-latest. The extension then exposes the system_one tool inside Pi."
+            "text": "Install pi-system-one in Pi. The system_one tool uses TypeSafe Jev by default with a key from TYPESAFE_API_KEY or /login typesafe. Use /so config native for Pi's classifier on Choice and Noul questions. Native mode rejects Score questions. Use the default TypeSafe mode for full Score results."
           }
         },
         {
@@ -2799,10 +2799,10 @@ p code {
         <div class="section-kicker">01 / INSTALL &amp; CONFIGURE</div>
 
         <div class="section-head">
-          <h2>Install the extension.<br />Connect a provider.</h2>
+          <h2>Install the extension.<br />Choose a mode.</h2>
           <p class="section-lead">
-            The same package works in Pi and OMP. Choose your host, then point
-            <code>pi-system-one</code> at Jev or any compatible System One endpoint.
+            The same package works in Pi and OMP. TypeSafe Jev is the default.
+            Configure a compatible endpoint only if you need one.
           </p>
         </div>
 
@@ -2824,21 +2824,17 @@ p code {
 
             <div style="height:22px"></div>
 
-            <div class="side-title">TypeSafe Jev</div>
+            <div class="side-title">TypeSafe Jev (default)</div>
+            <p class="install-note">Pi uses your saved <code>/login typesafe</code> key or <code>TYPESAFE_API_KEY</code>. No endpoint or model setting is needed.</p>
             <div class="code-box env-code-box" style="margin-top:12px">
               <div id="jev-code" class="env-code-lines">
-                <code class="env-code-line" data-env="base">
-                  <span class="env-key">SYSTEM_ONE_BASE_URL</span><span>=https://api.typesafe.ai</span>
-                </code>
-                <code class="env-code-line" data-env="key">
-                  <span class="env-key">SYSTEM_ONE_API_KEY</span><span>=&lt;TYPESAFE_API_KEY&gt;</span>
-                </code>
-                <code class="env-code-line" data-env="model">
-                  <span class="env-key">SYSTEM_ONE_MODEL</span><span>=jev-latest</span>
+                <code class="env-code-line" data-env="typesafe-key">
+                  <span>export </span><span class="env-key">TYPESAFE_API_KEY</span><span>=your-key</span>
                 </code>
               </div>
-              <button class="copy" type="button" data-copy-target="jev-code" aria-label="Copy TypeSafe Jev configuration">COPY</button>
+              <button class="copy" type="button" data-copy-target="jev-code" aria-label="Copy optional TypeSafe key environment command">COPY</button>
             </div>
+            <p class="install-note">In Pi, use <code>/so config native</code> for its built-in classifier. Native mode handles Choice and Noul only. For Score probabilities, keep the default TypeSafe mode.</p>
 
             <div style="height:18px"></div>
 
@@ -2864,17 +2860,22 @@ p code {
             <div class="config-list">
               <div class="config-row" data-env-desc="base" tabindex="0">
                 <code>SYSTEM_ONE_BASE_URL</code>
-                <span>Required endpoint origin for the configured System One provider.</span>
+                <span>Optional. Set a custom System One endpoint instead of the default TypeSafe endpoint.</span>
               </div>
 
               <div class="config-row" data-env-desc="key" tabindex="0">
                 <code>SYSTEM_ONE_API_KEY</code>
-                <span>Optional. Set this when the provider requires authentication. You can also enter a session-only key through <code>/so config</code>.</span>
+                <span>Use this for custom endpoints that require a key. For TypeSafe, it takes precedence over Pi's key.</span>
               </div>
 
               <div class="config-row" data-env-desc="model" tabindex="0">
                 <code>SYSTEM_ONE_MODEL</code>
-                <span>Optional. Set this when the provider requires an explicit model; otherwise leave it unset.</span>
+                <span>Optional for custom endpoints that require a model. TypeSafe uses <code>jev-latest</code> by default.</span>
+              </div>
+
+              <div class="config-row" data-env-desc="typesafe-key" tabindex="0">
+                <code>TYPESAFE_API_KEY</code>
+                <span>Optional if you use <code>/login typesafe</code>. Pi can use either credential for the default TypeSafe endpoint.</span>
               </div>
 
               <div class="config-row">
@@ -3094,10 +3095,12 @@ p code {
             <div class="faq-answer-wrap" id="faq-answer-2" role="region" aria-labelledby="faq-question-2">
               <div class="faq-answer">
                 <p>
-                  Install <code>pi-system-one</code>, set <code>SYSTEM_ONE_BASE_URL</code> to
-                  <code>https://api.typesafe.ai</code>, provide <code>SYSTEM_ONE_API_KEY</code>,
-                  and use <code>SYSTEM_ONE_MODEL=jev-latest</code>. Pi then gets the
-                  <code>system_one</code> tool.
+                  Install <code>pi-system-one</code>. The <code>system_one</code> tool uses
+                  TypeSafe Jev by default with <code>TYPESAFE_API_KEY</code> or a saved
+                  <code>/login typesafe</code> key. No endpoint or model setting is needed.
+                  For Pi's built-in classifier, run <code>/so config native</code>.
+                  Native mode supports Choice and Noul, but rejects Score questions.
+                  Use the default TypeSafe mode for full Score results.
                 </p>
               </div>
             </div>
