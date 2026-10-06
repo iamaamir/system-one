@@ -41,18 +41,33 @@ export function registerSystemOneCommands(
     requestedMode?: string,
   ): Promise<void> {
     const current = store.session ?? createSessionConfig();
+    const modes: ConfigMode[] = [
+      current.mode,
+      ...(["typesafe", "custom", "native"] as ConfigMode[]).filter(
+        (mode) => mode !== current.mode,
+      ),
+    ];
+    const descriptions: Record<ConfigMode, string> = {
+      typesafe: "TypeSafe Jev (HTTP, full Score)",
+      custom: "Custom System One endpoint",
+      native: "Pi classifier (Choice and Noul only)",
+    };
+    const options = modes.map(
+      (mode) =>
+        `${mode} — ${descriptions[mode]}${mode === current.mode ? " (current)" : ""}`,
+    );
     const modeRaw =
       requestedMode ??
-      (await ctx.ui.input(
-        `Provider mode (typesafe / custom / native; current: ${current.mode}):`,
-        current.mode,
-      ));
+      (await ctx.ui.select("System One provider mode", options));
     if (modeRaw === undefined) {
       ctx.ui.notify("Cancelled.", "info");
       return;
     }
-    const mode = (modeRaw.trim().toLowerCase() || current.mode) as ConfigMode;
-    if (!["typesafe", "custom", "native"].includes(mode)) {
+    const mode =
+      requestedMode === undefined
+        ? modes[options.indexOf(modeRaw)]
+        : (modeRaw.trim().toLowerCase() as ConfigMode);
+    if (!mode || !modes.includes(mode)) {
       ctx.ui.notify("Choose typesafe, custom, or native.", "error");
       return;
     }
