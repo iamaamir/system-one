@@ -7,12 +7,14 @@ import {
   type ConfigMode,
   createSessionConfig,
   describeConfig,
+  isTypeSafeEndpoint,
   type SessionConfig,
   TYPESAFE_BASE_URL,
   TYPESAFE_MODEL,
 } from "./config.ts";
+import { DebugHistory, observedProvider } from "./debug.ts";
+import { DebugOverlay, debugSummary } from "./debug-ui.ts";
 import { saveStoredConfig } from "./persistence.ts";
-import { isTypeSafeEndpoint, resolveSessionProvider } from "./provider.ts";
 import { buildSystemOneTool } from "./tool.ts";
 
 export interface SessionStore {
@@ -25,13 +27,19 @@ export function registerSystemOneCommands(
   configPath?: string,
 ) {
   let registered = false;
+  const history = new DebugHistory();
+  pi.on("session_start", () => history.clear());
   function applyProvider() {
     if (registered) return;
     registered = true;
     pi.registerTool(
       buildSystemOneTool({
-        resolveProvider: (ctx) =>
-          resolveSessionProvider(store.session ?? createSessionConfig(), ctx),
+        resolveProvider: async (ctx) =>
+          observedProvider(
+            store.session ?? createSessionConfig(),
+            ctx,
+            history,
+          ),
       }),
     );
   }
@@ -41,27 +49,45 @@ export function registerSystemOneCommands(
     requestedMode?: string,
   ): Promise<void> {
     const current = store.session ?? createSessionConfig();
+    const modes: ConfigMode[] = [
+      current.mode,
+      ...(["typesafe", "custom", "native", "auto"] as ConfigMode[]).filter(
+        (mode) => mode !== current.mode,
+      ),
+    ];
+    const descriptions: Record<ConfigMode, string> = {
+      typesafe: "TypeSafe Jev (HTTP, full Score)",
+      custom: "Custom System One endpoint",
+      native: "Pi classifier (Choice and Noul only)",
+      auto: "Native when compatible, TypeSafe HTTP otherwise",
+    };
+    const options = modes.map(
+      (mode) =>
+        `${mode} — ${descriptions[mode]}${mode === current.mode ? " (current)" : ""}`,
+    );
     const modeRaw =
       requestedMode ??
-      (await ctx.ui.input(
-        `Provider mode (typesafe / custom / native; current: ${current.mode}):`,
-        current.mode,
-      ));
+      (await ctx.ui.select("System One provider mode", options));
     if (modeRaw === undefined) {
       ctx.ui.notify("Cancelled.", "info");
       return;
     }
-    const mode = (modeRaw.trim().toLowerCase() || current.mode) as ConfigMode;
-    if (!["typesafe", "custom", "native"].includes(mode)) {
-      ctx.ui.notify("Choose typesafe, custom, or native.", "error");
+    const mode =
+      requestedMode === undefined
+        ? modes[options.indexOf(modeRaw)]
+        : (modeRaw.trim().toLowerCase() as ConfigMode);
+    if (!mode || !modes.includes(mode)) {
+      ctx.ui.notify("Choose typesafe, custom, native, or auto.", "error");
       return;
     }
     const next: SessionConfig = {
       current: { ...current.current },
       mode,
+      modeSource: "session",
+      ignoredEnvironmentEndpoint: false,
       keyInMemory: current.keyInMemory,
     };
-    if (mode === "typesafe") {
+    if (mode === "typesafe" || mode === "auto") {
       next.current.baseUrl = TYPESAFE_BASE_URL;
       next.current.model = TYPESAFE_MODEL;
       // A key exported for a custom endpoint must not follow a mode switch.
@@ -133,6 +159,10 @@ export function registerSystemOneCommands(
         });
       }
     }
+    next.ignoredEnvironmentEndpoint = Boolean(
+      process.env.SYSTEM_ONE_BASE_URL &&
+        process.env.SYSTEM_ONE_BASE_URL !== next.current.baseUrl,
+    );
     if (configPath) {
       try {
         saveStoredConfig(configPath, {
@@ -183,15 +213,33 @@ export function registerSystemOneCommands(
     ctx.ui.notify(summary, "info");
   }
 
+  async function cmdDebug(ctx: ExtensionCommandContext): Promise<void> {
+    if (ctx.mode !== "tui") {
+      ctx.ui.notify(debugSummary(history.entries), "info");
+      return;
+    }
+    await ctx.ui.custom<void>(
+      (tui, theme, _keybindings, done) =>
+        new DebugOverlay([...history.entries], theme, done, () =>
+          tui.requestRender(),
+        ),
+      {
+        overlay: true,
+        overlayOptions: { anchor: "center", width: 70, maxHeight: 24 },
+      },
+    );
+  }
+
   pi.registerCommand("so", {
     description: "System One config (/so status for current)",
     getArgumentCompletions: (prefix: string) =>
-      ["config", "status"]
+      ["config", "status", "debug"]
         .filter((c) => c.startsWith(prefix.trim().toLowerCase()))
         .map((c) => ({ value: c, label: c })),
     handler: async (args, ctx) => {
       const [cmd, mode] = args.trim().toLowerCase().split(/\s+/);
       if (cmd === "status") await cmdStatus(ctx);
+      else if (cmd === "debug") await cmdDebug(ctx);
       else await cmdConfig(ctx, cmd === "config" ? mode : undefined);
     },
   });

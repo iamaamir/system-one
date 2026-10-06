@@ -27,25 +27,29 @@ describe("extension resources", () => {
         join(dir, "pi-system-one.json"),
         JSON.stringify({ "Bearer secret-token": "ignored" }),
       );
-      const handlers: Record<string, (event: never, ctx: never) => void> = {};
+      const handlers: Record<string, ((event: never, ctx: never) => void)[]> =
+        {};
       piSystemOneExtension({
         registerTool: () => {},
         registerCommand: () => {},
         on: (name: string, handler: (event: never, ctx: never) => void) => {
-          handlers[name] = handler;
+          handlers[name] ??= [];
+          handlers[name].push(handler);
         },
       } as never);
       let warning = "";
-      handlers.session_start(
-        { reason: "startup" } as never,
-        {
-          ui: {
-            notify: (message: string) => {
-              warning = message;
+      for (const handler of handlers.session_start) {
+        handler(
+          { reason: "startup" } as never,
+          {
+            ui: {
+              notify: (message: string) => {
+                warning = message;
+              },
             },
-          },
-        } as never,
-      );
+          } as never,
+        );
+      }
       assert.match(warning, /Ignoring saved settings/);
       assert.doesNotMatch(warning, /Bearer|secret-token/);
     } finally {
@@ -113,6 +117,70 @@ describe("extension resources", () => {
       else process.env.PI_CODING_AGENT_DIR = previous.dir;
       if (previous.base === undefined) delete process.env.SYSTEM_ONE_BASE_URL;
       else process.env.SYSTEM_ONE_BASE_URL = previous.base;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("loads saved native mode instead of an inherited TypeSafe endpoint on restart", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-saved-native-"));
+    const oldDir = process.env.PI_CODING_AGENT_DIR;
+    const oldUrl = process.env.SYSTEM_ONE_BASE_URL;
+    const originalFetch = globalThis.fetch;
+    try {
+      process.env.PI_CODING_AGENT_DIR = dir;
+      process.env.SYSTEM_ONE_BASE_URL = "https://api.typesafe.ai";
+      writeFileSync(join(dir, "pi-system-one.json"), '{"mode":"native"}');
+      let tool: ReturnType<typeof buildSystemOneTool> | undefined;
+      let command: ((args: string, ctx: never) => Promise<void>) | undefined;
+      piSystemOneExtension({
+        registerTool: (value: ReturnType<typeof buildSystemOneTool>) => {
+          tool = value;
+        },
+        registerCommand: (
+          _name: string,
+          options: { handler: typeof command },
+        ) => {
+          command = options.handler;
+        },
+        on: () => {},
+      } as never);
+      let status = "";
+      await command?.("status", {
+        ui: {
+          notify: (message: string) => {
+            status = message;
+          },
+        },
+      } as never);
+      assert.match(status, /mode: native \(saved\)/);
+      globalThis.fetch = (async () => {
+        throw Error("saved native mode must not make HTTP calls");
+      }) as typeof fetch;
+      assert.ok(tool);
+      const result = await tool.execute(
+        "saved-native",
+        {
+          state: "x",
+          questions: { q: { type: "noul", instructions: "Yes?" } },
+        },
+        undefined,
+        undefined,
+        {
+          modelRegistry: {
+            findOfType: () => ({ id: "jev-latest" }),
+            classify: async () => ({
+              stopReason: "stop",
+              answers: { q: { type: "bool", probability: 0.8 } },
+            }),
+          },
+        } as never,
+      );
+      assert.deepEqual(result.details.answers.q, { type: "noul", noul: 0.8 });
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (oldDir === undefined) delete process.env.PI_CODING_AGENT_DIR;
+      else process.env.PI_CODING_AGENT_DIR = oldDir;
+      if (oldUrl === undefined) delete process.env.SYSTEM_ONE_BASE_URL;
+      else process.env.SYSTEM_ONE_BASE_URL = oldUrl;
       rmSync(dir, { recursive: true, force: true });
     }
   });

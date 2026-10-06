@@ -27,6 +27,21 @@ it("round-trips persistent settings without writing a key", () => {
   }
 });
 
+it("persists auto routing policy without a detected provider or credentials", () => {
+  const dir = mkdtempSync(join(tmpdir(), "so-auto-"));
+  try {
+    const path = join(dir, "pi-system-one.json");
+    saveStoredConfig(path, { mode: "auto", timeoutMs: 5000 });
+    assert.deepEqual(loadStoredConfig(path), { mode: "auto", timeoutMs: 5000 });
+    assert.doesNotMatch(
+      readFileSync(path, "utf8"),
+      /baseUrl|apiKey|jev-latest/,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 it("rejects credential-bearing endpoint URLs without persisting them", () => {
   const dir = mkdtempSync(join(tmpdir(), "so-config-"));
   try {
