@@ -1,12 +1,16 @@
 // pi-system-one/tests/commands.test.ts
 
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import {
   registerSystemOneCommands,
   type SessionStore,
 } from "../src/commands.ts";
 import { createSessionConfig } from "../src/config.ts";
+import { resolveSessionProvider } from "../src/provider.ts";
 
 interface Captured {
   tools: string[];
@@ -41,10 +45,18 @@ function harness() {
   return { pi: pi as never, cap };
 }
 
-function ctxFor(answers: (string | undefined)[], cap: Captured) {
+function ctxFor(
+  answers: (string | undefined)[],
+  cap: Captured,
+  defaults?: string[],
+) {
   return {
+    modelRegistry: { getApiKeyForProvider: async () => undefined },
     ui: {
-      input: async () => answers.shift(),
+      input: async (_prompt: string, initial?: string) => {
+        defaults?.push(initial ?? "");
+        return answers.shift();
+      },
       notify: (msg: string) => {
         cap.notices.push(msg);
       },
@@ -53,6 +65,164 @@ function ctxFor(answers: (string | undefined)[], cap: Captured) {
 }
 
 describe("so command", () => {
+  it("clears prior model on custom endpoint change with blank model", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-model-change-"));
+    const originalFetch = globalThis.fetch;
+    try {
+      const path = join(dir, "pi-system-one.json");
+      const { pi, cap } = harness();
+      const store: SessionStore = {
+        session: createSessionConfig({
+          SYSTEM_ONE_BASE_URL: "http://localhost:8008",
+          SYSTEM_ONE_MODEL: "reflex",
+        }),
+      };
+      registerSystemOneCommands(pi, store, path);
+      const defaults: string[] = [];
+      await cap.handler?.(
+        "config custom",
+        ctxFor(["http://localhost:8009", "", ""], cap, defaults),
+      );
+      assert.equal(defaults[1], "");
+      assert.equal(store.session?.current.model, undefined);
+      assert.equal(JSON.parse(readFileSync(path, "utf8")).model, undefined);
+      globalThis.fetch = (async (url, options) => {
+        assert.equal(url, "http://localhost:8009/v1/systemone");
+        assert.equal(JSON.parse(String(options?.body)).model, undefined);
+        return new Response(
+          JSON.stringify({ answers: { q: { type: "noul", noul: 0.6 } } }),
+          { status: 200 },
+        );
+      }) as typeof fetch;
+      const session = store.session;
+      assert.ok(session);
+      const provider = await resolveSessionProvider(session, {} as never);
+      await provider.evaluate({
+        state: "x",
+        questions: { q: { type: "noul", instructions: "Yes?" } },
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps model for same custom endpoint and accepts explicit replacement", async () => {
+    const { pi, cap } = harness();
+    const store: SessionStore = {
+      session: createSessionConfig({
+        SYSTEM_ONE_BASE_URL: "http://localhost:8008",
+        SYSTEM_ONE_MODEL: "reflex",
+      }),
+    };
+    registerSystemOneCommands(pi, store);
+    await cap.handler?.("config custom", ctxFor(["", "", ""], cap));
+    assert.equal(store.session?.current.model, "reflex");
+    await cap.handler?.(
+      "config custom",
+      ctxFor(["http://localhost:8009", "replacement", ""], cap),
+    );
+    assert.equal(store.session?.current.model, "replacement");
+  });
+
+  it("keeps explicit TypeSafe environment key after selecting TypeSafe", async () => {
+    const previousKey = process.env.SYSTEM_ONE_API_KEY;
+    const previousUrl = process.env.SYSTEM_ONE_BASE_URL;
+    const originalFetch = globalThis.fetch;
+    try {
+      process.env.SYSTEM_ONE_API_KEY = "test-key";
+      delete process.env.SYSTEM_ONE_BASE_URL;
+      const { pi, cap } = harness();
+      const store: SessionStore = { session: createSessionConfig(process.env) };
+      registerSystemOneCommands(pi, store);
+      await cap.handler?.("config typesafe", ctxFor([], cap));
+      globalThis.fetch = (async (_url, options) => {
+        assert.equal(
+          new Headers(options?.headers).get("authorization"),
+          "Bearer test-key",
+        );
+        return new Response(
+          JSON.stringify({ answers: { q: { type: "noul", noul: 0.7 } } }),
+          { status: 200 },
+        );
+      }) as typeof fetch;
+      const session = store.session;
+      assert.ok(session);
+      const provider = await resolveSessionProvider(session, {
+        modelRegistry: { getApiKeyForProvider: async () => undefined },
+      } as never);
+      await provider.evaluate({
+        state: "x",
+        questions: { q: { type: "noul", instructions: "Yes?" } },
+      });
+    } finally {
+      if (previousKey === undefined) delete process.env.SYSTEM_ONE_API_KEY;
+      else process.env.SYSTEM_ONE_API_KEY = previousKey;
+      if (previousUrl === undefined) delete process.env.SYSTEM_ONE_BASE_URL;
+      else process.env.SYSTEM_ONE_BASE_URL = previousUrl;
+      globalThis.fetch = originalFetch;
+    }
+  });
+  it("does not carry a custom endpoint environment key to TypeSafe", async () => {
+    const previousKey = process.env.SYSTEM_ONE_API_KEY;
+    const previousUrl = process.env.SYSTEM_ONE_BASE_URL;
+    try {
+      process.env.SYSTEM_ONE_API_KEY = "custom-key";
+      process.env.SYSTEM_ONE_BASE_URL = "https://custom.example";
+      const { pi, cap } = harness();
+      const store: SessionStore = { session: createSessionConfig(process.env) };
+      registerSystemOneCommands(pi, store);
+      await cap.handler?.("config typesafe", ctxFor([], cap));
+      assert.equal(store.session?.current.apiKey, undefined);
+    } finally {
+      if (previousKey === undefined) delete process.env.SYSTEM_ONE_API_KEY;
+      else process.env.SYSTEM_ONE_API_KEY = previousKey;
+      if (previousUrl === undefined) delete process.env.SYSTEM_ONE_BASE_URL;
+      else process.env.SYSTEM_ONE_BASE_URL = previousUrl;
+    }
+  });
+  it("does not save a URL containing a token or change the active session", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-command-"));
+    try {
+      const path = join(dir, "pi-system-one.json");
+      const { pi, cap } = harness();
+      const store: SessionStore = { session: createSessionConfig({}) };
+      registerSystemOneCommands(pi, store, path);
+      await cap.handler?.(
+        "config custom",
+        ctxFor(["https://example.com/?token=secret", "", ""], cap),
+      );
+      assert.equal(store.session?.mode, "typesafe");
+      assert.match(cap.notices.at(-1) ?? "", /Could not save settings/);
+      assert.doesNotMatch(cap.notices.join(" "), /secret/);
+      assert.throws(() => readFileSync(path, "utf8"), /ENOENT/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+  it("persists custom settings without session key and switches back to native", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-command-"));
+    try {
+      const path = join(dir, "pi-system-one.json");
+      const { pi, cap } = harness();
+      const store: SessionStore = {};
+      registerSystemOneCommands(pi, store, path);
+      await cap.handler?.(
+        "config custom",
+        ctxFor(["http://localhost:8008", "reflex", "secret"], cap),
+      );
+      assert.equal(store.session?.current.apiKey, "secret");
+      const saved = readFileSync(path, "utf8");
+      assert.doesNotMatch(saved, /secret|apiKey/);
+      assert.match(saved, /localhost:8008/);
+      await cap.handler?.("config native", ctxFor([], cap));
+      assert.equal(store.session?.mode, "native");
+      assert.equal(store.session?.current.apiKey, undefined);
+      assert.match(readFileSync(path, "utf8"), /native/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
   it("completes config + status, case-insensitively", () => {
     const { pi, cap } = harness();
     registerSystemOneCommands(pi, {});
@@ -66,13 +236,14 @@ describe("so command", () => {
     );
     assert.deepEqual(cap.completions?.("x"), []);
   });
-  it("bare /so configures from blank session and registers the tool", async () => {
+  it("registers the tool before config and switches to custom on request", async () => {
     const { pi, cap } = harness();
     const store: SessionStore = {};
-    registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["http://x/", "", ""], cap));
+    registerSystemOneCommands(pi, store).applyProvider();
     assert.deepEqual(cap.tools, ["system_one"]);
+    await cap.handler?.("", ctxFor(["custom", "http://x/", "", ""], cap));
     assert.equal(store.session?.current.baseUrl, "http://x/");
+    assert.equal(store.session?.mode, "custom");
   });
   it("cancel (undefined) keeps everything and registers nothing", async () => {
     const { pi, cap } = harness();
@@ -89,15 +260,15 @@ describe("so command", () => {
       session: createSessionConfig({ SYSTEM_ONE_BASE_URL: "http://keep/" }),
     };
     registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["", "", ""], cap));
+    await cap.handler?.("", ctxFor(["custom", "", "", ""], cap));
     assert.equal(store.session?.current.baseUrl, "http://keep/");
   });
   it("whitespace-only base URL is rejected", async () => {
     const { pi, cap } = harness();
-    const store: SessionStore = {};
+    const store: SessionStore = { session: createSessionConfig({}) };
     registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["   ", "", ""], cap));
-    assert.equal(store.session, undefined);
+    await cap.handler?.("", ctxFor(["custom", "   ", "", ""], cap));
+    assert.equal(store.session?.mode, "typesafe");
     assert.match(cap.notices[0], /Cancelled/);
   });
   it("'-' forgets a memory key back to env", async () => {
@@ -106,15 +277,33 @@ describe("so command", () => {
       session: createSessionConfig({ SYSTEM_ONE_BASE_URL: "http://x/" }),
     };
     registerSystemOneCommands(pi, store);
-    await cap.handler?.("", ctxFor(["", "", "sk-mem", ""], cap));
+    await cap.handler?.("", ctxFor(["custom", "", "", "sk-mem"], cap));
     assert.equal(store.session?.keyInMemory, true);
-    await cap.handler?.("", ctxFor(["", "", "-", ""], cap));
-    // After forgetting the memory key, the API key should revert to the environment variable (if any).
-    // In the CI environment, SYSTEM_ONE_API_KEY may be set; otherwise it will be undefined.
+    await cap.handler?.("", ctxFor(["custom", "", "", "-"], cap));
+    // A key from another endpoint must never follow this configured URL.
     assert.equal(store.session?.keyInMemory, false);
     assert.equal(
       store.session?.current.apiKey,
-      process.env.SYSTEM_ONE_API_KEY || undefined,
+      process.env.SYSTEM_ONE_BASE_URL === "http://x/"
+        ? process.env.SYSTEM_ONE_API_KEY || undefined
+        : undefined,
+    );
+  });
+  it("native status reports Pi-managed credentials, not unused HTTP environment key", async () => {
+    const { pi, cap } = harness();
+    const store: SessionStore = {
+      session: createSessionConfig(
+        { SYSTEM_ONE_API_KEY: "test-env-key", SYSTEM_ONE_MODEL: "other-model" },
+        { mode: "native" },
+      ),
+    };
+    registerSystemOneCommands(pi, store);
+    await cap.handler?.("status", ctxFor([], cap));
+    assert.match(cap.notices[0], /api key: managed by Pi/);
+    assert.match(cap.notices[0], /model: jev-latest/);
+    assert.doesNotMatch(
+      cap.notices[0],
+      /from environment|test-env-key|other-model/,
     );
   });
   it("status shows current config; STATUS routes case-insensitively", async () => {
@@ -126,10 +315,11 @@ describe("so command", () => {
     await cap.handler?.("STATUS", ctxFor([], cap));
     assert.match(cap.notices[0], /http:\/\/x\//);
   });
-  it("status with no session explains how to configure", async () => {
+  it("status shows TypeSafe defaults and login guidance without auth", async () => {
     const { pi, cap } = harness();
-    registerSystemOneCommands(pi, {});
+    registerSystemOneCommands(pi, { session: createSessionConfig({}) });
     await cap.handler?.("status", ctxFor([], cap));
-    assert.match(cap.notices[0], /not configured/);
+    assert.match(cap.notices[0], /typesafe/);
+    assert.match(cap.notices[0], /login typesafe/);
   });
 });

@@ -11,6 +11,65 @@ import {
 } from "../src/config.ts";
 
 describe("config", () => {
+  it("native mode ignores HTTP environment key and model", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_API_KEY: "test-env-key", SYSTEM_ONE_MODEL: "other-model" },
+      { mode: "native", model: "stored-model", baseUrl: "http://stale/" },
+    );
+    assert.equal(s.mode, "native");
+    assert.equal(s.current.baseUrl, "");
+    assert.equal(s.current.apiKey, undefined);
+    assert.equal(s.current.model, "jev-latest");
+    assert.match(describeConfig(s), /api key: managed by Pi/);
+  });
+  it("defaults to TypeSafe Jev without environment configuration", () => {
+    const s = createSessionConfig({});
+    assert.equal(s.mode, "typesafe");
+    assert.equal(s.current.baseUrl, "https://api.typesafe.ai");
+    assert.equal(s.current.model, "jev-latest");
+    assert.equal(s.current.apiKey, undefined);
+  });
+  it("keeps environment endpoint ahead of saved custom config", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_BASE_URL: "http://existing/", SYSTEM_ONE_MODEL: "old" },
+      { mode: "native", model: "new", timeoutMs: 5000 },
+    );
+    assert.equal(s.mode, "custom");
+    assert.equal(s.current.baseUrl, "http://existing/");
+    assert.equal(s.current.model, "old");
+    assert.equal(s.current.timeoutMs, 5000);
+  });
+  it("does not carry a saved model to a different environment endpoint", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_BASE_URL: "http://new/" },
+      { mode: "custom", baseUrl: "http://old/", model: "old-model" },
+    );
+    assert.equal(s.current.model, undefined);
+    assert.equal(s.current.baseUrl, "http://new/");
+  });
+  it("keeps saved model when environment endpoint matches saved endpoint", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_BASE_URL: "http://same/" },
+      { mode: "custom", baseUrl: "http://same/", model: "saved-model" },
+    );
+    assert.equal(s.current.model, "saved-model");
+  });
+  it("does not forward an env key to a saved custom URL without an env endpoint", () => {
+    const s = createSessionConfig(
+      { SYSTEM_ONE_API_KEY: "key-for-other-endpoint" },
+      { mode: "custom", baseUrl: "https://other.example" },
+    );
+    assert.equal(s.current.apiKey, undefined);
+  });
+  it("loads saved custom config without an environment variable", () => {
+    const s = createSessionConfig(
+      {},
+      { mode: "custom", baseUrl: "http://localhost:8008", model: "reflex" },
+    );
+    assert.equal(s.mode, "custom");
+    assert.equal(s.current.model, "reflex");
+    assert.equal(s.current.baseUrl, "http://localhost:8008");
+  });
   it("loads from env", () => {
     const s = createSessionConfig({
       SYSTEM_ONE_BASE_URL: "http://localhost:8008",

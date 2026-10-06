@@ -2,9 +2,13 @@
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+  type ExtensionAPI,
+  getAgentDir,
+} from "@earendil-works/pi-coding-agent";
 import { registerSystemOneCommands, type SessionStore } from "./commands.ts";
 import { createSessionConfig } from "./config.ts";
+import { loadStoredConfig } from "./persistence.ts";
 
 /**
  * Directory holding the bundled `system-one` skill (use-case catalog).
@@ -22,23 +26,29 @@ export function systemOnePromptsDir(): string {
 }
 
 export default function piSystemOneExtension(pi: ExtensionAPI) {
-  // The /so command is always registered so config stays reachable with
-  // no env set. The tool appears once a base URL exists (env or /so config).
+  const configPath = join(getAgentDir(), "pi-system-one.json");
   const store: SessionStore = {};
   try {
-    store.session = createSessionConfig();
-  } catch {
-    pi.on("session_start", (event, ctx) => {
-      if (event.reason === "startup" || event.reason === "new") {
-        ctx.ui.notify(
-          "System One: SYSTEM_ONE_BASE_URL is not set. Export it or run /so config.",
-          "warning",
-        );
-      }
+    store.session = createSessionConfig(
+      process.env,
+      loadStoredConfig(configPath),
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    try {
+      store.session = createSessionConfig(process.env);
+    } catch {
+      store.session = createSessionConfig({});
+    }
+    pi.on("session_start", (_event, ctx) => {
+      ctx.ui.notify(
+        `System One: ${message}. Ignoring saved settings; fix them or run /so config.`,
+        "warning",
+      );
     });
   }
 
-  const { applyProvider } = registerSystemOneCommands(pi, store);
+  const { applyProvider } = registerSystemOneCommands(pi, store, configPath);
   applyProvider();
 
   // Contribute the bundled `system-one` skill (use-case catalog) and the
