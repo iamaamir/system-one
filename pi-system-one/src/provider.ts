@@ -9,26 +9,11 @@ import {
   validateResponse,
 } from "system-one-core";
 import {
+  isTypeSafeEndpoint,
   type SessionConfig,
   TYPESAFE_BASE_URL,
   TYPESAFE_MODEL,
 } from "./config.ts";
-
-export function isTypeSafeEndpoint(baseUrl: string): boolean {
-  try {
-    const url = new URL(baseUrl);
-    return (
-      url.origin === TYPESAFE_BASE_URL &&
-      url.pathname === "/" &&
-      !url.search &&
-      !url.hash &&
-      !url.username &&
-      !url.password
-    );
-  } catch {
-    return false;
-  }
-}
 
 function nativeFailure(aborted: boolean): Error {
   return new Error(
@@ -154,6 +139,66 @@ class PiNativeProvider implements SystemOneProvider {
   }
 }
 
+function supportsNative(request: SystemOneRequest<QuestionMap>): boolean {
+  return Object.values(request.questions).every((question) => {
+    if (question.type === "score" || typeof question.instructions !== "string")
+      return false;
+    if (question.type === "choice")
+      return Object.values(question.criteria).every(
+        (value) => value === null || typeof value === "string",
+      );
+    return (
+      !question.criteria ||
+      (Object.keys(question.criteria).every(
+        (key) => key === "true" || key === "false",
+      ) &&
+        typeof question.criteria.true === "string" &&
+        typeof question.criteria.false === "string")
+    );
+  });
+}
+
+class AutoSystemOneProvider implements SystemOneProvider {
+  readonly id = "auto";
+  private readonly session: SessionConfig;
+  private readonly ctx: ExtensionToolContext;
+  constructor(session: SessionConfig, ctx: ExtensionToolContext) {
+    this.session = session;
+    this.ctx = ctx;
+  }
+
+  async evaluate<Q extends QuestionMap>(
+    request: SystemOneRequest<Q>,
+    options?: SystemOneCallOptions,
+  ): Promise<SystemOneResponse<Q>> {
+    if (
+      supportsNative(request) &&
+      this.ctx.modelRegistry?.findOfType?.(
+        "classifier",
+        "typesafe",
+        "jev-latest",
+      )
+    )
+      return new PiNativeProvider(
+        this.ctx,
+        this.session.current.timeoutMs,
+      ).evaluate(request, options);
+    const http = await resolveSessionProvider(
+      {
+        ...this.session,
+        mode: "typesafe",
+        current: {
+          ...this.session.current,
+          baseUrl: TYPESAFE_BASE_URL,
+          model: TYPESAFE_MODEL,
+        },
+      },
+      this.ctx,
+    );
+    return http.evaluate(request, options);
+  }
+}
+
 /** Resolve credentials at call time. Never forward Pi's TypeSafe key to a custom origin. */
 export async function resolveSessionProvider(
   session: SessionConfig,
@@ -161,6 +206,7 @@ export async function resolveSessionProvider(
 ): Promise<SystemOneProvider> {
   if (session.mode === "native")
     return new PiNativeProvider(ctx, session.current.timeoutMs);
+  if (session.mode === "auto") return new AutoSystemOneProvider(session, ctx);
   const config = session.current;
   if (!config.baseUrl)
     throw new Error("Custom endpoint missing. Run /so config.");

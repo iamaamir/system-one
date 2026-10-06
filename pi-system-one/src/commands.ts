@@ -7,12 +7,13 @@ import {
   type ConfigMode,
   createSessionConfig,
   describeConfig,
+  isTypeSafeEndpoint,
   type SessionConfig,
   TYPESAFE_BASE_URL,
   TYPESAFE_MODEL,
 } from "./config.ts";
 import { saveStoredConfig } from "./persistence.ts";
-import { isTypeSafeEndpoint, resolveSessionProvider } from "./provider.ts";
+import { resolveSessionProvider } from "./provider.ts";
 import { buildSystemOneTool } from "./tool.ts";
 
 export interface SessionStore {
@@ -43,7 +44,7 @@ export function registerSystemOneCommands(
     const current = store.session ?? createSessionConfig();
     const modes: ConfigMode[] = [
       current.mode,
-      ...(["typesafe", "custom", "native"] as ConfigMode[]).filter(
+      ...(["typesafe", "custom", "native", "auto"] as ConfigMode[]).filter(
         (mode) => mode !== current.mode,
       ),
     ];
@@ -51,6 +52,7 @@ export function registerSystemOneCommands(
       typesafe: "TypeSafe Jev (HTTP, full Score)",
       custom: "Custom System One endpoint",
       native: "Pi classifier (Choice and Noul only)",
+      auto: "Native when compatible, TypeSafe HTTP otherwise",
     };
     const options = modes.map(
       (mode) =>
@@ -68,15 +70,17 @@ export function registerSystemOneCommands(
         ? modes[options.indexOf(modeRaw)]
         : (modeRaw.trim().toLowerCase() as ConfigMode);
     if (!mode || !modes.includes(mode)) {
-      ctx.ui.notify("Choose typesafe, custom, or native.", "error");
+      ctx.ui.notify("Choose typesafe, custom, native, or auto.", "error");
       return;
     }
     const next: SessionConfig = {
       current: { ...current.current },
       mode,
+      modeSource: "session",
+      ignoredEnvironmentEndpoint: false,
       keyInMemory: current.keyInMemory,
     };
-    if (mode === "typesafe") {
+    if (mode === "typesafe" || mode === "auto") {
       next.current.baseUrl = TYPESAFE_BASE_URL;
       next.current.model = TYPESAFE_MODEL;
       // A key exported for a custom endpoint must not follow a mode switch.
@@ -148,6 +152,10 @@ export function registerSystemOneCommands(
         });
       }
     }
+    next.ignoredEnvironmentEndpoint = Boolean(
+      process.env.SYSTEM_ONE_BASE_URL &&
+        process.env.SYSTEM_ONE_BASE_URL !== next.current.baseUrl,
+    );
     if (configPath) {
       try {
         saveStoredConfig(configPath, {

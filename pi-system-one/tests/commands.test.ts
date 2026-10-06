@@ -81,9 +81,43 @@ describe("so command", () => {
     await cap.handler?.("config", ctxFor(["typesafe"], cap));
     assert.equal(store.session?.mode, "typesafe");
     assert.equal(cap.selections.length, 2);
-    assert.equal(cap.selections[0].options.length, 3);
+    assert.equal(cap.selections[0].options.length, 4);
     assert.match(cap.selections[0].options[0], /typesafe.*current/i);
     assert.match(cap.selections[1].options[0], /native.*current/i);
+  });
+
+  it("selects auto and persists policy without an inherited custom endpoint", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-auto-command-"));
+    const previousUrl = process.env.SYSTEM_ONE_BASE_URL;
+    const previousKey = process.env.SYSTEM_ONE_API_KEY;
+    try {
+      process.env.SYSTEM_ONE_BASE_URL = "https://custom.example";
+      process.env.SYSTEM_ONE_API_KEY = "custom-secret";
+      const path = join(dir, "pi-system-one.json");
+      const { pi, cap } = harness();
+      const store: SessionStore = {
+        session: createSessionConfig({
+          SYSTEM_ONE_BASE_URL: "https://custom.example",
+          SYSTEM_ONE_API_KEY: "custom-secret",
+        }),
+      };
+      registerSystemOneCommands(pi, store, path);
+      await cap.handler?.("config", ctxFor(["auto"], cap));
+      assert.equal(store.session?.mode, "auto");
+      assert.equal(store.session?.current.baseUrl, "https://api.typesafe.ai");
+      assert.equal(store.session?.current.apiKey, undefined);
+      assert.equal(JSON.parse(readFileSync(path, "utf8")).mode, "auto");
+      assert.doesNotMatch(readFileSync(path, "utf8"), /custom.example|secret/);
+      assert.ok(
+        cap.selections[0].options.some((option) => option.startsWith("auto")),
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      if (previousUrl === undefined) delete process.env.SYSTEM_ONE_BASE_URL;
+      else process.env.SYSTEM_ONE_BASE_URL = previousUrl;
+      if (previousKey === undefined) delete process.env.SYSTEM_ONE_API_KEY;
+      else process.env.SYSTEM_ONE_API_KEY = previousKey;
+    }
   });
 
   it("cancels selection without changing mode or saved settings", async () => {

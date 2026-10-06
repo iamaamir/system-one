@@ -1,9 +1,10 @@
 // pi-system-one/src/config.ts
 //
-// Non-secret settings can persist in the user agent directory. Environment
-// variables retain precedence at startup. API keys are never written by this
-// extension: /so config keys live only in memory; Pi login or explicit
-// environment credentials provide persistent authentication.
+// Non-secret settings persist in the user agent directory. A saved mode and
+// endpoint override an inherited environment URL; environment-only setups
+// still select their URL. API keys are never written by this extension:
+// /so config keys live only in memory; Pi login or endpoint-bound environment
+// credentials provide persistent authentication.
 
 export interface SystemOneEnv {
   SYSTEM_ONE_BASE_URL?: string;
@@ -22,7 +23,24 @@ export interface SystemOneExtConfig {
 export const DEFAULT_TIMEOUT_MS = 10_000;
 export const TYPESAFE_BASE_URL = "https://api.typesafe.ai";
 export const TYPESAFE_MODEL = "jev-latest";
-export type ConfigMode = "typesafe" | "custom" | "native";
+
+export function isTypeSafeEndpoint(baseUrl: string): boolean {
+  try {
+    const url = new URL(baseUrl);
+    return (
+      url.origin === TYPESAFE_BASE_URL &&
+      url.pathname === "/" &&
+      !url.search &&
+      !url.hash &&
+      !url.username &&
+      !url.password
+    );
+  } catch {
+    return false;
+  }
+}
+
+export type ConfigMode = "typesafe" | "custom" | "native" | "auto";
 
 /** Public settings only. Credentials never belong in this file. */
 export interface StoredConfig {
@@ -59,20 +77,24 @@ export interface SessionConfig {
   /** True when the key came from `/so config` (memory-only). */
   keyInMemory: boolean;
   mode: ConfigMode;
+  modeSource: "session" | "saved" | "environment" | "default";
+  ignoredEnvironmentEndpoint: boolean;
 }
 
 export function createSessionConfig(
   env: SystemOneEnv = process.env,
   stored: StoredConfig = {},
 ): SessionConfig {
-  const mode: ConfigMode = env.SYSTEM_ONE_BASE_URL
-    ? "custom"
-    : (stored.mode ?? "typesafe");
+  const mode: ConfigMode =
+    stored.mode ?? (env.SYSTEM_ONE_BASE_URL ? "custom" : "typesafe");
   const baseUrl =
     mode === "native"
       ? ""
-      : (env.SYSTEM_ONE_BASE_URL ??
-        (mode === "typesafe" ? TYPESAFE_BASE_URL : (stored.baseUrl ?? "")));
+      : mode === "typesafe" || mode === "auto"
+        ? TYPESAFE_BASE_URL
+        : stored.mode === "custom"
+          ? (stored.baseUrl ?? "")
+          : (env.SYSTEM_ONE_BASE_URL ?? "");
   const rawTimeout = env.SYSTEM_ONE_TIMEOUT_MS
     ? Number(env.SYSTEM_ONE_TIMEOUT_MS)
     : (stored.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -80,23 +102,42 @@ export function createSessionConfig(
     throw new Error("SYSTEM_ONE_TIMEOUT_MS must be a positive number");
   return {
     mode,
+    modeSource: stored.mode
+      ? "saved"
+      : env.SYSTEM_ONE_BASE_URL
+        ? "environment"
+        : "default",
+    ignoredEnvironmentEndpoint: Boolean(
+      stored.mode &&
+        env.SYSTEM_ONE_BASE_URL &&
+        env.SYSTEM_ONE_BASE_URL !== baseUrl,
+    ),
     current: {
       baseUrl,
-      // An env key without an env endpoint must not follow a saved custom URL.
+      // Bind environment credentials and model to their configured endpoint.
       apiKey:
         mode === "native" ||
-        (stored.mode === "custom" && !env.SYSTEM_ONE_BASE_URL)
+        (mode === "custom" &&
+          stored.mode === "custom" &&
+          env.SYSTEM_ONE_BASE_URL !== baseUrl) ||
+        ((mode === "typesafe" || mode === "auto") &&
+          env.SYSTEM_ONE_BASE_URL &&
+          !isTypeSafeEndpoint(env.SYSTEM_ONE_BASE_URL))
           ? undefined
           : env.SYSTEM_ONE_API_KEY || undefined,
       model:
         mode === "native"
           ? TYPESAFE_MODEL
-          : env.SYSTEM_ONE_MODEL ||
-            (env.SYSTEM_ONE_BASE_URL &&
-            env.SYSTEM_ONE_BASE_URL !== stored.baseUrl
-              ? undefined
-              : stored.model) ||
-            (mode === "typesafe" ? TYPESAFE_MODEL : undefined),
+          : mode === "typesafe"
+            ? ((!env.SYSTEM_ONE_BASE_URL ||
+                isTypeSafeEndpoint(env.SYSTEM_ONE_BASE_URL)) &&
+                env.SYSTEM_ONE_MODEL) ||
+              TYPESAFE_MODEL
+            : mode === "auto"
+              ? TYPESAFE_MODEL
+              : (env.SYSTEM_ONE_BASE_URL === baseUrl
+                  ? env.SYSTEM_ONE_MODEL
+                  : undefined) || stored.model,
       timeoutMs: rawTimeout,
     },
     keyInMemory: false,
@@ -114,6 +155,8 @@ export function blankSession(): SessionConfig {
     },
     keyInMemory: false,
     mode: "custom",
+    modeSource: "default",
+    ignoredEnvironmentEndpoint: false,
   };
 }
 
@@ -164,8 +207,16 @@ export function describeConfig(session: SessionConfig): string {
           : "  api key: from environment";
   return [
     "System One:",
-    `  mode: ${session.mode}`,
-    `  endpoint: ${c.baseUrl || "none"}`,
+    `  mode: ${session.mode} (${session.modeSource})`,
+    ...(session.mode === "auto"
+      ? [
+          "  routing: per request (native when compatible; TypeSafe HTTP otherwise)",
+        ]
+      : []),
+    ...(session.ignoredEnvironmentEndpoint
+      ? ["  environment endpoint ignored by selected mode"]
+      : []),
+    `  ${session.mode === "auto" ? "HTTP fallback endpoint" : "endpoint"}: ${c.baseUrl || "none"}`,
     keyLine,
     `  model: ${c.model ?? "server default"}`,
     `  timeout: ${c.timeoutMs}ms`,

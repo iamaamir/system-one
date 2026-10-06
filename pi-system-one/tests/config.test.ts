@@ -22,6 +22,28 @@ describe("config", () => {
     assert.equal(s.current.model, "jev-latest");
     assert.match(describeConfig(s), /api key: managed by Pi/);
   });
+  it("status identifies saved native mode and ignored endpoint without exposing keys", () => {
+    const s = createSessionConfig(
+      {
+        SYSTEM_ONE_BASE_URL: "https://custom.example",
+        SYSTEM_ONE_API_KEY: "secret",
+      },
+      { mode: "native" },
+    );
+    const status = describeConfig(s);
+    assert.match(status, /mode: native \(saved\)/);
+    assert.match(status, /environment endpoint ignored/i);
+    assert.doesNotMatch(status, /custom.example|secret/);
+  });
+  it("status explains auto policy rather than claiming a fixed provider", () => {
+    const s = createSessionConfig({}, { mode: "auto" });
+    assert.match(describeConfig(s), /mode: auto \(saved\)/);
+    assert.match(describeConfig(s), /per request/i);
+    assert.match(
+      describeConfig(s),
+      /HTTP fallback endpoint: https:\/\/api\.typesafe\.ai/,
+    );
+  });
   it("defaults to TypeSafe Jev without environment configuration", () => {
     const s = createSessionConfig({});
     assert.equal(s.mode, "typesafe");
@@ -29,23 +51,57 @@ describe("config", () => {
     assert.equal(s.current.model, "jev-latest");
     assert.equal(s.current.apiKey, undefined);
   });
-  it("keeps environment endpoint ahead of saved custom config", () => {
+  it("keeps a TypeSafe environment model bound to the canonical endpoint", () => {
+    for (const stored of [{}, { mode: "typesafe" as const }]) {
+      const s = createSessionConfig(
+        { SYSTEM_ONE_MODEL: "jev-custom", SYSTEM_ONE_API_KEY: "typesafe-key" },
+        stored,
+      );
+      assert.equal(s.mode, "typesafe");
+      assert.equal(s.current.model, "jev-custom");
+      assert.equal(s.current.apiKey, "typesafe-key");
+    }
+  });
+  it("keeps saved native mode despite inherited HTTP environment", () => {
     const s = createSessionConfig(
       { SYSTEM_ONE_BASE_URL: "http://existing/", SYSTEM_ONE_MODEL: "old" },
       { mode: "native", model: "new", timeoutMs: 5000 },
     );
-    assert.equal(s.mode, "custom");
-    assert.equal(s.current.baseUrl, "http://existing/");
-    assert.equal(s.current.model, "old");
+    assert.equal(s.mode, "native");
+    assert.equal(s.current.baseUrl, "");
+    assert.equal(s.current.model, "jev-latest");
     assert.equal(s.current.timeoutMs, 5000);
   });
-  it("does not carry a saved model to a different environment endpoint", () => {
+  it("saved TypeSafe and auto ignore custom endpoint keys and models", () => {
+    for (const mode of ["typesafe", "auto"] as const) {
+      const s = createSessionConfig(
+        {
+          SYSTEM_ONE_BASE_URL: "http://custom/",
+          SYSTEM_ONE_API_KEY: "custom-secret",
+          SYSTEM_ONE_MODEL: "custom-model",
+        },
+        { mode },
+      );
+      assert.equal(s.mode, mode);
+      assert.equal(s.current.baseUrl, "https://api.typesafe.ai");
+      assert.equal(s.current.model, "jev-latest");
+      assert.equal(s.current.apiKey, undefined);
+      assert.equal(s.ignoredEnvironmentEndpoint, true);
+    }
+  });
+  it("keeps saved custom endpoint and model, not unrelated environment credentials", () => {
     const s = createSessionConfig(
-      { SYSTEM_ONE_BASE_URL: "http://new/" },
+      {
+        SYSTEM_ONE_BASE_URL: "http://new/",
+        SYSTEM_ONE_MODEL: "new-model",
+        SYSTEM_ONE_API_KEY: "key-for-new",
+      },
       { mode: "custom", baseUrl: "http://old/", model: "old-model" },
     );
-    assert.equal(s.current.model, undefined);
-    assert.equal(s.current.baseUrl, "http://new/");
+    assert.equal(s.mode, "custom");
+    assert.equal(s.current.baseUrl, "http://old/");
+    assert.equal(s.current.model, "old-model");
+    assert.equal(s.current.apiKey, undefined);
   });
   it("keeps saved model when environment endpoint matches saved endpoint", () => {
     const s = createSessionConfig(
