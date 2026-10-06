@@ -17,6 +17,7 @@ interface Captured {
   handler: ((args: string, ctx: never) => Promise<void>) | undefined;
   completions: ((prefix: string) => { value: string }[]) | undefined;
   notices: string[];
+  selections: { title: string; options: string[] }[];
 }
 
 function harness() {
@@ -25,6 +26,7 @@ function harness() {
     handler: undefined,
     completions: undefined,
     notices: [],
+    selections: [],
   };
   const pi = {
     registerTool: (t: { name: string }) => {
@@ -53,6 +55,11 @@ function ctxFor(
   return {
     modelRegistry: { getApiKeyForProvider: async () => undefined },
     ui: {
+      select: async (title: string, options: string[]) => {
+        cap.selections.push({ title, options });
+        const choice = answers.shift();
+        return options.find((option) => option.startsWith(choice ?? "\0"));
+      },
       input: async (_prompt: string, initial?: string) => {
         defaults?.push(initial ?? "");
         return answers.shift();
@@ -65,6 +72,44 @@ function ctxFor(
 }
 
 describe("so command", () => {
+  it("shows selectable provider modes for /so and /so config", async () => {
+    const { pi, cap } = harness();
+    const store: SessionStore = { session: createSessionConfig({}) };
+    registerSystemOneCommands(pi, store);
+    await cap.handler?.("", ctxFor(["native"], cap));
+    assert.equal(store.session?.mode, "native");
+    await cap.handler?.("config", ctxFor(["typesafe"], cap));
+    assert.equal(store.session?.mode, "typesafe");
+    assert.equal(cap.selections.length, 2);
+    assert.equal(cap.selections[0].options.length, 3);
+    assert.match(cap.selections[0].options[0], /typesafe.*current/i);
+    assert.match(cap.selections[1].options[0], /native.*current/i);
+  });
+
+  it("cancels selection without changing mode or saved settings", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "so-select-"));
+    try {
+      const path = join(dir, "pi-system-one.json");
+      const { pi, cap } = harness();
+      const store: SessionStore = { session: createSessionConfig({}) };
+      registerSystemOneCommands(pi, store, path);
+      await cap.handler?.("config", ctxFor([undefined], cap));
+      assert.equal(store.session?.mode, "typesafe");
+      assert.throws(() => readFileSync(path, "utf8"), /ENOENT/);
+      assert.match(cap.notices.at(-1) ?? "", /Cancelled/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("direct mode command bypasses selection", async () => {
+    const { pi, cap } = harness();
+    const store: SessionStore = { session: createSessionConfig({}) };
+    registerSystemOneCommands(pi, store);
+    await cap.handler?.("config native", ctxFor([], cap));
+    assert.equal(store.session?.mode, "native");
+    assert.equal(cap.selections.length, 0);
+  });
   it("clears prior model on custom endpoint change with blank model", async () => {
     const dir = mkdtempSync(join(tmpdir(), "so-model-change-"));
     const originalFetch = globalThis.fetch;
