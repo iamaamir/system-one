@@ -12,8 +12,9 @@ import {
   TYPESAFE_BASE_URL,
   TYPESAFE_MODEL,
 } from "./config.ts";
+import { DebugHistory, observedProvider } from "./debug.ts";
+import { DebugOverlay, debugSummary } from "./debug-ui.ts";
 import { saveStoredConfig } from "./persistence.ts";
-import { resolveSessionProvider } from "./provider.ts";
 import { buildSystemOneTool } from "./tool.ts";
 
 export interface SessionStore {
@@ -26,13 +27,19 @@ export function registerSystemOneCommands(
   configPath?: string,
 ) {
   let registered = false;
+  const history = new DebugHistory();
+  pi.on("session_start", () => history.clear());
   function applyProvider() {
     if (registered) return;
     registered = true;
     pi.registerTool(
       buildSystemOneTool({
-        resolveProvider: (ctx) =>
-          resolveSessionProvider(store.session ?? createSessionConfig(), ctx),
+        resolveProvider: async (ctx) =>
+          observedProvider(
+            store.session ?? createSessionConfig(),
+            ctx,
+            history,
+          ),
       }),
     );
   }
@@ -206,15 +213,33 @@ export function registerSystemOneCommands(
     ctx.ui.notify(summary, "info");
   }
 
+  async function cmdDebug(ctx: ExtensionCommandContext): Promise<void> {
+    if (ctx.mode !== "tui") {
+      ctx.ui.notify(debugSummary(history.entries), "info");
+      return;
+    }
+    await ctx.ui.custom<void>(
+      (tui, theme, _keybindings, done) =>
+        new DebugOverlay([...history.entries], theme, done, () =>
+          tui.requestRender(),
+        ),
+      {
+        overlay: true,
+        overlayOptions: { anchor: "center", width: 70, maxHeight: 24 },
+      },
+    );
+  }
+
   pi.registerCommand("so", {
     description: "System One config (/so status for current)",
     getArgumentCompletions: (prefix: string) =>
-      ["config", "status"]
+      ["config", "status", "debug"]
         .filter((c) => c.startsWith(prefix.trim().toLowerCase()))
         .map((c) => ({ value: c, label: c })),
     handler: async (args, ctx) => {
       const [cmd, mode] = args.trim().toLowerCase().split(/\s+/);
       if (cmd === "status") await cmdStatus(ctx);
+      else if (cmd === "debug") await cmdDebug(ctx);
       else await cmdConfig(ctx, cmd === "config" ? mode : undefined);
     },
   });

@@ -11,9 +11,21 @@ import {
 } from "../src/commands.ts";
 import { createSessionConfig } from "../src/config.ts";
 import { resolveSessionProvider } from "../src/provider.ts";
+import type { buildSystemOneTool } from "../src/tool.ts";
+
+type OverlayFactory = (
+  tui: { requestRender: () => void },
+  theme: { fg: (key: string, text: string) => string },
+  keys: unknown,
+  done: () => void,
+) => {
+  render: (width: number) => string[];
+  handleInput: (data: string) => void;
+};
 
 interface Captured {
   tools: string[];
+  tool?: ReturnType<typeof buildSystemOneTool>;
   handler: ((args: string, ctx: never) => Promise<void>) | undefined;
   completions: ((prefix: string) => { value: string }[]) | undefined;
   notices: string[];
@@ -29,8 +41,9 @@ function harness() {
     selections: [],
   };
   const pi = {
-    registerTool: (t: { name: string }) => {
+    registerTool: (t: ReturnType<typeof buildSystemOneTool>) => {
       cap.tools.push(t.name);
+      cap.tool = t;
     },
     registerCommand: (
       _n: string,
@@ -72,6 +85,93 @@ function ctxFor(
 }
 
 describe("so command", () => {
+  it("opens /so debug as a dismissible TUI overlay without changing settings", async () => {
+    const { pi, cap } = harness();
+    const store: SessionStore = { session: createSessionConfig({}) };
+    registerSystemOneCommands(pi, store);
+    let overlay = false;
+    let closed = false;
+    await cap.handler?.("debug", {
+      mode: "tui",
+      ui: {
+        custom: async (
+          factory: OverlayFactory,
+          options: { overlay: boolean },
+        ) => {
+          overlay = options.overlay;
+          const component = factory(
+            { requestRender: () => {} },
+            { fg: (_color: string, text: string) => text },
+            {},
+            () => {
+              closed = true;
+            },
+          );
+          assert.match(
+            component.render(72).join("\n"),
+            /No system_one calls yet/,
+          );
+          component.handleInput("\u001b");
+        },
+        notify: () => {},
+      },
+    } as never);
+    assert.ok(overlay);
+    assert.ok(closed);
+    assert.equal(store.session?.mode, "typesafe");
+    assert.ok(cap.completions?.("de").some((item) => item.value === "debug"));
+  });
+  it("shows actual provider for a completed tool call in /so debug overlay", async () => {
+    const { pi, cap } = harness();
+    registerSystemOneCommands(pi, {
+      session: createSessionConfig({}, { mode: "native" }),
+    }).applyProvider();
+    assert.ok(cap.tool);
+    const result = await cap.tool.execute(
+      "native-debug",
+      {
+        state: "private-state",
+        questions: { q: { type: "noul", instructions: "private-instruction" } },
+      },
+      undefined,
+      undefined,
+      {
+        modelRegistry: {
+          findOfType: () => ({ id: "jev-latest" }),
+          classify: async () => ({
+            stopReason: "stop",
+            answers: { q: { type: "bool", probability: 0.7 } },
+          }),
+        },
+      } as never,
+    );
+    assert.equal(result.details.metadata.provider, "pi-native");
+    await cap.handler?.("debug", {
+      mode: "tui",
+      ui: {
+        custom: async (factory: OverlayFactory) => {
+          const component = factory(
+            { requestRender: () => {} },
+            { fg: (_key: string, text: string) => text },
+            {},
+            () => {},
+          );
+          const text = component.render(76).join("\n");
+          assert.match(text, /Provider: pi-native/);
+          assert.doesNotMatch(text, /private-state|private-instruction/);
+        },
+      },
+    } as never);
+  });
+  it("summarizes debug calls without custom UI in RPC mode", async () => {
+    const { pi, cap } = harness();
+    registerSystemOneCommands(pi, { session: createSessionConfig({}) });
+    await cap.handler?.("debug", {
+      mode: "rpc",
+      ui: { notify: (message: string) => cap.notices.push(message) },
+    } as never);
+    assert.match(cap.notices.at(-1) ?? "", /No system_one calls yet/);
+  });
   it("shows selectable provider modes for /so and /so config", async () => {
     const { pi, cap } = harness();
     const store: SessionStore = { session: createSessionConfig({}) };
@@ -302,12 +402,12 @@ describe("so command", () => {
       rmSync(dir, { recursive: true, force: true });
     }
   });
-  it("completes config + status, case-insensitively", () => {
+  it("completes config + status + debug, case-insensitively", () => {
     const { pi, cap } = harness();
     registerSystemOneCommands(pi, {});
     assert.deepEqual(
       cap.completions?.("").map((c) => c.value),
-      ["config", "status"],
+      ["config", "status", "debug"],
     );
     assert.deepEqual(
       cap.completions?.("S").map((c) => c.value),
