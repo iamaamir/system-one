@@ -2836,10 +2836,8 @@ p code {
             </div>
             <div style="height:18px"></div>
 
-            <div class="side-title">Choose a mode</div>
-            <p class="install-note"><code>/so config</code> lets you select and save a mode. <code>typesafe</code> (default) returns full Score distributions. <code>native</code> uses Pi's classifier for compatible Choice and Noul requests but rejects Score. <code>custom</code> uses your configured endpoint.</p>
-            <p class="install-note"><code>auto</code> uses a registered Pi classifier for compatible Choice and Noul requests. Other requests use TypeSafe HTTP, not your custom endpoint. Registration does not prove credentials work. Failed calls do not retry through another provider.</p>
-            <p class="install-note">Saved mode and custom endpoint take precedence over <code>SYSTEM_ONE_BASE_URL</code> after restart. Keys are never saved in the extension settings file. <a class="text-link" href="https://github.com/iamaamir/system-one/tree/main/pi-system-one#configuration">Read configuration details ↗</a></p>
+            <div class="side-title">Other modes</div>
+            <p class="install-note"><code>/so config</code> saves your choice: <code>native</code> handles compatible Choice/Noul, not Score; <code>auto</code> uses native when compatible and TypeSafe otherwise, with no retry on failure; <code>custom</code> uses your endpoint. <a class="text-link" href="https://github.com/iamaamir/system-one/tree/main/pi-system-one#configuration">Mode details ↗</a></p>
 
             <div style="height:18px"></div>
 
@@ -2865,32 +2863,27 @@ p code {
             <div class="config-list">
               <div class="config-row" data-env-desc="base" tabindex="0">
                 <code>SYSTEM_ONE_BASE_URL</code>
-                <span>Optional. Set a custom System One endpoint instead of the default TypeSafe endpoint.</span>
+                <span>Optional custom endpoint when no mode is saved.</span>
               </div>
 
               <div class="config-row" data-env-desc="key" tabindex="0">
                 <code>SYSTEM_ONE_API_KEY</code>
-                <span>Use this for custom endpoints that require a key. For TypeSafe, it takes precedence over Pi's key.</span>
+                <span>Key for the configured endpoint, if required.</span>
               </div>
 
               <div class="config-row" data-env-desc="model" tabindex="0">
                 <code>SYSTEM_ONE_MODEL</code>
-                <span>Optional for custom endpoints that require a model. TypeSafe uses <code>jev-latest</code> by default.</span>
+                <span>Optional custom model; TypeSafe defaults to <code>jev-latest</code>.</span>
               </div>
 
               <div class="config-row" data-env-desc="typesafe-key" tabindex="0">
                 <code>TYPESAFE_API_KEY</code>
-                <span>Optional if you use <code>/login typesafe</code>. Pi can use either credential for the default TypeSafe endpoint.</span>
+                <span>Optional if you use Pi's saved login.</span>
               </div>
 
               <div class="config-row">
                 <code>/so status</code>
-                <span>See the current mode, endpoint, model, and credential source.</span>
-              </div>
-
-              <div class="config-row">
-                <code>/so debug</code>
-                <span>In terminal Pi, inspect recent provider calls, routes, outcomes, and safe failure categories. History stays in this session.</span>
+                <span>Inspect settings; use <code>/so debug</code> for recent provider calls in terminal Pi.</span>
               </div></div>
           </aside>
         </div>
