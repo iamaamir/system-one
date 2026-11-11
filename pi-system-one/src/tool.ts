@@ -43,7 +43,7 @@ export const systemOneParams = Type.Object(
     questions: Type.Optional(
       Type.Any({
         description:
-          'One or more named decision questions. "choice" selects one outcome from a bounded set (criteria is an object keyed by label); "noul" estimates a yes/no likelihood (criteria usually omitted); "score" scores against an ordered rubric (criteria is an array of at least two levels). Accepts a name-keyed object, an array of questions, or a single unwrapped question. Aliases: question, queries; near-miss type spellings are normalized.',
+          'One or more named decision questions. "choice" selects one outcome from a bounded set (criteria is an object keyed by label with at least two labels - a single-label choice is rejected as malformed, so use "noul" when there is only one yes/no outcome); "noul" estimates a yes/no likelihood (criteria usually omitted); "score" scores against an ordered rubric (criteria is an array of at least two levels). Accepts a name-keyed object, an array of questions, or a single unwrapped question. Aliases: question, queries; near-miss type spellings are normalized.',
       }),
     ),
     question: Type.Optional(Type.Any()),
@@ -1041,7 +1041,11 @@ export interface SystemOneDetails {
  * enforces the canonical contract the provider requires. Limits here are
  * the ones the tool itself guarantees (verified against
  * system-one-core, which enforces no option/level counts — the backend
- * is the final arbiter for anything stricter). Every error states what
+ * is the final arbiter for anything stricter). One such stricter rule is
+ * documented and surfaced in the error text but deliberately NOT
+ * enforced here: a choice carrying a single label is answered with HTTP
+ * 422 "the question is malformed", so the message points at "noul"
+ * instead of rejecting the shape pre-flight. Every error states what
  * was wrong, which question it was in, and what valid shape looks like.
  */
 function assertAnswerableQuestions(questions: unknown): void {
@@ -1079,7 +1083,7 @@ function assertAnswerableQuestions(questions: unknown): void {
         Object.keys(value.criteria).length === 0
       ) {
         throw new Error(
-          `system_one: choice question "${name}" needs criteria as an object keyed by choice label with at least one choice, e.g. {"a": null, "b": null}.`,
+          `system_one: choice question "${name}" needs criteria as an object keyed by choice label with at least one choice, e.g. {"a": null, "b": null}. Note: the backend rejects a single-label choice as malformed (HTTP 422) - use type "noul" for a one-outcome yes/no decision.`,
         );
       }
     } else if (value.type === "score") {
